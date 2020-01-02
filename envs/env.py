@@ -31,7 +31,7 @@ def postprocess_observation(observation, bit_depth):
 
 
 def _images_to_observation(images, bit_depth):
-    images = torch.tensor(cv2.resize(images, (64, 64), interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1),
+    images = torch.tensor(cv2.resize(images, (128, 128), interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1),
                           dtype=torch.float32)  # Resize and put channel first
     preprocess_observation_(images, bit_depth)  # Quantise, centre and dequantise inplace
     return images.unsqueeze(dim=0)  # Add batch dimension
@@ -92,7 +92,7 @@ class ControlSuiteEnv():
     @property
     def observation_size(self):
         return sum([(1 if len(obs.shape) == 0 else obs.shape[0]) for obs in
-                    self._env.observation_spec().values()]) if self.symbolic else (3, 64, 64)
+                    self._env.observation_spec().values()]) if self.symbolic else (3, 128, 128)
 
     @property
     def action_size(self):
@@ -146,7 +146,7 @@ class GymEnv():
 
     @property
     def observation_size(self):
-        return self._env.observation_space.shape[0] if self.symbolic else (3, 64, 64)
+        return self._env.observation_space.shape[0] if self.symbolic else (3, 128, 128)
 
     @property
     def action_size(self):
@@ -193,7 +193,7 @@ class SoftGymEnv():
 
     @property
     def observation_size(self):
-        return self._env.observation_space.shape[0] if self.symbolic else (3, 64, 64)
+        return self._env.observation_space.shape[0] if self.symbolic else (3, 128, 128)
 
     @property
     def action_size(self):

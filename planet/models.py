@@ -117,8 +117,9 @@ class VisualObservationModel(jit.ScriptModule):
         self.fc1 = nn.Linear(belief_size + state_size, embedding_size)
         self.conv1 = nn.ConvTranspose2d(embedding_size, 128, 5, stride=2)
         self.conv2 = nn.ConvTranspose2d(128, 64, 5, stride=2)
-        self.conv3 = nn.ConvTranspose2d(64, 32, 6, stride=2)
-        self.conv4 = nn.ConvTranspose2d(32, 3, 6, stride=2)
+        self.conv3 = nn.ConvTranspose2d(64, 32, 5, stride=2)
+        self.conv4 = nn.ConvTranspose2d(32, 16, 6, stride=2)
+        self.conv5 = nn.ConvTranspose2d(16, 3, 6, stride=2)
 
     @jit.script_method
     def forward(self, belief, state):
@@ -127,7 +128,8 @@ class VisualObservationModel(jit.ScriptModule):
         hidden = self.act_fn(self.conv1(hidden))
         hidden = self.act_fn(self.conv2(hidden))
         hidden = self.act_fn(self.conv3(hidden))
-        observation = self.conv4(hidden)
+        hidden = self.act_fn(self.conv4(hidden))
+        observation = self.conv5(hidden)
         return observation
 
 
@@ -177,7 +179,8 @@ class VisualEncoder(jit.ScriptModule):
         super().__init__()
         self.act_fn = getattr(F, activation_function)
         self.embedding_size = embedding_size
-        self.conv1 = nn.Conv2d(3, 32, 4, stride=2)
+        self.conv0 = nn.Conv2d(3, 16, 4, stride=2)
+        self.conv1 = nn.Conv2d(16, 32, 4, stride=2)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
         self.conv3 = nn.Conv2d(64, 128, 4, stride=2)
         self.conv4 = nn.Conv2d(128, 256, 4, stride=2)
@@ -185,7 +188,8 @@ class VisualEncoder(jit.ScriptModule):
 
     @jit.script_method
     def forward(self, observation):
-        hidden = self.act_fn(self.conv1(observation))
+        hidden = self.act_fn(self.conv0(observation))
+        hidden = self.act_fn(self.conv1(hidden))
         hidden = self.act_fn(self.conv2(hidden))
         hidden = self.act_fn(self.conv3(hidden))
         hidden = self.act_fn(self.conv4(hidden))
