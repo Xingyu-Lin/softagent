@@ -11,7 +11,7 @@ if __name__ == '__main__':
     vv = DEFAULT_PARAMS.copy()
     vv['seed'] = 100
     vv['exp_name'] = 'debug'
-    vv['env_name'] = env_name = 'Pendulum-v0'
+    vv['env_name'] = env_name = 'PourWaterPosControl-v0'
 
     logger.configure('./data', exp_name=vv['exp_name'])
     with open(os.path.join(logger.get_dir(), 'variant.json'), 'w') as f:
@@ -26,5 +26,5 @@ if __name__ == '__main__':
         device = torch.device('cpu')
 
     agent = PlaNetAgent(env, vv, device)
-    agent.train(train_episode=10)
+    agent.train(train_episode=500)
     env.close()

@@ -47,11 +47,11 @@ DEFAULT_PARAMS = {
     # ENV parameters
     'symbolic_env': False,  # Whether the environment returns symbolic observation
     'bit_depth': 5,  # Image bit depth (quantisation)
-    'action_repeat': 2,
-    'max_episode_length': 1000,
+    'action_repeat': 1,
+    'max_episode_length': 75,
 
     # Testing parameters
-    'test_interval': 25,
+    'test_interval': 10,
     'test_episodes': 10,
     'checkpoint_interval': 50,
     'checkpoint_experience': False,  # Whether to save the collected experience replay to file
