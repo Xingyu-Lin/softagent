@@ -1,12 +1,12 @@
 import gym
 import numpy as np
 import pyflex
-from softgym.envs.cloth_flatten import ClothFlattenPointControlEnv
+from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.utils.make_gif import save_numpy_as_gif
 
 
-def test_picker(num_picker=3, save_dir='./videos'):
-    env = ClothFlattenPointControlEnv(
+def test_picker(num_picker=3, save_dir='./videos', script='manual'):
+    env = ClothFlattenEnv(
         observation_mode='key_point',
         action_mode='picker',
         num_picker=num_picker,
@@ -30,10 +30,12 @@ def test_picker(num_picker=3, save_dir='./videos'):
                 action[:, 3] = 1
             elif i < 40:
                 action[:, 3] = 0
+            if script == 'random':
+                action = env.action_space.sample()
             env.step(action)
             img = env.render(mode='rgb_array')
             imgs.append(img)
-    fp_out = './videos/flatten_picker_{}.gif'.format(num_picker)
+    fp_out = './videos/flatten_picker_random_{}.gif'.format(num_picker)
     save_numpy_as_gif(np.array(imgs), fp_out)
 
 
@@ -48,7 +50,9 @@ def test_random(env, N=5):
 
 
 if __name__ == '__main__':
-    test_picker(num_picker=1)
+    test_picker(num_picker=2, script='manual')
+    # test_picker(num_picker=2, script='random')
+
     # env = ClothFlattenPointControlEnv(
     #     observation_mode='key_point',
     #     action_mode='picker',
