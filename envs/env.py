@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import gym
 import softgym
+from softgym.envs.pour_water import PourWaterPosControlEnv
+from softgym.utils.normalized_env import normalize
 
 softgym.register_flex_envs()
 
@@ -14,6 +16,8 @@ CONTROL_SUITE_ENVS = ['cartpole-balance', 'cartpole-swingup', 'reacher-easy', 'f
 CONTROL_SUITE_ACTION_REPEATS = {'cartpole': 8, 'reacher': 4, 'finger': 2, 'cheetah': 4, 'ball_in_cup': 6, 'walker': 2}
 
 SOFTGYM_ENVS = ['PourWaterPosControl-v0']
+
+SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlEnv}
 
 
 # Preprocesses an observation inplace (from float32 Tensor [0, 255] to [-0.5, 0.5])
@@ -157,11 +161,15 @@ class GymEnv():
         return torch.from_numpy(self._env.action_space.sample())
 
 
-class SoftGymEnv():
-    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth):
+class SoftGymEnv(object):
+    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, env_kwargs=None):
+        if env in SOFTGYM_CUSTOM_ENVS:
+            self._env = SOFTGYM_CUSTOM_ENVS[env](**env_kwargs)
+        else:
+            self._env = gym.make(env)
+        self._env = normalize(self._env)
         assert not symbolic
         self.symbolic = symbolic
-        self._env = gym.make(env)
         self._env.seed(seed)
         self.max_episode_length = max_episode_length
         self.action_repeat = action_repeat
@@ -204,13 +212,13 @@ class SoftGymEnv():
         return torch.from_numpy(self._env.action_space.sample())
 
 
-def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth):
+def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, env_kwargs=None):
     if env in GYM_ENVS:
         return GymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth)
     elif env in CONTROL_SUITE_ENVS:
         return ControlSuiteEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth)
-    elif env in SOFTGYM_ENVS:
-        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth)
+    elif env in SOFTGYM_ENVS or env in SOFTGYM_CUSTOM_ENVS:
+        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, env_kwargs)
 
 
 # Wrapper for batching environments together

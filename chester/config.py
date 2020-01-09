@@ -9,15 +9,15 @@ LOG_DIR = os.path.join(PROJECT_PATH, "data")
 
 # Make sure to use absolute path
 REMOTE_DIR = {
-    'seuss': '/home/xlin3/Projects/baselines_hrl',
-    'psc': '/home/xlin3/Projects/baselines_hrl',
-    'nsh': '/home/xingyu/Projects/baselines_hrl',
-    'yertle':'/home/xingyu/Projects/baselines_hrl'
+    'seuss': '/home/xlin3/Projects/softagent',
+    'psc': '/home/xlin3/Projects/softagent',
+    'nsh': '/home/xingyu/Projects/softagent',
+    'yertle':'/home/xingyu/Projects/softagent'
 }
 
 REMOTE_MOUNT_OPTION = {
     'seuss': '/usr/share/glvnd',
-    'psc': '/pylon5/ir5fpfp/xlin3/Projects/baselines_hrl/:/mnt',
+    # 'psc': '/pylon5/ir5fpfp/xlin3/Projects/baselines_hrl/:/mnt',
 }
 
 REMOTE_LOG_DIR = {
@@ -36,9 +36,10 @@ REMOTE_HEADER = dict(seuss="""
 #SBATCH --nodes=1
 #SBATCH --partition=GPU
 #SBATCH --exclude=compute-0-[5]
+#SBATCH --nodelist=compute-0-17
 #SBATCH --ntasks-per-node=8
 #SBATCH --time=480:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 #SBATCH --mem=90G
 """.strip(), psc="""
 #!/usr/bin/env bash
@@ -58,7 +59,7 @@ REMOTE_HEADER = dict(seuss="""
 
 # location of the singularity file related to the project
 SIMG_DIR = {
-    'seuss': 'chester/containers/ubuntu-16.04-lts-rl.img',
+    'seuss': '/home/xlin3/softgym_containers/softgymcontainer_v3.simg',
     # 'psc': '$SCRATCH/containers/ubuntu-16.04-lts-rl.img',
     'psc': '/pylon5/ir5fpfp/xlin3/containers/ubuntu-16.04-lts-rl.img',
 

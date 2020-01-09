@@ -2,8 +2,8 @@ import gym
 import numpy as np
 import pyflex
 from softgym.envs.cloth_fold import ClothFoldEnv
-from softgym.utils.make_gif import save_numpy_as_gif
-
+from softgym.utils.visualization import save_numpy_as_gif
+from softgym.utils.normalized_env import normalize
 
 def test_picker(num_picker=3, save_dir='./videos'):
     env = ClothFoldEnv(
@@ -56,7 +56,8 @@ def test_random(env, N=5):
 
 
 if __name__ == '__main__':
-    test_picker(num_picker=2)
+    # test_picker(num_picker=2)
+
     env = ClothFoldEnv(
         observation_mode='key_point',
         action_mode='picker',
@@ -67,6 +68,13 @@ if __name__ == '__main__':
         action_repeat=8,
         render_mode='particle',
         cached_init_state_path=None)
+    env = normalize(env)
+    env.start_record()
+    env.reset()
+    for i in range(100):
+        action = env.action_space.sample()
+        env.step(action)
+    env.end_record(video_path='./test.gif')
     # env.reset()
     # for _ in range(500):
     #     pyflex.step()

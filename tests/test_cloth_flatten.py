@@ -2,7 +2,7 @@ import gym
 import numpy as np
 import pyflex
 from softgym.envs.cloth_flatten import ClothFlattenEnv
-from softgym.utils.make_gif import save_numpy_as_gif
+from softgym.utils.visualization import save_numpy_as_gif
 
 
 def test_picker(num_picker=3, save_dir='./videos', script='manual'):
