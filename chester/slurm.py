@@ -57,7 +57,7 @@ def _to_param_val(v):
 def to_slurm_command(params, header, python_command="python", remote_dir='~/',
                      script=osp.join(config.PROJECT_PATH, 'scripts/run_experiment.py'),
                      simg_dir=None, use_gpu=False, modules=None, cuda_module=None, use_singularity=True,
-                     mount_options=None):
+                     mount_options=None, compile_script=None, wait_compile=None):
     # TODO Add code for specifying the resource allocation
     # TODO Check if use_gpu can be applied
     """
@@ -98,6 +98,10 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
         sing_prefix = 'singularity exec {} {} {} /bin/bash -c'.format(options, '--nv' if use_gpu else '', simg_dir)
         sing_commands = list()
         sing_commands.append('. ./prepare.sh')
+        if compile_script is not None:
+            sing_commands.append('time ./' + compile_script)
+        if wait_compile is not None:
+            sing_commands.append('sleep '+str(int(wait_compile)))
 
     if pre_commands is not None:
         command_list.extend(pre_commands)

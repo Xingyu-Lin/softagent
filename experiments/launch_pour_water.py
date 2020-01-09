@@ -23,6 +23,7 @@ def main(mode, debug, dry):
     vg = VariantGenerator()
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
+    vg.add('env_kwargs_camera_name', ['cam_2d', 'default_camera'])
     vg.add('seed', [100])
 
     if not debug:
@@ -34,10 +35,20 @@ def main(mode, debug, dry):
     print('Number of configurations: ', len(vg.variants()))
 
     sub_process_popens = []
-    for vv in vg.variants():
-        while len(sub_process_popens) >= 1:
+    for idx, vv in enumerate(vg.variants()):
+        while len(sub_process_popens) >= 2:
             sub_process_popens = [x for x in sub_process_popens if x.poll() is None]
             time.sleep(10)
+        if mode == 'seuss':
+            if idx == 0:
+                compile_script = 'compile.sh'  # For the first experiment, compile the current softgym
+                wait_compile = None
+            else:
+                compile_script = None
+                wait_compile = 60  # Wait 60 secons for the compilation to finish
+        else:
+            compile_script = wait_compile = None
+
         cur_popen = run_experiment_lite(
             stub_method_call=run_task,
             variant=vv,
@@ -45,7 +56,9 @@ def main(mode, debug, dry):
             dry=dry,
             use_gpu=True,
             exp_prefix=exp_prefix,
-            wait_subprocess=debug
+            wait_subprocess=debug,
+            compile_script=compile_script,
+            wait_compile=wait_compile,
         )
         if cur_popen is not None:
             sub_process_popens.append(cur_popen)

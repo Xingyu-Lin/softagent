@@ -11,9 +11,20 @@ import os.path as osp
 import json
 
 
+def update_env_kwargs(vv):
+    new_vv = vv.copy()
+    for v in vv:
+        if v.startswith('env_kwargs_'):
+            arg_name = v[len('env_kwargs_'):]
+            new_vv['env_kwargs'][arg_name] = vv[v]
+            del new_vv[v]
+    return new_vv
+
+
 def run_task(arg_vv, log_dir, exp_name):
     vv = DEFAULT_PARAMS
     vv.update(**arg_vv)
+    vv = update_env_kwargs(vv)
 
     # Configure logger
     logger.configure(dir=log_dir, exp_name=exp_name)

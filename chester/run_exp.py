@@ -267,6 +267,8 @@ def run_experiment_lite(
   pre_commands=None,
   print_command=False,
   wait_subprocess=True,
+  compile_script=None,
+  wait_compile=None,
   **kwargs):
     """
     Serialize the stubbed method call and run the experiment using the specified mode.
@@ -414,7 +416,9 @@ def run_experiment_lite(
                 script=osp.join(remote_dir, script),
                 simg_dir=simg_dir,
                 remote_dir=remote_dir,
-                mount_options=config.REMOTE_MOUNT_OPTION[mode]
+                mount_options=config.REMOTE_MOUNT_OPTION[mode],
+                compile_script=compile_script,
+                wait_compile=wait_compile
             )
             if print_command:
                 print("; ".join(command_list))
