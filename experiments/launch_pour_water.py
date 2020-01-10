@@ -9,7 +9,7 @@ from experiments.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = 'pour_water'
+    exp_prefix = 'pour_water_value_function'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_img',
                       'action_mode': 'direct',
