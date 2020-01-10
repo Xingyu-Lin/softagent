@@ -1,15 +1,20 @@
 import torch
 from torch import jit
 
+def to_np(x):
+    if torch.is_tensor(x):
+        return x.detach().cpu().numpy()
+    else:
+        return x.detach().data.cpu().numpy()
 
 # Model-predictive control planner with cross-entropy method and learned transition model
 class MPCPlanner(jit.ScriptModule):
     __constants__ = ['action_size', 'planning_horizon', 'optimisation_iters', 'candidates', 'top_candidates']
 
     def __init__(self, action_size, planning_horizon, optimisation_iters, candidates, top_candidates, transition_model,
-                 reward_model):
+                 reward_model, value_model=None):
         super().__init__()
-        self.transition_model, self.reward_model = transition_model, reward_model
+        self.transition_model, self.reward_model, self.value_model = transition_model, reward_model, value_model
         self.action_size = action_size
         self.planning_horizon = planning_horizon
         self.optimisation_iters = optimisation_iters
@@ -34,8 +39,13 @@ class MPCPlanner(jit.ScriptModule):
             # Sample next states
             beliefs, states, _, _ = self.transition_model(state, actions, belief)
             # Calculate expected returns (technically sum of rewards over planning horizon)
-            returns = self.reward_model(beliefs.view(-1, H), states.view(-1, Z)).view(self.planning_horizon, -1).sum(
-                dim=0)
+            if self.value_model is None:
+                returns = self.reward_model(beliefs.view(-1, H), states.view(-1, Z)).view(self.planning_horizon, -1).sum(
+                    dim=0)
+            else:
+                # TODO double check here!!
+                returns = self.reward_model(beliefs[:-1].view(-1, H), states[:-1].view(-1, Z)).view(self.planning_horizon-1, -1).sum(
+                    dim=0) + self.value_model(beliefs[-1:].view(-1, H), states[-1:].view(-1, Z)).view(1, -1).sum(dim=0)
             # Re-fit belief to the K best action sequences
             _, topk = returns.reshape(B, self.candidates).topk(self.top_candidates, dim=1, largest=True, sorted=False)
             topk += self.candidates * torch.arange(0, B, dtype=torch.int64, device=topk.device).unsqueeze(

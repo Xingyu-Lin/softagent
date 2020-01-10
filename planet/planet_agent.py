@@ -10,9 +10,9 @@ from torchvision.utils import make_grid, save_image
 from tqdm import tqdm
 from envs.env import CONTROL_SUITE_ENVS, Env, GYM_ENVS, EnvBatcher
 from planet.memory import ExperienceReplay
-from planet.models import bottle, Encoder, ObservationModel, RewardModel, TransitionModel
+from planet.models import bottle, Encoder, ObservationModel, RewardModel, TransitionModel, ValueModel
 from planet.planner import MPCPlanner
-from planet.utils import lineplot, write_video
+from planet.utils import write_video
 
 from chester import logger
 
@@ -38,9 +38,16 @@ class PlaNetAgent(object):
         self.observation_model = ObservationModel(vv['symbolic_env'], self.dimo, vv['belief_size'], vv['state_size'], vv['embedding_size'],
                                                   vv['activation_function']).to(device=device)
         self.reward_model = RewardModel(vv['belief_size'], vv['state_size'], vv['hidden_size'], vv['activation_function']).to(device=device)
+
         self.encoder = Encoder(vv['symbolic_env'], self.dimo, vv['embedding_size'], vv['activation_function']).to(device=device)
         self.param_list = list(self.transition_model.parameters()) + list(self.observation_model.parameters()) + list(
             self.reward_model.parameters()) + list(self.encoder.parameters())
+        if vv['use_value_function']:
+            self.value_model = ValueModel(vv['belief_size'], vv['state_size'], vv['hidden_size'], vv['activation_function']).to(device=device)
+            self.param_list.extend(self.value_model.parameters())
+        else:
+            self.value_model = None
+
         self.optimiser = optim.Adam(self.param_list, lr=0 if vv['learning_rate_schedule'] != 0 else vv['learning_rate'], eps=vv['adam_epsilon'])
         if vv['saved_models'] is not None and os.path.exists(vv['saved_models']):
             model_dicts = torch.load(vv['models'])
@@ -49,9 +56,11 @@ class PlaNetAgent(object):
             self.reward_model.load_state_dict(model_dicts['reward_model'])
             self.encoder.load_state_dict(model_dicts['encoder'])
             self.optimiser.load_state_dict(model_dicts['optimiser'])
+            if vv['use_value_function']:
+                self.value_model.load_state_dict(model_dicts['value_model'])
 
         self.planner = MPCPlanner(self.dimu, vv['planning_horizon'], vv['optimisation_iters'], vv['candidates'], vv['top_candidates'],
-                                  self.transition_model, self.reward_model)
+                                  self.transition_model, self.reward_model, self.value_model)
         self.global_prior = Normal(torch.zeros(vv['batch_size'], vv['state_size'], device=device),
                                    torch.ones(vv['batch_size'], vv['state_size'], device=device))  # Global prior N(0, I)
         self.free_nats = torch.full((1,), vv['free_nats'], device=device)  # Allowed deviation in KL divergence
@@ -65,16 +74,18 @@ class PlaNetAgent(object):
 
         else:
             self.D = ExperienceReplay(self.vv['experience_size'], self.vv['symbolic_env'], self.dimo, self.dimu,
-                                      self.vv['bit_depth'], self.device)
+                                      self.vv['bit_depth'], self.device, self.vv['use_value_function'])
             # Initialize dataset D with S random seed episodes
             for s in range(1, self.vv['seed_episodes'] + 1):
                 observation, done, t = self.env.reset(), False, 0
+                observations, actions, rewards, dones = [], [], [], []
                 while not done:
                     action = self.env.sample_random_action()  # TODO is there a reason for using tensor instead of numpy here?
                     next_observation, reward, done = self.env.step(action)
-                    self.D.append(observation, action, reward, done)
+                    observations.append(observation), actions.append(action), rewards.append(reward), dones.append(done)
                     observation = next_observation
                     t += 1
+                self.D.append_episode(observations, actions, rewards, dones)
                 self.train_steps += t * self.vv['action_repeat']
             self.train_episodes += self.vv['seed_episodes']
 
@@ -101,8 +112,12 @@ class PlaNetAgent(object):
             losses = []
             for _ in tqdm(range(self.vv['collect_interval'])):
                 # Draw sequence chunks {(o_t, a_t, r_t+1, terminal_t+1)} ~ D uniformly at random from the dataset (including terminal flags)
-                observations, actions, rewards, nonterminals = \
-                    self.D.sample(self.vv['batch_size'], self.vv['chunk_size'])  # Transitions start at time t = 0
+                if self.value_model is not None:
+                    observations, actions, rewards, values, nonterminals = \
+                        self.D.sample(self.vv['batch_size'], self.vv['chunk_size'])  # Transitions start at time t = 0
+                else:
+                    observations, actions, rewards, nonterminals = \
+                        self.D.sample(self.vv['batch_size'], self.vv['chunk_size'])  # Transitions start at time t = 0
 
                 # Create initial belief and state for time t = 0
                 init_belief, init_state = torch.zeros(self.vv['batch_size'], self.vv['belief_size'], device=self.device), \
@@ -114,6 +129,9 @@ class PlaNetAgent(object):
                 observation_loss = F.mse_loss(bottle(self.observation_model, (beliefs, posterior_states)), observations[1:],
                                               reduction='none').sum(dim=2 if self.vv['symbolic_env'] else (2, 3, 4)).mean(dim=(0, 1))
                 reward_loss = F.mse_loss(bottle(self.reward_model, (beliefs, posterior_states)), rewards[:-1], reduction='none').mean(dim=(0, 1))
+                # TODO check why the last one of the reward is not used!!
+                if self.value_model is not None:
+                    value_loss = F.mse_loss(bottle(self.value_model, (beliefs, posterior_states)), values[:-1], reduction='none').mean(dim=(0, 1))
                 # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
                 kl_loss = torch.max(kl_divergence(Normal(posterior_means, posterior_std_devs), Normal(prior_means, prior_std_devs)).sum(dim=2),
                                     self.free_nats).mean(dim=(0, 1))
@@ -123,6 +141,7 @@ class PlaNetAgent(object):
                                                                          self.global_prior).sum(dim=2).mean(dim=(0, 1))
                 # Calculate latent overshooting objective for t > 0
                 if self.vv['overshooting_kl_beta'] != 0:
+                    raise NotImplementedError  # Need to deal with value function
                     overshooting_vars = []  # Collect variables for overshooting to process in batch
                     for t in range(1, self.vv['chunk_size'] - 1):
                         d = min(t + self.vv['overshooting_distance'], self.vv['chunk_size'] - 1)  # Overshooting distance
@@ -162,15 +181,21 @@ class PlaNetAgent(object):
                         group['lr'] = min(group['lr'] + self.vv['learning_rate'] / self.vv['learning_rate_schedule'], self.vv['learning_rate'])
                 # Update model parameters
                 self.optimiser.zero_grad()
-                (observation_loss + reward_loss + kl_loss).backward()
+                if self.value_model is not None:
+                    (observation_loss + reward_loss + value_loss + kl_loss).backward()
+                else:
+                    (observation_loss + reward_loss + kl_loss).backward()
                 nn.utils.clip_grad_norm_(self.param_list, self.vv['grad_clip_norm'], norm_type=2)
                 self.optimiser.step()
                 # Store (0) observation loss (1) reward loss (2) KL loss
                 losses.append([observation_loss.item(), reward_loss.item(), kl_loss.item()])
+                if self.value_model is not None:
+                    losses[-1].append(value_loss.item())
 
             # Data collection (1 episode)
             with torch.no_grad():
                 observation, total_reward = self.env.reset(), 0
+                observations, actions, rewards, dones = [], [], [], []
                 belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
                                                   torch.zeros(1, self.vv['state_size'], device=self.device), \
                                                   torch.zeros(1, self.env.action_size, device=self.device)
@@ -178,7 +203,7 @@ class PlaNetAgent(object):
                 for t in pbar:
                     belief, posterior_state, action, next_observation, reward, done = \
                         self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device), explore=True)
-                    self.D.append(observation, action.cpu(), reward, done)
+                    observations.append(observation), actions.append(action.cpu()), rewards.append(reward), dones.append(done)
                     total_reward += reward
                     observation = next_observation
                     if render:
@@ -186,7 +211,7 @@ class PlaNetAgent(object):
                     if done:
                         pbar.close()
                         break
-
+                self.D.append_episode(observations, actions, rewards, dones)
                 self.train_episodes += 1
                 self.train_steps += t
 
@@ -195,6 +220,8 @@ class PlaNetAgent(object):
             logger.record_tabular('observation_loss', np.mean(losses[:, 0]))
             logger.record_tabular('reward_loss', np.mean(losses[:, 1]))
             logger.record_tabular('kl_loss', np.mean(losses[:, 2]))
+            if self.value_model is not None:
+                logger.record_tabular('value_loss', np.mean(losses[:, 3]))
             logger.record_tabular('train_rewards', total_reward)
             logger.record_tabular('num_episodes', self.train_episodes)
             logger.record_tabular('num_steps', self.train_steps)
@@ -205,6 +232,8 @@ class PlaNetAgent(object):
                 self.transition_model.eval()
                 self.observation_model.eval()
                 self.reward_model.eval()
+                if self.value_model is not None:
+                    self.value_model.eval()
                 self.encoder.eval()
                 # Initialise parallelised test environments
                 with torch.no_grad():
@@ -245,6 +274,8 @@ class PlaNetAgent(object):
                 self.transition_model.train()
                 self.observation_model.train()
                 self.reward_model.train()
+                if self.value_model is not None:
+                    self.value_model.train()
                 self.encoder.train()
 
             # Checkpoint models
@@ -252,7 +283,9 @@ class PlaNetAgent(object):
                 torch.save(
                     {'transition_model': self.transition_model.state_dict(),
                      'observation_model': self.observation_model.state_dict(),
-                     'reward_model': self.reward_model.state_dict(), 'encoder': self.encoder.state_dict(),
+                     'reward_model': self.reward_model.state_dict(),
+                     'value_model': self.value_model.state_dict(),
+                     'encoder': self.encoder.state_dict(),
                      'optimiser': self.optimiser.state_dict()}, os.path.join(logger.get_dir(), 'models_%d.pth' % episode))
                 if self.vv['checkpoint_experience']:
                     torch.save(self.D,

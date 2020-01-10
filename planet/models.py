@@ -172,6 +172,22 @@ class SymbolicEncoder(jit.ScriptModule):
         return hidden
 
 
+class ValueModel(jit.ScriptModule):
+    def __init__(self, belief_size, state_size, hidden_size, activation_function='relu'):
+        super().__init__()
+        self.act_fn = getattr(F, activation_function)
+        self.fc1 = nn.Linear(belief_size + state_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, 1)
+
+    @jit.script_method
+    def forward(self, belief, state):
+        hidden = self.act_fn(self.fc1(torch.cat([belief, state], dim=1)))
+        hidden = self.act_fn(self.fc2(hidden))
+        value = self.fc3(hidden).squeeze(dim=1)
+        return value
+
+
 class VisualEncoder(jit.ScriptModule):
     __constants__ = ['embedding_size']
 

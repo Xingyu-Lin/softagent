@@ -23,13 +23,16 @@ def main(mode, debug, dry):
     vg = VariantGenerator()
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_camera_name', ['cam_2d', 'default_camera'])
+    vg.add('env_kwargs_camera_name', ['default_camera'])
+    vg.add('use_value_function', [True, False])
     vg.add('seed', [100])
 
     if not debug:
+        vg.add('collect_interval', [100])
         # Add possible vgs for non-debug purpose
         pass
     else:
+        vg.add('collect_interval', [1])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))
@@ -45,7 +48,7 @@ def main(mode, debug, dry):
                 wait_compile = None
             else:
                 compile_script = None
-                wait_compile = 60  # Wait 60 secons for the compilation to finish
+                wait_compile = 30  # Wait 30 seconds for the compilation to finish
         else:
             compile_script = wait_compile = None
 
