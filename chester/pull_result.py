@@ -24,7 +24,7 @@ if __name__ == "__main__":
                                                                                                 remote_data_dir=remote_data_dir,
                                                                                                 local_dir=local_dir)
     if args.bare:
-        command += """ --exclude '*.pkl' --include '*.csv' --include '*.json' --delete"""
+        command += """ --exclude '*.pkl' --exclude '*.pth' --include '*.csv' --include '*.json' --delete"""
     if args.dry:
         print(command)
     else:

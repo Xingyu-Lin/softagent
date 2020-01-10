@@ -52,7 +52,7 @@ DEFAULT_PARAMS = {
 
     # Testing parameters
     'test_interval': 10,
-    'test_episodes': 5,
+    'test_episodes': 8,
     'checkpoint_interval': 50,
     'checkpoint_experience': False,  # Whether to save the collected experience replay to file
 }

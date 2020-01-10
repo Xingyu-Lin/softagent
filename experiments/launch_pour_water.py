@@ -9,7 +9,7 @@ import numpy as np
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = 'pour_water_value_function'
+    exp_prefix = '0110_pour_water_value_function'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_img',
                       'action_mode': 'direct',
@@ -24,7 +24,8 @@ def main(mode, debug, dry):
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('use_value_function', [False])
+    vg.add('planning_horizon', [12, 24])
+    vg.add('use_value_function', [True, False])
     vg.add('seed', [100, 200, 300])
 
     if not debug:
