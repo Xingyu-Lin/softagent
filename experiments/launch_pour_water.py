@@ -2,7 +2,7 @@ import time
 import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from experiments.train import run_task
-
+import numpy as np
 
 @click.command()
 @click.argument('mode', type=str, default='local')
@@ -24,8 +24,8 @@ def main(mode, debug, dry):
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('use_value_function', [True, False])
-    vg.add('seed', [100])
+    vg.add('use_value_function', [False])
+    vg.add('seed', [100, 200, 300])
 
     if not debug:
         vg.add('collect_interval', [100])
@@ -48,7 +48,7 @@ def main(mode, debug, dry):
                 wait_compile = None
             else:
                 compile_script = None
-                wait_compile = 30  # Wait 30 seconds for the compilation to finish
+                wait_compile = 120  # Wait 30 seconds for the compilation to finish
         else:
             compile_script = wait_compile = None
 
