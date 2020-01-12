@@ -233,13 +233,7 @@ class PlaNetAgent(object):
 
             # Test model
             if episode % self.vv['test_interval'] == 0:
-                # Set models to eval mode
-                self.transition_model.eval()
-                self.observation_model.eval()
-                self.reward_model.eval()
-                if self.value_model is not None:
-                    self.value_model.eval()
-                self.encoder.eval()
+                self.set_model_eval()
                 # Initialise parallelised test environments
                 with torch.no_grad():
                     all_frames, all_frames_reconstr = [], []
@@ -285,14 +279,9 @@ class PlaNetAgent(object):
                     write_video(video_frames, 'test_episode_%s' % episode_str, logger.get_dir())  # Lossy compression
                     save_image(torch.as_tensor(video_frames[-1]),
                                os.path.join(logger.get_dir(), 'test_episode_%s.png' % episode_str))
+                self.set_model_train()
 
-                # Set models to train mode
-                self.transition_model.train()
-                self.observation_model.train()
-                self.reward_model.train()
-                if self.value_model is not None:
-                    self.value_model.train()
-                self.encoder.train()
+
 
             # Checkpoint models
             if episode % self.vv['checkpoint_interval'] == 0:
@@ -307,3 +296,22 @@ class PlaNetAgent(object):
                     torch.save(self.D,
                                os.path.join(logger.get_dir(), 'experience.pth'))  # Warning: will fail with MemoryError with large memory sizes
             logger.dump_tabular()
+
+    def set_model_train(self):
+        """ Set model to train mode """
+        self.transition_model.train()
+        self.observation_model.train()
+        self.reward_model.train()
+        if self.value_model is not None:
+            self.value_model.train()
+        self.encoder.train()
+
+    def set_model_eval(self):
+        """ Set model to evaluation mode"""
+        self.transition_model.eval()
+        self.observation_model.eval()
+        self.reward_model.eval()
+        if self.value_model is not None:
+            self.value_model.eval()
+        self.encoder.eval()
+

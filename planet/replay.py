@@ -34,6 +34,7 @@ def main(policy_file, seed, n_test_rollouts, render, exploit, record_video):
     agent = PlaNetAgent(env, vv, device)
 
     all_rewards = []
+    agent.set_model_eval()
     with torch.no_grad():
         for i in range(n_test_rollouts):
             observation, total_reward = agent.env.reset(), 0
@@ -48,7 +49,6 @@ def main(policy_file, seed, n_test_rollouts, render, exploit, record_video):
                 observation = next_observation
                 if done:
                     break
-                # print('time {}: {}'.format(t, reward))
 
             print('episode: {}, total reward: {}'.format(i, total_reward))
             all_rewards.append(total_reward)
