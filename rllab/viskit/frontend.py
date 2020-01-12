@@ -85,6 +85,7 @@ def make_plot(plot_list, use_median=False, use_five_numbers=False, plot_width=No
                 list(ys)
                 for ys in [plt.percentile0, plt.percentile100]
             ]
+            assert (False, 'Need to handle nan. See below')
 
         else:
             x = list(range(len(plt.means)))
@@ -96,6 +97,9 @@ def make_plot(plot_list, use_median=False, use_five_numbers=False, plot_width=No
         if hasattr(plt, "custom_x"):
             x = list(plt.custom_x)
 
+        idxes = [idx for idx in range(len(y)) if not np.isnan(y[idx])]
+        y, y_upper, y_lower = [y[i] for i in idxes], [y_upper[i] for i in idxes], [y_lower[i] for i in idxes]
+        x = [x[i] for i in idxes]
         data.append(go.Scatter(
             x=x + x[::-1],
             y=y_upper + y_lower[::-1],
@@ -104,7 +108,7 @@ def make_plot(plot_list, use_median=False, use_five_numbers=False, plot_width=No
             line=go.Line(color='transparent'),
             showlegend=False,
             legendgroup=plt.legend,
-            hoverinfo='none'
+            hoverinfo='none',
         ))
         data.append(go.Scatter(
             x=x,
@@ -145,7 +149,7 @@ def make_plot(plot_list, use_median=False, use_five_numbers=False, plot_width=No
         width=plot_width,
         height=plot_height,
         title=title,
-        xaxis=go.XAxis(range=xlim, showexponent='all', exponentformat = 'e'),
+        xaxis=go.XAxis(range=(x[0]-1, x[-1]+1), showexponent='all', exponentformat = 'e'),
         yaxis=go.YAxis(range=ylim, showexponent='all', exponentformat = 'e'),
         # font=dict(size=22)
     )

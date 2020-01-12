@@ -33,7 +33,7 @@ def load_progress(progress_csv_path):
                 try:
                     entries[k].append(float(v))
                 except:
-                    entries[k].append(0.)
+                    entries[k].append(np.nan)
     entries = dict([(k, np.array(v)) for k, v in entries.items()])
     return entries
 
