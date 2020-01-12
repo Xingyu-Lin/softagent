@@ -50,7 +50,7 @@ class PlaNetAgent(object):
 
         self.optimiser = optim.Adam(self.param_list, lr=0 if vv['learning_rate_schedule'] != 0 else vv['learning_rate'], eps=vv['adam_epsilon'])
         if vv['saved_models'] is not None and os.path.exists(vv['saved_models']):
-            model_dicts = torch.load(vv['models'])
+            model_dicts = torch.load(vv['saved_models'])
             self.transition_model.load_state_dict(model_dicts['transition_model'])
             self.observation_model.load_state_dict(model_dicts['observation_model'])
             self.reward_model.load_state_dict(model_dicts['reward_model'])
@@ -58,6 +58,7 @@ class PlaNetAgent(object):
             self.optimiser.load_state_dict(model_dicts['optimiser'])
             if vv['use_value_function']:
                 self.value_model.load_state_dict(model_dicts['value_model'])
+            print('model loaded from ', vv['saved_models'])
 
         self.planner = MPCPlanner(self.dimu, vv['planning_horizon'], vv['optimisation_iters'], vv['candidates'], vv['top_candidates'],
                                   self.transition_model, self.reward_model, self.value_model)

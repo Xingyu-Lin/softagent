@@ -145,8 +145,8 @@ def make_plot(plot_list, use_median=False, use_five_numbers=False, plot_width=No
         width=plot_width,
         height=plot_height,
         title=title,
-        xaxis=go.XAxis(range=xlim),
-        yaxis=go.YAxis(range=ylim),
+        xaxis=go.XAxis(range=xlim, showexponent='all', exponentformat = 'e'),
+        yaxis=go.YAxis(range=ylim, showexponent='all', exponentformat = 'e'),
         # font=dict(size=22)
     )
     fig = go.Figure(data=data, layout=layout)
