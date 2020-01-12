@@ -131,7 +131,12 @@ class PlaNetAgent(object):
                 reward_loss = F.mse_loss(bottle(self.reward_model, (beliefs, posterior_states)), rewards[:-1], reduction='none').mean(dim=(0, 1))
                 # TODO check why the last one of the reward is not used!!
                 if self.value_model is not None:
-                    value_loss = F.mse_loss(bottle(self.value_model, (beliefs, posterior_states)), values[:-1], reduction='none').mean(dim=(0, 1))
+                    # TODO: add mask!!
+                    prev_beliefs = torch.cat([init_belief.unsqueeze(dim=0), beliefs[:-1, :, :]])
+                    prev_states = torch.cat([init_state.unsqueeze(dim=0), posterior_states[:-1, :, :]])
+                    value_loss = F.mse_loss(bottle(self.value_model, (prev_beliefs, prev_states)),
+                                            rewards[:-1] + bottle(self.value_model, (beliefs, posterior_states)).detach(),
+                                            reduction='none').mean(dim=(0, 1))
                 # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
                 kl_loss = torch.max(kl_divergence(Normal(posterior_means, posterior_std_devs), Normal(prior_means, prior_std_devs)).sum(dim=2),
                                     self.free_nats).mean(dim=(0, 1))

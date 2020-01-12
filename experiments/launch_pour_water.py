@@ -9,7 +9,7 @@ import numpy as np
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0110_pour_water_value_function'
+    exp_prefix = '0111_pour_water_value_function'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_img',
                       'action_mode': 'direct',
