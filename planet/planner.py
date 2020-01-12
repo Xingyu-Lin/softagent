@@ -31,7 +31,7 @@ class MPCPlanner(jit.ScriptModule):
                                                   device=belief.device), torch.ones(self.planning_horizon, B, 1,
                                                                                     self.action_size,
                                                                                     device=belief.device)
-        for _ in range(self.optimisation_iters):
+        for i in range(self.optimisation_iters):
             # Evaluate J action sequences from the current belief (over entire sequence at once, batched over particles)
             actions = (action_mean + action_std_dev * torch.randn(self.planning_horizon, B, self.candidates,
                                                                   self.action_size, device=action_mean.device)).view(
@@ -45,8 +45,10 @@ class MPCPlanner(jit.ScriptModule):
                     dim=0)
             else:
                 # TODO double check here!!
-                returns = self.reward_model(beliefs[:-1].view(-1, H), states[:-1].view(-1, Z)).view(self.planning_horizon - 1, -1).sum(
-                    dim=0) + self.value_model(beliefs[-1:].view(-1, H), states[-1:].view(-1, Z)).view(1, -1).sum(dim=0)
+                short_return = self.reward_model(beliefs[:-1].view(-1, H), states[:-1].view(-1, Z)).view(self.planning_horizon - 1, -1).sum(dim=0)
+                long_return = self.value_model(beliefs[-1:].view(-1, H), states[-1:].view(-1, Z)).view(1, -1).sum(dim=0)
+                # print('iteration: {}, short_return: {}, long_return: {}'.format(i, torch.max(short_return), torch.max(long_return)))
+                returns = short_return + long_return
             # Re-fit belief to the K best action sequences
             _, topk = returns.reshape(B, self.candidates).topk(self.top_candidates, dim=1, largest=True, sorted=False)
             topk += self.candidates * torch.arange(0, B, dtype=torch.int64, device=topk.device).unsqueeze(

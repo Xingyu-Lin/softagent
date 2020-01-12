@@ -2,7 +2,7 @@ import click
 import json
 import os
 import torch
-
+import numpy as np
 from planet.planet_agent import PlaNetAgent
 from envs.env import Env
 
@@ -23,7 +23,7 @@ def main(policy_file, seed, n_test_rollouts, render, exploit, record_video):
         device = torch.device('cpu')
 
     json_file = os.path.join(os.path.dirname(policy_file), 'variant.json')
-    print(json_file)
+    print('Load variants from {}'.format(json_file))
     with open(json_file) as f:
         vv = json.load(f)
     vv['env_kwargs']['headless'] = 1 - render
@@ -33,11 +33,10 @@ def main(policy_file, seed, n_test_rollouts, render, exploit, record_video):
               env_kwargs=vv['env_kwargs'])
     agent = PlaNetAgent(env, vv, device)
 
-
+    all_rewards = []
     with torch.no_grad():
         for i in range(n_test_rollouts):
             observation, total_reward = agent.env.reset(), 0
-            observations, actions, rewards, dones = [], [], [], []
             belief, posterior_state, action = torch.zeros(1, vv['belief_size'], device=device), \
                                               torch.zeros(1, vv['state_size'], device=device), \
                                               torch.zeros(1, env.action_size, device=device)
@@ -45,12 +44,15 @@ def main(policy_file, seed, n_test_rollouts, render, exploit, record_video):
                 belief, posterior_state, action, next_observation, reward, done = \
                     agent.update_belief_and_act(agent.env, belief, posterior_state, action, observation.to(device=agent.device),
                                                 explore=(exploit != 0))
-                observations.append(observation), actions.append(action.cpu()), rewards.append(reward), dones.append(done)
                 total_reward += reward
                 observation = next_observation
                 if done:
                     break
+                # print('time {}: {}'.format(t, reward))
+
             print('episode: {}, total reward: {}'.format(i, total_reward))
+            all_rewards.append(total_reward)
+    print('Average total reward:', np.mean(np.array(all_rewards)))
 
 
 if __name__ == '__main__':

@@ -95,8 +95,7 @@ class PlaNetAgent(object):
         belief, _, _, _, posterior_state, _, _ = self.transition_model(posterior_state, action.unsqueeze(dim=0), belief,
                                                                        self.encoder(observation).unsqueeze(
                                                                            dim=0))  # Action and observation need extra time dimension
-        belief, posterior_state = belief.squeeze(dim=0), posterior_state.squeeze(
-            dim=0)  # Remove time dimension from belief/state
+        belief, posterior_state = belief.squeeze(dim=0), posterior_state.squeeze(dim=0)  # Remove time dimension from belief/state
         action = self.planner(belief, posterior_state)  # Get action from planner(q(s_t|o≤t,a<t), p)
         if explore:
             action = action + self.vv['action_noise'] * torch.randn_like(action)  # Add exploration noise ε ~ p(ε) to the action
@@ -248,7 +247,8 @@ class PlaNetAgent(object):
                         pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
                         for t in pbar:
                             belief, posterior_state, action, next_observation, reward, done = \
-                                self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device), explore=True)
+                                self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device),
+                                                           explore=True)
                             total_reward += reward
                             if not self.vv['symbolic_env']:  # Collect real vs. predicted frames for video
                                 frames.append(observation)
