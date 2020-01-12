@@ -118,7 +118,6 @@ class PlaNetAgent(object):
                 else:
                     observations, actions, rewards, nonterminals = \
                         self.D.sample(self.vv['batch_size'], self.vv['chunk_size'])  # Transitions start at time t = 0
-
                 # Create initial belief and state for time t = 0
                 init_belief, init_state = torch.zeros(self.vv['batch_size'], self.vv['belief_size'], device=self.device), \
                                           torch.zeros(self.vv['batch_size'], self.vv['state_size'], device=self.device)
@@ -131,15 +130,14 @@ class PlaNetAgent(object):
                 reward_loss = F.mse_loss(bottle(self.reward_model, (beliefs, posterior_states)), rewards[:-1], reduction='none').mean(dim=(0, 1))
                 # TODO check why the last one of the reward is not used!!
                 if self.value_model is not None:
-                    # TODO: add mask!!
                     prev_beliefs = torch.cat([init_belief.unsqueeze(dim=0), beliefs[:-1, :, :]])
                     prev_states = torch.cat([init_state.unsqueeze(dim=0), posterior_states[:-1, :, :]])
                     value_loss = F.mse_loss(bottle(self.value_model, (prev_beliefs, prev_states)),
-                                            rewards[:-1] + bottle(self.value_model, (beliefs, posterior_states)).detach(),
-                                            reduction='none').mean(dim=(0, 1))
-                # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
-                kl_loss = torch.max(kl_divergence(Normal(posterior_means, posterior_std_devs), Normal(prior_means, prior_std_devs)).sum(dim=2),
-                                    self.free_nats).mean(dim=(0, 1))
+                                            rewards[:-1] + bottle(self.value_model, (beliefs, posterior_states)).detach(), reduction='none')
+                    value_loss = (value_loss * nonterminals[:-1].squeeze(dim=2)).mean(dim=(0, 1))
+                    # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
+                    kl_loss = torch.max(kl_divergence(Normal(posterior_means, posterior_std_devs), Normal(prior_means, prior_std_devs)).sum(dim=2),
+                                        self.free_nats).mean(dim=(0, 1))
 
                 if self.vv['global_kl_beta'] != 0:
                     kl_loss += self.vv['global_kl_beta'] * kl_divergence(Normal(posterior_means, posterior_std_devs),
@@ -281,8 +279,6 @@ class PlaNetAgent(object):
                                os.path.join(logger.get_dir(), 'test_episode_%s.png' % episode_str))
                 self.set_model_train()
 
-
-
             # Checkpoint models
             if episode % self.vv['checkpoint_interval'] == 0:
                 torch.save(
@@ -314,4 +310,3 @@ class PlaNetAgent(object):
         if self.value_model is not None:
             self.value_model.eval()
         self.encoder.eval()
-
