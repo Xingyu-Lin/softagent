@@ -132,11 +132,13 @@ class PlaNetAgent(object):
                 if self.value_model is not None:
                     prev_beliefs = torch.cat([init_belief.unsqueeze(dim=0), beliefs[:-1, :, :]])
                     prev_states = torch.cat([init_state.unsqueeze(dim=0), posterior_states[:-1, :, :]])
-                    value_loss = F.mse_loss(bottle(self.value_model, (prev_beliefs, prev_states)),
-                                            rewards[:-1] + bottle(self.value_model, (beliefs, posterior_states)).detach(), reduction='none')
-                    value_loss = (value_loss * nonterminals[:-1].squeeze(dim=2)).mean(dim=(0, 1))
-                    # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
-                    kl_loss = torch.max(kl_divergence(Normal(posterior_means, posterior_std_devs), Normal(prior_means, prior_std_devs)).sum(dim=2),
+                    target = (rewards[:-1] + bottle(self.value_model, (beliefs, posterior_states)).detach()) * nonterminals[:-1].squeeze(dim=2)
+                    value_loss = F.mse_loss(bottle(self.value_model, (prev_beliefs, prev_states)), target, reduction='none').mean(dim=(0, 1))
+                    value_target_average = target.mean().item()
+
+
+                # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
+                kl_loss = torch.max(kl_divergence(Normal(posterior_means, posterior_std_devs), Normal(prior_means, prior_std_devs)).sum(dim=2),
                                         self.free_nats).mean(dim=(0, 1))
 
                 if self.vv['global_kl_beta'] != 0:
@@ -225,6 +227,7 @@ class PlaNetAgent(object):
             logger.record_tabular('kl_loss', np.mean(losses[:, 2]))
             if self.value_model is not None:
                 logger.record_tabular('value_loss', np.mean(losses[:, 3]))
+                logger.record_tabular('value_target_average', value_target_average)
             logger.record_tabular('train_rewards', total_reward)
             logger.record_tabular('num_episodes', self.train_episodes)
             logger.record_tabular('num_steps', self.train_steps)

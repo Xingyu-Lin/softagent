@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     env = PourWaterPosControlEnv(**env_kwargs)
     env = normalize(env)
-
+    env.reset()
     for _ in range(env.horizon):
         action = env.action_space.sample()
         obs, reward, done, info = env.step(action)

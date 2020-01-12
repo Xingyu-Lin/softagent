@@ -149,7 +149,7 @@ def make_plot(plot_list, use_median=False, use_five_numbers=False, plot_width=No
         width=plot_width,
         height=plot_height,
         title=title,
-        xaxis=go.XAxis(range=(x[0]-1, x[-1]+1), showexponent='all', exponentformat = 'e'),
+        xaxis=go.XAxis(range=(x[0]-1, x[-1]+1) if len(x)> 0 else xlim, showexponent='all', exponentformat = 'e'),
         yaxis=go.YAxis(range=ylim, showexponent='all', exponentformat = 'e'),
         # font=dict(size=22)
     )
