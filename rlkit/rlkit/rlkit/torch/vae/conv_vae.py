@@ -70,6 +70,42 @@ imsize48_default_architecture_with_more_hidden_layers = dict(
     )
 )
 
+# YF: this is the same as the planet vae architecture, for 128 x 128 imgae. 
+# One difference: the encoder CNN here uses batch_norm, while in planet there is no batch norm.
+imsize128_default_architecture = dict(
+    conv_args=dict(
+        kernel_sizes=[4, 4, 4, 4, 4],
+        n_channels=[16, 32, 64, 128, 256],
+        strides=[2, 2, 2, 2, 2],
+    ),
+    conv_kwargs=dict(
+        hidden_sizes=[],
+        batch_norm_conv=True,
+        batch_norm_fc=False,
+    ),
+    deconv_args=dict(
+        hidden_sizes=[],
+
+        deconv_input_width=1,
+        deconv_input_height=1,
+        deconv_input_channels=1024,
+
+        deconv_output_kernel_size=6,
+        deconv_output_strides=2,
+        deconv_output_channels=3,
+
+        kernel_sizes=[5, 5, 5, 6],
+        n_channels=[128, 64, 32, 16],
+        strides=[2, 2, 2, 2]
+    ),
+    deconv_kwargs=dict(
+        batch_norm_deconv=False,
+        batch_norm_fc=False,
+    )
+)
+
+
+
 imsize84_default_architecture = dict(
     conv_args=dict(
         kernel_sizes=[5, 5, 5],
