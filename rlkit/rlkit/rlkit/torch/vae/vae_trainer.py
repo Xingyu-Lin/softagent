@@ -39,6 +39,7 @@ def compute_log_p_log_q_log_d(
     assert data.dtype == np.float64, 'images should be normalized'
     imgs = ptu.from_numpy(data)
     latent_distribution_params = model.encode(imgs)
+
     batch_size = data.shape[0]
     representation_size = model.representation_size
     log_p, log_q, log_d = ptu.zeros((batch_size, num_latents_to_sample)), ptu.zeros(
@@ -46,6 +47,17 @@ def compute_log_p_log_q_log_d(
     true_prior = Normal(ptu.zeros((batch_size, representation_size)),
                         ptu.ones((batch_size, representation_size)))
     mus, logvars = latent_distribution_params
+
+    mus_np = mus.detach().cpu().numpy()
+    logvars_np = logvars.detach().cpu().numpy()
+    if not (mus_np == mus_np).all() or not (logvars_np == logvars_np).all():
+        print("vae encoded latent mus or logvars contain NaN!")
+        for parameter in model.encoder.parameters():
+            parameter_np = parameter.detach().cpu().numpy()
+            if not (parameter_np == parameter_np).all():
+                print("vae encoder network weights contain NaN!")
+                exit()
+
     for i in range(num_latents_to_sample):
         if sampling_method == 'importance_sampling':
             latents = model.rsample(latent_distribution_params)
@@ -55,6 +67,8 @@ def compute_log_p_log_q_log_d(
             latents = true_prior.rsample()
         else:
             raise EnvironmentError('Invalid Sampling Method Provided')
+
+
 
         stds = logvars.exp().pow(.5)
         vae_dist = Normal(mus, stds)
@@ -66,6 +80,17 @@ def compute_log_p_log_q_log_d(
         elif decoder_distribution == 'gaussian_identity_variance':
             _, obs_distribution_params = model.decode(latents)
             dec_mu, dec_logvar = obs_distribution_params
+
+            dec_mu_np = mus.detach().cpu().numpy()
+            dec_logvar_np = dec_logvar.detach().cpu().numpy()
+            if not (dec_mu_np == dec_mu_np).all() or not (dec_logvar_np == dec_logvar_np).all():
+                print("vae decoded mu or logvar contain NaN!")
+                for parameter in model.decoder.parameters():
+                    parameter_np = parameter.detach().cpu().numpy()
+                    if not (parameter_np == parameter_np).all():
+                        print("vae decoder network weights contain NaN!")
+                        exit()
+
             dec_var = dec_logvar.exp()
             decoder_dist = Normal(dec_mu, dec_var.pow(.5))
             log_d_x_given_z = decoder_dist.log_prob(imgs).sum(dim=1)
