@@ -94,9 +94,18 @@ def compute_p_x_np_to_np(
         decoder_distribution,
         num_latents_to_sample,
         sampling_method
-    )
+    ) # log_p is sampled from true prior p(z), log_q is q(z|x). log_d is reconstruction d(x|z).
 
-    if sampling_method == 'importance_sampling':
+    log_p_np = log_p.detach().cpu().numpy()
+    log_q_np = log_q.detach().cpu().numpy()
+    log_d_np = log_d.detach().cpu().numpy()
+    assert (log_p_np == log_p_np).all(), "vae returned log_p contain NaN"
+    assert (log_q_np == log_q_np).all(), "vae returned log_q contain NaN"
+    assert (log_d_np == log_d_np).all(), "vae returned log_d contain NaN"
+
+    # for reconstruction, or, compute p(x | vae) = d(x|z)p(z) dz, z should be sampled from true prior.
+    # in this importance sampling, z is sampled following q(z|x).
+    if sampling_method == 'importance_sampling': 
         log_p_x = (log_p - log_q + log_d).mean(dim=1)
     elif sampling_method == 'biased_sampling' or sampling_method == 'true_prior_sampling':
         log_p_x = log_d.mean(dim=1)
