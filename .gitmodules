@@ -1,3 +1,3 @@
 [submodule "softgym"]
 	path = softgym
-	url = git@github.com:Xingyu-Lin/softgym.git
+	url = https://github.com/Xingyu-Lin/softgym.git
