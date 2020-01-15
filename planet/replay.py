@@ -21,7 +21,7 @@ def main(policy_file, seed, n_test_rollouts, render, exploit, record_video):
         torch.cuda.manual_seed(seed)
     else:
         device = torch.device('cpu')
-
+    np.random.seed(seed=seed)
     json_file = os.path.join(os.path.dirname(policy_file), 'variant.json')
     print('Load variants from {}'.format(json_file))
     with open(json_file) as f:

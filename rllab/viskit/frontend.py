@@ -149,8 +149,8 @@ def make_plot(plot_list, use_median=False, use_five_numbers=False, plot_width=No
         width=plot_width,
         height=plot_height,
         title=title,
-        xaxis=go.XAxis(range=(x[0]-1, x[-1]+1) if len(x)> 0 else xlim, showexponent='all', exponentformat = 'e'),
-        yaxis=go.YAxis(range=ylim, showexponent='all', exponentformat = 'e'),
+        xaxis=go.XAxis(range=(x[0] - 1, x[-1] + 1) if len(x) > 0 else xlim, showexponent='all', exponentformat='e'),
+        yaxis=go.YAxis(range=ylim, showexponent='all', exponentformat='e'),
         # font=dict(size=22)
     )
     fig = go.Figure(data=data, layout=layout)
@@ -218,7 +218,6 @@ def make_plot_eps(plot_list, use_median=False, counter=0):
         #     #             ax.set_xlim([0, 800])
         #     #             ax.set_ylim([0, 2]
         #     loc = 'lower right'
-
 
         def y_fmt(x, y):
             return str(int(np.round(x / 1000.0))) + 'K'

@@ -9,7 +9,7 @@ import numpy as np
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0112_pour_water_value_function'
+    exp_prefix = '0113_pour_water_value_function'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_img',
                       'action_mode': 'direct',
@@ -18,7 +18,8 @@ def main(mode, debug, dry):
                       'render': True,
                       'headless': True,
                       'horizon': 75,
-                      'camera_name': 'cam_2d'},
+                      'camera_name': 'cam_2d',
+                      'delta_reward': True},
     }
     vg = VariantGenerator()
     vg.add('env_name', ['PourWater'])

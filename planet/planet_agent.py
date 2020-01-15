@@ -276,7 +276,7 @@ class PlaNetAgent(object):
                 logger.record_tabular('test_episodes', self.test_episodes)
                 logger.record_tabular('test_rewards', total_reward)
                 if not self.vv['symbolic_env']:
-                    episode_str = str(episode).zfill(len(str(train_episode)))
+                    episode_str = str(self.train_episodes).zfill(len(str(train_episode)))
                     write_video(video_frames, 'test_episode_%s' % episode_str, logger.get_dir())  # Lossy compression
                     save_image(torch.as_tensor(video_frames[-1]),
                                os.path.join(logger.get_dir(), 'test_episode_%s.png' % episode_str))
