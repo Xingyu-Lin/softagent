@@ -72,6 +72,7 @@ class TransitionModel(jit.ScriptModule):
     @jit.script_method
     def forward(self, prev_state: torch.Tensor, actions: torch.Tensor, prev_belief: torch.Tensor,
                 observations: Optional[torch.Tensor] = None, nonterminals: Optional[torch.Tensor] = None) -> List[torch.Tensor]:
+        """ :returns Poster-states s_{t+1} (a total of chunk_size -1), corresponding to action a_t"""
         # Create lists for hidden states (cannot use single tensor as buffer because autograd won't work with inplace writes)
         T = actions.size(0) + 1
         beliefs, prior_states, prior_means, prior_std_devs, posterior_states, posterior_means, posterior_std_devs = [torch.empty(0)] * T, \

@@ -26,7 +26,7 @@ def main(mode, debug, dry):
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('planning_horizon', [12, 24])
+    vg.add('planning_horizon', [15])
     vg.add('seed', [100, 200, 300])
 
     if not debug:

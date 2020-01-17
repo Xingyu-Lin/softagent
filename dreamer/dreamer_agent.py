@@ -75,8 +75,8 @@ class DreamerAgent(object):
             self.train_steps += self.D.steps
 
         else:
-            self.D = ExperienceReplay(self.vv['experience_size'], self.vv['symbolic_env'], self.dimo, self.dimu,
-                                      self.vv['bit_depth'], self.device, self.vv['use_value_function'])
+            self.D = ExperienceReplay(self.vv['experience_size'], self.vv['symbolic_env'], self.dimo, self.dimu, self.vv['bit_depth'], self.device,
+                                      False)
             # Initialize dataset D with S random seed episodes
             for s in range(1, self.vv['seed_episodes'] + 1):
                 observation, done, t = self.env.reset(), False, 0
@@ -107,12 +107,15 @@ class DreamerAgent(object):
 
     @staticmethod
     def compute_lambda_return(rewards, values, lda, gamma):
+        """ Input v(s_1), ..., v(s_H) and r_1, ..., r_H
+        :return: lambda return v_{lda}(s_1), ..., v_{lda}(s_{H-1})
+        """
         H = rewards.shape[1]
         ret = np.zeros(shape=values.shape, dtype=np.float)
         ret[:, -1] = values[:, -1]
         for i in reversed(range(H - 1)):
             ret[:, i] = rewards[:, i + 1] + (1 - lda) * gamma * values[:, i + 1] + lda * gamma * ret[:, i + 1]
-        return ret
+        return ret[:, :-1]
 
     def train(self, train_episode, render=False, experience_replay_path=None):
         logger.info('Warming up ...')
@@ -123,7 +126,7 @@ class DreamerAgent(object):
             losses = []
             for _ in tqdm(range(self.vv['collect_interval'])):
                 # Draw sequence chunks {(o_t, a_t, r_t+1, terminal_t+1)} ~ D uniformly at random from the dataset (including terminal flags)
-                observations, actions, rewards, values, nonterminals = \
+                observations, actions, rewards, nonterminals = \
                     self.D.sample(self.vv['batch_size'], self.vv['chunk_size'])  # Transitions start at time t = 0
                 # Create initial belief and state for time t = 0
                 init_belief, init_state = torch.zeros(self.vv['batch_size'], self.vv['belief_size'], device=self.device), \
@@ -135,9 +138,6 @@ class DreamerAgent(object):
                 observation_loss = F.mse_loss(bottle(self.observation_model, (beliefs, posterior_states)), observations[1:],
                                               reduction='none').sum(dim=2 if self.vv['symbolic_env'] else (2, 3, 4)).mean(dim=(0, 1))
                 reward_loss = F.mse_loss(bottle(self.reward_model, (beliefs, posterior_states)), rewards[:-1], reduction='none').mean(dim=(0, 1))
-
-                # prev_beliefs = torch.cat([init_belief.unsqueeze(dim=0), beliefs[:-1, :, :]])
-                # prev_states = torch.cat([init_state.unsqueeze(dim=0), posterior_states[:-1, :, :]])
 
                 # Update representation parameters
                 # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
@@ -171,11 +171,12 @@ class DreamerAgent(object):
                                                            self.vv['gamma'])
                 values_target = torch.from_numpy(values_target).float().to(device=self.device).detach()
 
-                print('belief size: {}, state size: {}, action size: {}'.format(beliefs.size(), states.size(), actions.size()))
-                # Should be (batch_size x chunk_size x horizon)
+                # print('\nbelief size: {}, state size: {}, action size: {}'.format(beliefs.size(), states.size(), actions.size()))
 
-                value_loss = F.mse_loss(values, values_target, reduction='none').mean(dim=(0, 1))
+                value_loss = F.mse_loss(values[:, :-1], values_target, reduction='none').mean(dim=(0, 1))
                 value_target_average = values.mean().item()
+                imagine_action_average = actions.mean().item()
+                imagine_action_std = actions.std(axis=-1).mean().item()
                 losses[-1].append(value_loss.item())
                 actor_loss = -values_target.mean(dim=(0, 1))
                 losses[-1].append(actor_loss.item())
@@ -213,14 +214,16 @@ class DreamerAgent(object):
             logger.record_tabular('reward_loss', np.mean(losses[:, 1]))
             logger.record_tabular('kl_loss', np.mean(losses[:, 2]))
             logger.record_tabular('value_loss', np.mean(losses[:, 3]))
-            logger.record_tabular('value_target_average', value_target_average)
+            logger.record_tabular('train/value_target_average', value_target_average)
+            logger.record_tabular('train/imagine_action_average', imagine_action_average)
+            logger.record_tabular('train/imagine_action_std', imagine_action_std)
             logger.record_tabular('actor_loss', np.mean(losses[:, 4]))
             logger.record_tabular('train_rewards', total_reward)
             logger.record_tabular('num_episodes', self.train_episodes)
             logger.record_tabular('num_steps', self.train_steps)
 
             # Test model
-            if episode % self.vv['test_interval'] == 0:
+            if self.train_episodes % self.vv['test_interval'] == 0:
                 self.set_model_eval()
                 # Initialise parallelised test environments
                 with torch.no_grad():
@@ -270,7 +273,7 @@ class DreamerAgent(object):
                 self.set_model_train()
 
             # Checkpoint models
-            if episode % self.vv['checkpoint_interval'] == 0:
+            if self.train_episodes % self.vv['checkpoint_interval'] == 0:
                 torch.save(
                     {'transition_model': self.transition_model.state_dict(),
                      'observation_model': self.observation_model.state_dict(),
