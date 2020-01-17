@@ -11,13 +11,13 @@ from rlkit.torch.vae.conv_vae import imsize48_default_architecture, imsize84_def
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False) # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0113-pour-water'
+    exp_prefix = '0115-pour-water'
 
     skewfit_args = dict(
         algorithm='Skew-Fit',
         double_algo=False,
         online_vae_exploration=False,
-        imsize=48,
+        imsize=84,
         init_camera=None,
         env_id='PourWater',
         env_arg_dict = {'observation_mode': 'full_state',
@@ -110,13 +110,13 @@ def main(mode, debug, dry):
                 use_cached=False,
                 show=False,
                 oracle_dataset=True,
-                oracle_dataset_using_set_to_goal= False, # True,
+                oracle_dataset_using_set_to_goal= True,
                 n_random_steps=75,
                 non_presampled_goal_img_is_garbage=True,
             ),
             vae_kwargs=dict(
                 input_channels=3,
-                architecture=imsize48_default_architecture,
+                architecture=imsize84_default_architecture,
                 decoder_distribution='gaussian_identity_variance',
             ),
             # TODO: why the redundancy?
@@ -144,10 +144,42 @@ def main(mode, debug, dry):
 
 
 
-    vg = VariantGenerator()
-    vg.add('skewfit_kwargs', [skewfit_args])
-    vg.add('seed', [100, 200, 300])
+    if not debug:
+        vg = VariantGenerator()
+        assert skewfit_args['imsize'] == 84 or skewfit_args['imsize'] == 128
+        print("imsize is: ", skewfit_args['imsize'])
 
+        import copy
+        skewfit_argss = []
+        if skewfit_args['imsize'] == 84:
+            for representation_size in [4, 16, 64]:
+                for power in [-1, 0]:
+                    s_args = copy.deepcopy(skewfit_args)
+                    s_args['train_vae_variant']['representation_size'] = representation_size
+                    s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
+                    s_args['train_vae_variant']['algo_kwargs']['skew_config']['power'] = power
+                    print("representation size {} power {}".format(representation_size, power))
+                    skewfit_argss.append(s_args)
+
+        elif skewfit_args['imsize'] == 128:
+            for representation_size in [4, 64, 1024]:
+                s_args = copy.deepcopy(skewfit_args)
+                s_args['train_vae_variant']['representation_size'] = representation_size
+                skewfit_argss.append(s_args)
+
+        vg.add('skewfit_kwargs', skewfit_argss)
+        vg.add('seed', [100, 200, 300])
+
+    else: # not for training, but just ensures there is no bug in the code
+        vg = VariantGenerator()
+        mode = 'local'
+        skewfit_args['skewfit_variant']['algo_kwargs']['batch_size'] = 100
+        skewfit_args['skewfit_variant']['algo_kwargs']['num_trains_per_train_loop'] = 10
+        skewfit_args['skewfit_variant']['algo_kwargs']['min_num_steps_before_training'] = 100
+        skewfit_args['skewfit_variant']['replay_buffer_kwargs']['max_size'] = int(100)
+        skewfit_args['train_vae_variant']['generate_vae_dataset_kwargs']['N'] = 5 
+        vg.add('skewfit_kwargs', [skewfit_args])
+        vg.add('seed', [100])
 
     print('Number of configurations: ', len(vg.variants()))
 

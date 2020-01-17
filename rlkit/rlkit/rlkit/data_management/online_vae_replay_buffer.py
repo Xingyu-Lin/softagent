@@ -224,6 +224,8 @@ class OnlineVaeRelabelingBuffer(SharedObsDictRelabelingBuffer):
                     self._vae_sample_priorities[:self._size]
                 )
                 self._vae_sample_probs = self._vae_sample_priorities[:self._size]
+                assert (self._vae_sample_priorities[:self._size] == self._vae_sample_priorities[:self._size]).all(), \
+                    "self._vae_sample_priorities, i.e., self._vae_sample_probs contain NaN"
             else:
                 self._vae_sample_probs = self._vae_sample_priorities[:self._size] ** self.power
             p_sum = np.sum(self._vae_sample_probs)
