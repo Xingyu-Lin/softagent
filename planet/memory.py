@@ -65,7 +65,7 @@ class ExperienceReplay(object):
             return observations.reshape(L, n, *observations.shape[1:]), self.actions[vec_idxs].reshape(L, n, -1), \
                    self.rewards[vec_idxs].reshape(L, n), self.nonterminals[vec_idxs].reshape(L, n, 1)
 
-    # Returns a batch of sequence chunks uniformly sampled from the memory
+    # Returns a batch of sequence chunks uniformly sampled from the memory, each of the size (n, L, *feature_shape)
     def sample(self, n, L):
         batch = self._retrieve_batch(np.asarray([self._sample_idx(L) for _ in range(n)]), n, L)
         return [torch.as_tensor(item).to(device=self.device) for item in batch]

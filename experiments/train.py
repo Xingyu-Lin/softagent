@@ -3,8 +3,6 @@ import sys
 import numpy as np
 import json
 from chester import logger
-from planet.planet_agent import PlaNetAgent
-from planet.config import DEFAULT_PARAMS
 from envs.env import Env
 import torch
 import os.path as osp
@@ -22,6 +20,13 @@ def update_env_kwargs(vv):
 
 
 def run_task(arg_vv, log_dir, exp_name):
+    if arg_vv['algorithm'] == 'planet':
+        from planet.config import DEFAULT_PARAMS
+    elif arg_vv['algorithm'] == 'dreamer':
+        from dreamer.config import DEFAULT_PARAMS
+    else:
+        raise NotImplementedError
+
     vv = DEFAULT_PARAMS
     vv.update(**arg_vv)
     vv = update_env_kwargs(vv)
@@ -46,6 +51,13 @@ def run_task(arg_vv, log_dir, exp_name):
     env = Env(vv['env_name'], vv['symbolic_env'], vv['seed'], vv['max_episode_length'], vv['action_repeat'], vv['bit_depth'],
               env_kwargs=vv['env_kwargs'])
 
-    agent = PlaNetAgent(env, vv, device)
-    agent.train(train_episode=500)
-    env.close()
+    if vv['algorithm'] == 'planet:':
+        from planet.planet_agent import PlaNetAgent
+        agent = PlaNetAgent(env, vv, device)
+        agent.train(train_episode=500)
+        env.close()
+    elif vv['algorithm'] == 'dreamer':
+        from dreamer.dreamer_agent import DreamerAgent
+        agent = DreamerAgent(env, vv, device)
+        agent.train(train_episode=500)
+        env.close()

@@ -12,6 +12,14 @@ def bottle(f, x_tuple):
     return y.view(x_sizes[0][0], x_sizes[0][1], *y_size[1:])
 
 
+# Wraps the input tuple for a function to process a time x batch x chunk x features sequence in batch x features (assumes one output)
+def bottle3(f, x_tuple):
+    x_sizes = tuple(map(lambda x: x.size(), x_tuple))
+    y = f(*map(lambda x: x[0].view(x[1][0] * x[1][1] * x[1][2], *x[1][3:]), zip(x_tuple, x_sizes)))
+    y_size = y.size()
+    return y.view(x_sizes[0][0], x_sizes[0][1], x_sizes[0][2], *y_size[1:])
+
+
 class TransitionModel(jit.ScriptModule):
     __constants__ = ['min_std_dev']
 
