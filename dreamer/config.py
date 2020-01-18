@@ -8,6 +8,7 @@
 # parser.add_argument('--render', action='store_true', help='Render environment')
 
 DEFAULT_PARAMS = {
+    'image_dim': 128,
     'hidden_size': 200,
     'belief_size': 200,
     'state_size': 30,

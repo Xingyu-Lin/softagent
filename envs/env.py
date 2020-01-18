@@ -34,15 +34,15 @@ def postprocess_observation(observation, bit_depth):
         np.uint8)
 
 
-def _images_to_observation(images, bit_depth):
-    images = torch.tensor(cv2.resize(images, (128, 128), interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1),
+def _images_to_observation(images, bit_depth, image_dim):
+    images = torch.tensor(cv2.resize(images, (image_dim, image_dim), interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1),
                           dtype=torch.float32)  # Resize and put channel first
     preprocess_observation_(images, bit_depth)  # Quantise, centre and dequantise inplace
     return images.unsqueeze(dim=0)  # Add batch dimension
 
 
 class ControlSuiteEnv():
-    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth):
+    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim):
         from dm_control import suite
         from dm_control.suite.wrappers import pixels
         domain, task = env.split('-')
@@ -56,6 +56,7 @@ class ControlSuiteEnv():
             print('Using action repeat %d; recommended action repeat for domain is %d' % (
                 action_repeat, CONTROL_SUITE_ACTION_REPEATS[domain]))
         self.bit_depth = bit_depth
+        self.image_dim = image_dim
 
     def reset(self):
         self.t = 0  # Reset internal timer
@@ -65,7 +66,7 @@ class ControlSuiteEnv():
                 [np.asarray([obs]) if isinstance(obs, float) else obs for obs in state.observation.values()], axis=0),
                 dtype=torch.float32).unsqueeze(dim=0)
         else:
-            return _images_to_observation(self._env.physics.render(camera_id=0), self.bit_depth)
+            return _images_to_observation(self._env.physics.render(camera_id=0), self.bit_depth, self.image_dim)
 
     def step(self, action):
         action = action.detach().numpy()
@@ -82,7 +83,7 @@ class ControlSuiteEnv():
                 [np.asarray([obs]) if isinstance(obs, float) else obs for obs in state.observation.values()], axis=0),
                 dtype=torch.float32).unsqueeze(dim=0)
         else:
-            observation = _images_to_observation(self._env.physics.render(camera_id=0), self.bit_depth)
+            observation = _images_to_observation(self._env.physics.render(camera_id=0), self.bit_depth, self.image_dim)
         return observation, reward, done
 
     def render(self):
@@ -96,7 +97,7 @@ class ControlSuiteEnv():
     @property
     def observation_size(self):
         return sum([(1 if len(obs.shape) == 0 else obs.shape[0]) for obs in
-                    self._env.observation_spec().values()]) if self.symbolic else (3, 128, 128)
+                    self._env.observation_spec().values()]) if self.symbolic else (3, self.image_dim, self.image_dim)
 
     @property
     def action_size(self):
@@ -109,7 +110,7 @@ class ControlSuiteEnv():
 
 
 class GymEnv():
-    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth):
+    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim):
         import gym
         self.symbolic = symbolic
         self._env = gym.make(env)
@@ -117,6 +118,7 @@ class GymEnv():
         self.max_episode_length = max_episode_length
         self.action_repeat = action_repeat
         self.bit_depth = bit_depth
+        self.image_dim = image_dim
 
     def reset(self):
         self.t = 0  # Reset internal timer
@@ -139,7 +141,7 @@ class GymEnv():
         if self.symbolic:
             observation = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)
         else:
-            observation = _images_to_observation(self._env.render(mode='rgb_array'), self.bit_depth)
+            observation = _images_to_observation(self._env.render(mode='rgb_array'), self.bit_depth, self.image_dim)
         return observation, reward, done
 
     def render(self):
@@ -150,7 +152,7 @@ class GymEnv():
 
     @property
     def observation_size(self):
-        return self._env.observation_space.shape[0] if self.symbolic else (3, 128, 128)
+        return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 
     @property
     def action_size(self):
@@ -162,7 +164,7 @@ class GymEnv():
 
 
 class SoftGymEnv(object):
-    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, env_kwargs=None):
+    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None):
         if env in SOFTGYM_CUSTOM_ENVS:
             self._env = SOFTGYM_CUSTOM_ENVS[env](**env_kwargs)
         else:
@@ -174,6 +176,7 @@ class SoftGymEnv(object):
         self.max_episode_length = max_episode_length
         self.action_repeat = action_repeat
         self.bit_depth = bit_depth
+        self.image_dim = image_dim
 
     def reset(self):
         self.t = 0  # Reset internal timer
@@ -190,7 +193,7 @@ class SoftGymEnv(object):
             done = done or self.t == self.max_episode_length
             if done:
                 break
-            obs = _images_to_observation(obs, self.bit_depth)
+            obs = _images_to_observation(obs, self.bit_depth, self.image_dim)
         return obs, reward, done
 
     def render(self):
@@ -201,7 +204,7 @@ class SoftGymEnv(object):
 
     @property
     def observation_size(self):
-        return self._env.observation_space.shape[0] if self.symbolic else (3, 128, 128)
+        return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 
     @property
     def action_size(self):
@@ -212,13 +215,15 @@ class SoftGymEnv(object):
         return torch.from_numpy(self._env.action_space.sample())
 
 
-def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, env_kwargs=None):
+def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None):
     if env in GYM_ENVS:
-        return GymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth)
+        return GymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim)
     elif env in CONTROL_SUITE_ENVS:
-        return ControlSuiteEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth)
+        return ControlSuiteEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim)
     elif env in SOFTGYM_ENVS or env in SOFTGYM_CUSTOM_ENVS:
-        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, env_kwargs)
+        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs)
+    else:
+        raise NotImplementedError
 
 
 # Wrapper for batching environments together

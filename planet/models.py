@@ -105,18 +105,23 @@ class SymbolicObservationModel(jit.ScriptModule):
 
 
 class VisualObservationModel(jit.ScriptModule):
-    __constants__ = ['embedding_size']
+    __constants__ = ['embedding_size', 'image_dim']
 
-    def __init__(self, belief_size, state_size, embedding_size, activation_function='relu'):
+    def __init__(self, belief_size, state_size, embedding_size, image_dim, activation_function='relu'):
         super().__init__()
+        self.image_dim = image_dim
         self.act_fn = getattr(F, activation_function)
         self.embedding_size = embedding_size
         self.fc1 = nn.Linear(belief_size + state_size, embedding_size)
         self.conv1 = nn.ConvTranspose2d(embedding_size, 128, 5, stride=2)
         self.conv2 = nn.ConvTranspose2d(128, 64, 5, stride=2)
-        self.conv3 = nn.ConvTranspose2d(64, 32, 5, stride=2)
-        self.conv4 = nn.ConvTranspose2d(32, 16, 6, stride=2)
-        self.conv5 = nn.ConvTranspose2d(16, 3, 6, stride=2)
+        if self.image_dim == 128:
+            self.conv3 = nn.ConvTranspose2d(64, 32, 5, stride=2)
+            self.conv4 = nn.ConvTranspose2d(32, 16, 6, stride=2)
+            self.conv5 = nn.ConvTranspose2d(16, 3, 6, stride=2)
+        elif self.image_dim == 64:
+            self.conv3 = nn.ConvTranspose2d(64, 32, 6, stride=2)
+            self.conv4 = nn.ConvTranspose2d(32, 3, 6, stride=2)
 
     @jit.script_method
     def forward(self, belief, state):
@@ -125,8 +130,11 @@ class VisualObservationModel(jit.ScriptModule):
         hidden = self.act_fn(self.conv1(hidden))
         hidden = self.act_fn(self.conv2(hidden))
         hidden = self.act_fn(self.conv3(hidden))
-        hidden = self.act_fn(self.conv4(hidden))
-        observation = self.conv5(hidden)
+        if self.image_dim == 128:
+            hidden = self.act_fn(self.conv4(hidden))
+            observation = self.conv5(hidden)
+        elif self.image_dim == 64:
+            observation = self.conv4(hidden)
         return observation
 
 
@@ -134,7 +142,7 @@ def ObservationModel(symbolic, observation_size, belief_size, state_size, embedd
     if symbolic:
         return SymbolicObservationModel(observation_size, belief_size, state_size, embedding_size, activation_function)
     else:
-        return VisualObservationModel(belief_size, state_size, embedding_size, activation_function)
+        return VisualObservationModel(belief_size, state_size, embedding_size, observation_size[1], activation_function)
 
 
 class RewardModel(jit.ScriptModule):
@@ -186,14 +194,20 @@ class ValueModel(jit.ScriptModule):
 
 
 class VisualEncoder(jit.ScriptModule):
-    __constants__ = ['embedding_size']
+    __constants__ = ['embedding_size', 'image_dim']
 
-    def __init__(self, embedding_size, activation_function='relu'):
+    def __init__(self, embedding_size, image_dim, activation_function='relu'):
         super().__init__()
+        self.image_dim = image_dim
         self.act_fn = getattr(F, activation_function)
         self.embedding_size = embedding_size
-        self.conv0 = nn.Conv2d(3, 16, 4, stride=2)
-        self.conv1 = nn.Conv2d(16, 32, 4, stride=2)
+        if image_dim == 128:
+            self.conv0 = nn.Conv2d(3, 16, 4, stride=2)
+            self.conv1 = nn.Conv2d(16, 32, 4, stride=2)
+        elif image_dim == 64:
+            self.conv1 = nn.Conv2d(3, 32, 4, stride=2)
+        else:
+            raise NotImplementedError
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)
         self.conv3 = nn.Conv2d(64, 128, 4, stride=2)
         self.conv4 = nn.Conv2d(128, 256, 4, stride=2)
@@ -201,8 +215,13 @@ class VisualEncoder(jit.ScriptModule):
 
     @jit.script_method
     def forward(self, observation):
-        hidden = self.act_fn(self.conv0(observation))
-        hidden = self.act_fn(self.conv1(hidden))
+        if self.image_dim == 128:
+            hidden = self.act_fn(self.conv0(observation))
+            hidden = self.act_fn(self.conv1(hidden))
+        elif self.image_dim == 64:
+            hidden = self.act_fn(self.conv1(observation))
+        else:
+            raise NotImplementedError
         hidden = self.act_fn(self.conv2(hidden))
         hidden = self.act_fn(self.conv3(hidden))
         hidden = self.act_fn(self.conv4(hidden))
@@ -215,4 +234,4 @@ def Encoder(symbolic, observation_size, embedding_size, activation_function='rel
     if symbolic:
         return SymbolicEncoder(observation_size, embedding_size, activation_function)
     else:
-        return VisualEncoder(embedding_size, activation_function)
+        return VisualEncoder(embedding_size, observation_size[1], activation_function)

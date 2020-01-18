@@ -8,6 +8,8 @@ import torch
 import os.path as osp
 import json
 
+import os
+os.environ['PYTORCH_JIT'] = "0"
 
 def update_env_kwargs(vv):
     new_vv = vv.copy()
@@ -47,11 +49,9 @@ def run_task(arg_vv, log_dir, exp_name):
     # Dump parameters
     with open(osp.join(logger.get_dir(), 'variant.json'), 'w') as f:
         json.dump(vv, f, indent=2, sort_keys=True)
-
-    env = Env(vv['env_name'], vv['symbolic_env'], vv['seed'], vv['max_episode_length'], vv['action_repeat'], vv['bit_depth'],
+    env = Env(vv['env_name'], vv['symbolic_env'], vv['seed'], vv['max_episode_length'], vv['action_repeat'], vv['bit_depth'], vv['image_dim'],
               env_kwargs=vv['env_kwargs'])
-
-    if vv['algorithm'] == 'planet:':
+    if vv['algorithm'] == 'planet':
         from planet.planet_agent import PlaNetAgent
         agent = PlaNetAgent(env, vv, device)
         agent.train(train_episode=500)

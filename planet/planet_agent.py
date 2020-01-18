@@ -16,7 +16,6 @@ from planet.utils import write_video
 
 from chester import logger
 
-
 class PlaNetAgent(object):
     """
     TODO add documentation

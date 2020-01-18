@@ -4,29 +4,25 @@ from chester.run_exp import run_experiment_lite, VariantGenerator
 from experiments.train import run_task
 import numpy as np
 
+
 @click.command()
 @click.argument('mode', type=str, default='local')
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0117_dreamer_pour_water'
+    exp_prefix = '0117_walker_walk'
     env_arg_dict = {
-        'PourWater': {'observation_mode': 'cam_img',
-                      'action_mode': 'direct',
-                      'render_mode': 'fluid',
-                      'deterministic': True,
-                      'render': True,
-                      'headless': True,
-                      'horizon': 75,
-                      'camera_name': 'default_camera',
-                      'delta_reward': True},
+        'walker-walk': {}
     }
     vg = VariantGenerator()
-    vg.add('algorithm', ['dreamer'])
-    vg.add('env_name', ['PourWater'])
+    vg.add('algorithm', ['dreamer', 'planet'])
+    vg.add('env_name', ['walker-walk'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('planning_horizon', [15])
+    vg.add('image_dim', [64])  # Kept the same as the original paper
+    vg.add('action_repeat', [2])
+    vg.add('planning_horizon', [12])
+    vg.add('use_value_function', [False])
     vg.add('seed', [100, 200, 300])
 
     if not debug:
