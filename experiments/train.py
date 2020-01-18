@@ -8,8 +8,6 @@ import torch
 import os.path as osp
 import json
 
-import os
-os.environ['PYTORCH_JIT'] = "0"
 
 def update_env_kwargs(vv):
     new_vv = vv.copy()

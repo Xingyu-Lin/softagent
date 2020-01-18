@@ -1,11 +1,11 @@
 from typing import Optional, List
 import torch
-from torch import jit, nn
+import torch.nn as nn
 from torch.nn import functional as F
 from planet.models import RewardModel, Encoder, ObservationModel, bottle, bottle3
 
 
-class ValueModel(jit.ScriptModule):
+class ValueModel(nn.Module):
     def __init__(self, belief_size, state_size, hidden_size, activation_function='relu'):
         super().__init__()
         self.act_fn = getattr(F, activation_function)
@@ -13,7 +13,6 @@ class ValueModel(jit.ScriptModule):
         self.fc2 = nn.Linear(hidden_size, hidden_size)
         self.fc3 = nn.Linear(hidden_size, 1)
 
-    @jit.script_method
     def forward(self, belief, state):
         hidden = self.act_fn(self.fc1(torch.cat([belief.detach(), state.detach()], dim=1)))
         hidden = self.act_fn(self.fc2(hidden))
@@ -21,7 +20,7 @@ class ValueModel(jit.ScriptModule):
         return value
 
 
-class ActionModel(jit.ScriptModule):
+class ActionModel(nn.Module):
     def __init__(self, belief_size, state_size, hidden_size, action_size, activation_function='relu'):
         super().__init__()
         self.act_fn = getattr(F, activation_function)
@@ -30,7 +29,6 @@ class ActionModel(jit.ScriptModule):
         self.fc3_mean = nn.Linear(hidden_size, action_size)
         self.fc3_std = nn.Linear(hidden_size, action_size)
 
-    @jit.script_method
     def forward(self, belief, state):
         hidden = self.act_fn(self.fc1(torch.cat([belief.detach(), state.detach()], dim=1)))
         hidden = self.act_fn(self.fc2(hidden))
@@ -44,9 +42,8 @@ class ActionModel(jit.ScriptModule):
         return action_mean if deterministic else action
 
 
-class TransitionModel(jit.ScriptModule):
+class TransitionModel(nn.Module):
     __constants__ = ['min_std_dev']
-
     def __init__(self, belief_size, state_size, action_size, hidden_size, embedding_size, activation_function='relu',
                  min_std_dev=0.1):
         super().__init__()
@@ -69,7 +66,6 @@ class TransitionModel(jit.ScriptModule):
     # ps: -X-
     # b : -x--X--X--X--X--X-
     # s : -x--X--X--X--X--X-
-    @jit.script_method
     def forward(self, prev_state: torch.Tensor, actions: torch.Tensor, prev_belief: torch.Tensor,
                 observations: Optional[torch.Tensor] = None, nonterminals: Optional[torch.Tensor] = None) -> List[torch.Tensor]:
         """ :returns Poster-states s_{t+1} (a total of chunk_size -1), corresponding to action a_t"""
@@ -112,7 +108,6 @@ class TransitionModel(jit.ScriptModule):
                        torch.stack(posterior_std_devs[1:], dim=0)]
         return hidden
 
-    # @jit.script_method
     def imagine(self, prev_state: torch.Tensor, prev_belief: torch.Tensor, action_model, horizon: int,
                 nonterminals: Optional[torch.Tensor] = None) -> List[torch.Tensor]:
         """ Imagine H time steps into the future with the provided action model.
