@@ -126,7 +126,7 @@ class GymEnv():
         if self.symbolic:
             return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)
         else:
-            return _images_to_observation(self._env.render(mode='rgb_array'), self.bit_depth)
+            return _images_to_observation(self._env.render(mode='rgb_array'), self.bit_depth, self.image_dim)
 
     def step(self, action):
         action = action.detach().numpy()
@@ -181,7 +181,7 @@ class SoftGymEnv(object):
     def reset(self):
         self.t = 0  # Reset internal timer
         obs = self._env.reset()
-        return _images_to_observation(obs, self.bit_depth)
+        return _images_to_observation(obs, self.bit_depth, self.image_dim)
 
     def step(self, action):
         action = action.detach().numpy()

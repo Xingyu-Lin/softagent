@@ -41,7 +41,7 @@ def run_task(arg_vv, log_dir, exp_name):
 
     # Configure torch
     if torch.cuda.is_available():
-        device = torch.device('cuda:1')
+        device = torch.device('cuda:1') if torch.cuda.device_count() > 1 else torch.device('cuda:0')
         torch.cuda.manual_seed(vv['seed'])
     else:
         device = torch.device('cpu')
