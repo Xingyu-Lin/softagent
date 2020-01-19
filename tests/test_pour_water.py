@@ -7,7 +7,7 @@ if __name__ == '__main__':
     env_kwargs = {'observation_mode': 'cam_img',
                   'action_mode': 'direct',
                   'render_mode': 'fluid',
-                  'deterministic': True,
+                  'deterministic': False,
                   'render': True,
                   'headless': False,
                   'horizon': 75,

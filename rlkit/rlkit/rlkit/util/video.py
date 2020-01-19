@@ -47,6 +47,7 @@ def dump_video(
                                 1)
             else:
                 recon = d['image_observation']
+            
             l.append(
                 get_image(
                     d['image_desired_goal'],
@@ -100,7 +101,19 @@ def get_image(goal, obs, recon_obs, imsize=84, pad_length=1, pad_color=255):
     if len(goal.shape) == 1:
         goal = goal.reshape(-1, imsize, imsize).transpose()
         obs = obs.reshape(-1, imsize, imsize).transpose()
-        recon_obs = recon_obs.reshape(-1, imsize, imsize).transpose()
+        recon_obs = recon_obs.reshape(-1, imsize, imsize).transpose()\
+
+    # from matplotlib import pyplot as plt
+    # fig = plt.figure(figsize=(15, 5))
+    # ax1 = fig.add_subplot(1, 3, 1)
+    # ax1.imshow(goal)
+    # ax2 = fig.add_subplot(1, 3, 2)
+    # ax2.imshow(obs)
+    # ax3 = fig.add_subplot(1, 3, 3)
+    # ax3.imshow(recon_obs)
+
+    # plt.show()
+
     img = np.concatenate((goal, obs, recon_obs))
     img = np.uint8(255 * img)
     if pad_length > 0:

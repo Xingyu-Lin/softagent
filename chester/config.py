@@ -9,8 +9,8 @@ LOG_DIR = os.path.join(PROJECT_PATH, "data")
 
 # Make sure to use absolute path
 REMOTE_DIR = {
-    'seuss': '/home/xlin3/Projects/softagent',
-    'psc': '/home/xlin3/Projects/softagent',
+    'seuss': '/home/yufeiw2/Projects/softagent',
+    'psc': '/home/yufeiw2/Projects/softagent',
     'nsh': '/home/xingyu/Projects/softagent',
     'yertle':'/home/xingyu/Projects/softagent'
 }

@@ -18,6 +18,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 filename = str(uuid.uuid4())
 
+from softgym.envs.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
+SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlGoalConditionedEnv}
+
 def batch_chw_to_hwc(images):
     rets = []
     for i in range(len(images)):
@@ -67,8 +70,8 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
     print(len(dist))
     print(std_dist)
     markers, caps, bars = plt.errorbar(list(range(horizon)), mean_dist, std_dist) #, colors[i], label = labels[i])
-    [bar.set_alpha(0.05) for bar in bars]
-    [cap.set_alpha(0.05) for cap in caps]
+    [bar.set_alpha(0.5) for bar in bars]
+    [cap.set_alpha(0.5) for cap in caps]
     # plt.plot(list(range(horizon)), mean_dist, linewidth=1)
     # plt.fill_between(list(range(horizon)), mean_dist - std_dist, mean_dist + std_dist, alpha=0.5)
     plt.xlabel('Episode time')
@@ -79,15 +82,16 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
 
 def simulate_policy(args, dir):
     variants = load_variants(dir)
+    seed = variants['seed']
+    variants = variants['skewfit_kwargs']
     max_path_length = variants['skewfit_variant']['max_path_length']
     env_name = variants['env_id']
 
     # use_indicator_reward = variants['skewfit_variant']['replay_buffer_kwargs']['use_indicator_reward']
     use_indicator_reward = False
-    seed = variants['seed']
     algo_name = 'indicator' if use_indicator_reward else 'skewfit'
-    video_name = env_name + '_' + algo_name + '_' + seed + '.gif'
-    latent_plot_name = env_name + '_' + algo_name + '_' + seed + '.png'
+    video_name = env_name + '_' + algo_name + '_' + str(seed) + '.gif'
+    latent_plot_name = env_name + '_' + algo_name + '_' + str(seed) + '.png'
 
     data = torch.load(osp.join(dir, 'params.pkl'))
     policy = data['evaluation/policy']
@@ -102,7 +106,10 @@ def simulate_policy(args, dir):
     from multiworld.core.image_env import ImageEnv
     from rlkit.envs.vae_wrapper import VAEWrappedEnv
     softgym.register_flex_envs()
-    env = gym.make(env_name)
+    # env = gym.make(env_name)
+    env_kwargs = variants['env_arg_dict']
+    # env_kwargs['headless'] = False # for debug usage
+    env = SOFTGYM_CUSTOM_ENVS[env_name](**env_kwargs)
 
     imsize = variants.get('imsize', 48)
     init_camera = variants.get('init_camera', None)
@@ -117,7 +124,7 @@ def simulate_policy(args, dir):
                     init_camera=init_camera,
                     transpose=True,
                     normalize=True,
-                    non_presampled_goal_img_is_garbage=non_presampled_goal_img_is_garbage,
+                    non_presampled_goal_img_is_garbage=False,
                 )
 
     env_variant = variants['skewfit_variant']
@@ -136,6 +143,7 @@ def simulate_policy(args, dir):
 
     env = vae_env
     env.goal_sampling_mode = 'reset_of_env'
+    env.decode_goals = False
     env.reset()
     # img_env = env.wrapped_env
     # raw_env = env.wrapped_env.wrapped_env
@@ -180,18 +188,21 @@ def simulate_policy(args, dir):
     def rollout(*args, **kwargs):
         return multitask_rollout(*args, **kwargs,
                                  observation_key='latent_observation',
-                                 desired_goal_key='latent_desired_goal', )
+                                 desired_goal_key='latent_desired_goal', 
+                                 )
 
     if args.video:
         print('dump video')
-        dump_video(env, policy, osp.join('./videos', video_name), rollout_function=rollout, imsize=imsize,
-                   horizon=max_path_length, rows=1, columns=1)
+        cur_dir = osp.dirname(osp.abspath(__file__))
+        dump_video(env, policy, dir + video_name, rollout_function=rollout, imsize=imsize,
+                   horizon=max_path_length, rows=1, columns=10)
 
     if args.latent_distance:
         print("plot_latent_dist")
+        cur_dir = osp.dirname(osp.abspath(__file__))
         plot_latent_dist(env, policy, rollout,
                          horizon=max_path_length,
-                         save_name=osp.join('./latent_space', latent_plot_name))
+                         save_name=dir + latent_plot_name)
 
 def simulate_policy_recursive(args, dir):
     policy_files = glob.glob(dir + '/**/params.pkl', recursive=True)
@@ -207,8 +218,8 @@ if __name__ == "__main__":
                         help='Max length of rollout')
     parser.add_argument('--no_gpu', type=int, default=0)
     parser.add_argument('-non_r', '--non_recursive', type=int, default=1)
-    parser.add_argument('-vid', '--video', type=int, default=1)
-    parser.add_argument('-dist', '--latent_distance', type=int, default=1)
+    parser.add_argument('-vid', '--video', type=int, default=10)
+    parser.add_argument('-dist', '--latent_distance', type=int, default=10)
     parser.add_argument('--imsize', type=int, default=48)
     args = parser.parse_args()
 

@@ -220,14 +220,20 @@ class OnlineVaeRelabelingBuffer(SharedObsDictRelabelingBuffer):
             directly here if not.
             """
             if self.vae_priority_type == 'vae_prob':
+                assert (self._vae_sample_priorities[:self._size] == self._vae_sample_priorities[:self._size]).all(), \
+                    "self._vae_sample_priorities, i.e., self._vae_sample_probs contain NaN"
+                assert not np.any(np.isinf(self._vae_sample_priorities[:self._size])), \
+                    "self._vae_sample_priorities, i.e., self._vae_sample_probs contain Inf"
+
                 self._vae_sample_priorities[:self._size] = relative_probs_from_log_probs(
                     self._vae_sample_priorities[:self._size]
                 )
                 self._vae_sample_probs = self._vae_sample_priorities[:self._size]
-                assert (self._vae_sample_priorities[:self._size] == self._vae_sample_priorities[:self._size]).all(), \
-                    "self._vae_sample_priorities, i.e., self._vae_sample_probs contain NaN"
+                
             else:
                 self._vae_sample_probs = self._vae_sample_priorities[:self._size] ** self.power
+
+            self._vae_sample_probs += 1e-20
             p_sum = np.sum(self._vae_sample_probs)
             assert p_sum > 0, "Unnormalized p sum is {}".format(p_sum)
             self._vae_sample_probs /= np.sum(self._vae_sample_probs)
@@ -239,6 +245,14 @@ class OnlineVaeRelabelingBuffer(SharedObsDictRelabelingBuffer):
             self._vae_sample_probs is not None and
             self.skew
         ):
+            if np.any(np.isnan(self._vae_sample_probs)):
+                l = len(self._vae_sample_probs)
+                print("there are {} samples in replay buffer".format(l))
+                num = l // 20
+                for i in range(num):
+                    print(self._vae_sample_probs[i*20:(i+1)*20])
+                exit()
+
             indices = np.random.choice(
                 len(self._vae_sample_probs),
                 batch_size,

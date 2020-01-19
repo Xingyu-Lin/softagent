@@ -6,6 +6,19 @@ import gtimer as gt
 from rlkit.core import logger, eval_util
 from rlkit.data_management.replay_buffer import ReplayBuffer
 from rlkit.samplers.data_collector import DataCollector
+from rlkit.samplers.rollout_functions import multitask_rollout, rollout
+from rlkit.envs.vae_wrapper import VAEWrappedEnv
+from rlkit.util.video import dump_video
+from os import path as osp
+import numpy as np
+
+def video_multitask_rollout(*args, **kwargs):
+    return multitask_rollout(*args, **kwargs,
+                                 observation_key='latent_observation',
+                                 desired_goal_key='latent_desired_goal',) 
+
+def video_rollout(*args, **kwargs):
+    return rollout(*args, **kwargs) 
 
 
 def _get_epoch_timings():
@@ -79,6 +92,56 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
 
     def _log_stats(self, epoch):
         logger.log("Epoch {} finished".format(epoch), with_timestamp=True)
+
+        # add by yufei: test goal-conditioned policy, 
+        # save trained goal-conditioned policy video
+        # save returns
+        if epoch % self.dump_video_interval == 0:
+            video_name = "{}.gif".format(epoch)
+            imsize = self.expl_env.imsize
+            old_decode_goals = self.eval_env.decode_goals
+            env = self.eval_env
+            env.decode_goals = False # the path collectors would set decode_goals to be true.
+            # and once it is set to be true, image desired goals would be replaced as the decoded images from sampled latents.
+
+            dump_path = logger.get_snapshot_dir()
+            policy = self.trainer.policy
+            if isinstance(env, VAEWrappedEnv): # indicates skewfit and multitask env
+                rollout_func = video_multitask_rollout
+            else:
+                rollout_func = video_rollout
+            dump_video(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
+                horizon=self.max_path_length, rows=1, columns=5)
+
+            self.eval_env.decode_goals = old_decode_goals
+        
+        non_discounted_returns = []
+        policy = self.trainer.policy
+        old_goal_sampling_mode = self.eval_env.goal_sampling_mode
+        env = self.eval_env
+        env.goal_sampling_mode = 'reset_of_env'
+        for _ in range(10):
+            if isinstance(env, VAEWrappedEnv):
+                path = multitask_rollout(
+                    env,
+                    policy,
+                    max_path_length=self.max_path_length,
+                    render=False,
+                    observation_key='latent_observation',
+                    desired_goal_key='latent_desired_goal'
+                )
+            else:
+                path = rollout(
+                    env, policy, max_path_length=self.max_path_length, render=False
+                )
+
+            env_infos = path['env_infos']
+            true_rewards = [d['real_task_reward'] for d in env_infos]
+            non_discounted_returns.append(np.sum(true_rewards))
+
+        logger.record_tabular('no_goal_env_return', np.mean(non_discounted_returns))
+        self.eval_env.goal_sampling_mode = old_goal_sampling_mode
+
 
         """
         Replay Buffer
