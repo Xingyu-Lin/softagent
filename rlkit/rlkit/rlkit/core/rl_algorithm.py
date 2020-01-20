@@ -136,10 +136,14 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
                 )
 
             env_infos = path['env_infos']
+            if env_infos[0].get('real_task_reward') is None:
+                break
+
             true_rewards = [d['real_task_reward'] for d in env_infos]
             non_discounted_returns.append(np.sum(true_rewards))
 
-        logger.record_tabular('no_goal_env_return', np.mean(non_discounted_returns))
+        if len(non_discounted_returns) > 0:
+            logger.record_tabular('no_goal_env_return', np.mean(non_discounted_returns))
         self.eval_env.goal_sampling_mode = old_goal_sampling_mode
 
 
