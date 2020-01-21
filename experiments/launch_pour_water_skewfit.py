@@ -4,27 +4,35 @@ from chester.run_exp import run_experiment_lite, VariantGenerator
 import numpy as np
 import rlkit.torch.vae.vae_schedules as vae_schedules
 from rlkit.launchers.skewfit_experiments import skewfit_full_experiment
-from rlkit.torch.vae.conv_vae import imsize48_default_architecture, imsize84_default_architecture
+from rlkit.torch.vae.conv_vae import imsize48_default_architecture, imsize84_default_architecture, imsize128_default_architecture
 
 @click.command()
 @click.argument('mode', type=str, default='local')
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False) # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0115-pour-water'
+    exp_prefix = '0115-pour-water-3-RIG-128'
 
     skewfit_args = dict(
         algorithm='Skew-Fit',
         double_algo=False,
         online_vae_exploration=False,
-        imsize=84,
+        imsize=128,
         init_camera=None,
         env_id='PourWater',
-        env_arg_dict = {'observation_mode': 'full_state',
+        env_arg_dict = {'observation_mode': 'full_state', # will be later wrapped by ImageEnv
                       'action_mode': 'direct',
                       'render_mode': 'fluid',
                       'deterministic': True,
                       'render': True,
+                      'headless': True,
+                      'horizon': 75,
+                      },
+        no_goal_conditioned_env_arg_dict = {'observation_mode': 'cam_img', # for giving a numerical evaluation of the env
+                      'action_mode': 'direct',
+                      'render_mode': 'fluid',
+                      'deterministic': True,
+                      'render': False,
                       'headless': True,
                       'horizon': 75,
                       },
@@ -50,13 +58,14 @@ def main(mode, debug, dry):
                 batch_size=1024,
                 num_epochs=1000,
                 num_eval_steps_per_epoch=500,
-                num_expl_steps_per_train_loop=500,
-                num_trains_per_train_loop=1000,
+                num_expl_steps_per_train_loop=500, # how many env transitions to add to replay buffer before each new train loop.
+                num_trains_per_train_loop=1000, # epoch -> train loop -> num_trains_per_train_loop
                 min_num_steps_before_training=10000,
                 vae_training_schedule=vae_schedules.custom_schedule_2,
                 oracle_data=False,
                 vae_save_period=50,
                 parallel_vae_train=False,
+                dump_policy_video_interval=50
             ),
             twin_sac_trainer_kwargs=dict(
                 discount=0.99,
@@ -91,18 +100,17 @@ def main(mode, debug, dry):
             reward_params=dict(
                 type='latent_distance',
             ),
-            observation_key='latent_observation',
-            desired_goal_key='latent_desired_goal',
+            observation_key='latent_observation', # sac uses latent_observation as input
+            desired_goal_key='latent_desired_goal', # reward is computed as latent space distance
             vae_wrapped_env_kwargs=dict(
                 sample_from_true_prior=True,
             ),
         ),
         train_vae_variant=dict(
-            debug_initial_vae_dataset=True, # YF
             representation_size=4,
             beta=20,
             num_epochs=0,
-            dump_skew_debug_plots=False,
+            dump_skew_debug_plots=False, # not actually used in the code
             decoder_activation='gaussian',
             generate_vae_dataset_kwargs=dict(
                 N=40,
@@ -112,11 +120,11 @@ def main(mode, debug, dry):
                 oracle_dataset=True,
                 oracle_dataset_using_set_to_goal= True,
                 n_random_steps=75,
-                non_presampled_goal_img_is_garbage=True,
+                non_presampled_goal_img_is_garbage=False,
             ),
             vae_kwargs=dict(
                 input_channels=3,
-                architecture=imsize84_default_architecture,
+                architecture=imsize128_default_architecture,
                 decoder_distribution='gaussian_identity_variance',
             ),
             # TODO: why the redundancy?
@@ -153,7 +161,7 @@ def main(mode, debug, dry):
         skewfit_argss = []
         if skewfit_args['imsize'] == 84:
             for representation_size in [4, 16, 64]:
-                for power in [-1, 0]:
+                for power in [0]:
                     s_args = copy.deepcopy(skewfit_args)
                     s_args['train_vae_variant']['representation_size'] = representation_size
                     s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
@@ -163,9 +171,13 @@ def main(mode, debug, dry):
 
         elif skewfit_args['imsize'] == 128:
             for representation_size in [4, 64, 1024]:
-                s_args = copy.deepcopy(skewfit_args)
-                s_args['train_vae_variant']['representation_size'] = representation_size
-                skewfit_argss.append(s_args)
+                for power in [0]:
+                    s_args = copy.deepcopy(skewfit_args)
+                    s_args['train_vae_variant']['representation_size'] = representation_size
+                    s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
+                    s_args['train_vae_variant']['algo_kwargs']['skew_config']['power'] = power
+                    print("representation size {} power {}".format(representation_size, power))
+                    skewfit_argss.append(s_args)
 
         vg.add('skewfit_kwargs', skewfit_argss)
         vg.add('seed', [100, 200, 300])
@@ -173,9 +185,13 @@ def main(mode, debug, dry):
     else: # not for training, but just ensures there is no bug in the code
         vg = VariantGenerator()
         mode = 'local'
-        skewfit_args['skewfit_variant']['algo_kwargs']['batch_size'] = 100
-        skewfit_args['skewfit_variant']['algo_kwargs']['num_trains_per_train_loop'] = 10
-        skewfit_args['skewfit_variant']['algo_kwargs']['min_num_steps_before_training'] = 100
+        skewfit_args['imsize'] = 84
+        skewfit_args['train_vae_variant']['vae_kwargs']['architecture'] = imsize84_default_architecture
+        skewfit_args['train_vae_variant']['representation_size'] = 4
+        skewfit_args['skewfit_variant']['algo_kwargs']['batch_size'] = 10
+        skewfit_args['skewfit_variant']['algo_kwargs']['num_trains_per_train_loop'] = 1
+        skewfit_args['skewfit_variant']['algo_kwargs']['min_num_steps_before_training'] = 10
+        skewfit_args['skewfit_variant']['algo_kwargs']['dump_policy_video_interval'] = 1
         skewfit_args['skewfit_variant']['replay_buffer_kwargs']['max_size'] = int(100)
         skewfit_args['train_vae_variant']['generate_vae_dataset_kwargs']['N'] = 5 
         vg.add('skewfit_kwargs', [skewfit_args])

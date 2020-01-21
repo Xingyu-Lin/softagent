@@ -18,6 +18,19 @@ from rlkit.torch.data import (
 from rlkit.util.ml_util import ConstantSchedule
 
 
+def judge_inf(x, name):
+    res = False
+    if np.any(np.isinf(x)):
+        print("{} contains Inf!".format(name))
+        res = True
+    # if np.any(np.exp(x) <= 0):
+    #     print("{} contains -Inf!".format(name))
+    #     print(x)
+    #     res = True
+
+    if res:
+        exit()
+
 def relative_probs_from_log_probs(log_probs):
     """
     Returns relative probability from the log probabilities. They're not exactly
@@ -50,12 +63,26 @@ def compute_log_p_log_q_log_d(
 
     mus_np = mus.detach().cpu().numpy()
     logvars_np = logvars.detach().cpu().numpy()
-    if not (mus_np == mus_np).all() or not (logvars_np == logvars_np).all():
+    if np.any(np.isnan(mus_np)) or np.any(np.isnan(logvars_np)):
         print("vae encoded latent mus or logvars contain NaN!")
         for parameter in model.encoder.parameters():
             parameter_np = parameter.detach().cpu().numpy()
-            if not (parameter_np == parameter_np).all():
+            if np.any(np.isnan(parameter_np)):
                 print("vae encoder network weights contain NaN!")
+                exit()
+    
+    if np.any(np.isinf(mus_np)) or np.any(np.isinf(logvars_np)):
+        print("vae encoded latent mus or logvars contain Inf!")
+        # if np.any(np.exp(mus_np) <= 0):
+        #      print("vae encoded latent mus contain -Inf!")
+        # if np.any(np.exp(logvars_np) <= 0):
+        #      print("vae encoded latent logvars contain -Inf!")
+        for parameter in model.encoder.parameters():
+            parameter_np = parameter.detach().cpu().numpy()
+            if np.any(np.isinf(parameter_np)):
+                print("vae encoder network weights contain Inf!")
+                # if np.any(np.exp(parameter_np) <= 0):
+                #     print("vae encoder network weights contain -Inf!")
                 exit()
 
     for i in range(num_latents_to_sample):
@@ -91,6 +118,20 @@ def compute_log_p_log_q_log_d(
                         print("vae decoder network weights contain NaN!")
                         exit()
 
+            if np.any(np.isinf(dec_mu_np)) or np.any(np.isinf(dec_logvar_np)):
+                print("vae decoded mu or logvar contain Inf!")
+                # if np.any(np.exp(dec_mu_np) <= 0):
+                #     print("vae decoded mu contain -Inf!")
+                # if np.any(np.exp(dec_logvar_np) <= 0):
+                #     print("vae decoded logvar contain -Inf!")
+                for parameter in model.decoder.parameters():
+                    parameter_np = parameter.detach().cpu().numpy()
+                    if np.any(np.isinf(parameter_np)):
+                        print("vae decoder network weights contain Inf!")
+                        # if np.any(np.exp(parameter_np) <= 0):
+                        #     print("vae decoder network weights contain -Inf!")
+                        exit()
+
             dec_var = dec_logvar.exp()
             decoder_dist = Normal(dec_mu, dec_var.pow(.5))
             log_d_x_given_z = decoder_dist.log_prob(imgs).sum(dim=1)
@@ -124,6 +165,14 @@ def compute_p_x_np_to_np(
     log_p_np = log_p.detach().cpu().numpy()
     log_q_np = log_q.detach().cpu().numpy()
     log_d_np = log_d.detach().cpu().numpy()
+
+
+    # assert not np.any(np.isinf(log_p_np)), "vae returned log_p contain Inf"
+    # assert not np.any(np.isinf(log_q_np)), "vae returned log_q contain Inf"
+    # assert not np.any(np.isinf(log_d_np)), "vae returned log_d contain Inf"
+    judge_inf(log_p_np, 'vae returned log_p')
+    judge_inf(log_q_np, 'vae returned log_q')
+    judge_inf(log_d_np, 'vae returned log_d')
     assert (log_p_np == log_p_np).all(), "vae returned log_p contain NaN"
     assert (log_q_np == log_q_np).all(), "vae returned log_q contain NaN"
     assert (log_d_np == log_d_np).all(), "vae returned log_d contain NaN"
@@ -307,6 +356,7 @@ class ConvVAETrainer(object):
             next_idx = min(next_idx, size)
 
         if method == 'vae_prob':
+            assert not np.any(np.isinf(weights)), "weights contain Inf!"
             weights = relative_probs_from_log_probs(weights)
         return weights
 

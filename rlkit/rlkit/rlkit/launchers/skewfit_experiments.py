@@ -22,17 +22,19 @@ from rlkit.launchers import conf
 import __main__ as main
 import torch
 from softgym.envs.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
-
+from softgym.envs.pour_water import PourWaterPosControlEnv
 SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlGoalConditionedEnv}
+SOFTGYM_NOGOALCONDITIONED_ENVS = {'PourWater': PourWaterPosControlEnv}
 
 def skewfit_full_experiment(variant, log_dir, exp_prefix):
-    ### TODO: setup xingyu's logger and set seed
-    ### TODO: reference is train.py
 
     exp_prefix = time.strftime("%m-%d") + "-" + exp_prefix
     seed = variant['seed']
     if torch.cuda.is_available():
         use_gpu = True
+        torch.cuda.manual_seed(seed)
+    else:
+        use_gpu = False
 
     base_log_dir = log_dir
     reset_execution_environment()
@@ -79,7 +81,7 @@ def skewfit_full_experiment(variant, log_dir, exp_prefix):
     print("full_experiment_variant_preprocess Done. Begin train_vae_and_update_variant.")
     env = train_vae_and_update_variant(variant) # YF
     print("skewfit train_vae_and_update_variant done. Begin skewfit experiments!")
-    skewfit_experiment(variant['skewfit_variant'], env) # YF
+    skewfit_experiment(variant, env) # YF
 
 
 def full_experiment_variant_preprocess(variant):
@@ -409,6 +411,7 @@ def get_envs(variant, env = None): # YF
 
     if not do_state_exp:
         if isinstance(env, ImageEnv): # or env_id == 'PourWaterImgControl...'
+            print("env is already ImgaeEnv, no need to wrap to be imageEnv again!")
             image_env = env
             env.non_presampled_goal_img_is_garbage = False ## YF Note: this may not be necessary
         else:
@@ -424,6 +427,7 @@ def get_envs(variant, env = None): # YF
             This will fail for online-parallel as presampled_goals will not be
             serialized. Also don't use this for online-vae.
             """
+            print("in get_envs, enter presample_goals branch")
             if presampled_goals_path is None:
                 image_env.non_presampled_goal_img_is_garbage = True
                 vae_env = VAEWrappedEnv(
@@ -469,6 +473,7 @@ def get_envs(variant, env = None): # YF
             )
             print("Presampling all goals only")
         else:
+            print("in get_envs, does not enter presample_goal branch")
             vae_env = VAEWrappedEnv(
                 image_env,
                 vae,
@@ -479,6 +484,10 @@ def get_envs(variant, env = None): # YF
                 reward_params=reward_params,
                 **variant.get('vae_wrapped_env_kwargs', {})
             )
+
+            print("after wrap to vae_env!")
+
+         
             if presample_image_goals_only:
                 presampled_goals = variant['generate_goal_dataset_fctn'](
                     image_env=vae_env.wrapped_env,
@@ -538,8 +547,18 @@ def skewfit_experiment(variant, env = None): # YF
     from rlkit.torch.sac.policies import TanhGaussianPolicy
     from rlkit.torch.vae.vae_trainer import ConvVAETrainer
 
+    no_goal_conditioned_env_kwargs = variant['no_goal_conditioned_env_arg_dict']
+    env_id = variant['env_id']
+    variant = variant['skewfit_variant']
+
     skewfit_preprocess_variant(variant)
     env = get_envs(variant, env) # YF
+    # do not use the following code!
+    # current softgym still does not support using two envs (both doing rendering) in the same program
+    # but it supports one render + many not render. 
+    # ***** However, they would still interface with each other, as they are in the same pyflex instance!********
+    # no_goal_env = SOFTGYM_NOGOALCONDITIONED_ENVS[env_id](**no_goal_conditioned_env_kwargs) 
+    # no_goal_env = None
 
     uniform_dataset_fn = variant.get('generate_uniform_dataset_fn', None)
     if uniform_dataset_fn:
@@ -630,15 +649,16 @@ def skewfit_experiment(variant, env = None): # YF
         desired_goal_key=desired_goal_key,
     )
 
+
     algorithm = OnlineVaeAlgorithm(
-        trainer=trainer,
+        trainer=trainer, # this trains the sac
         exploration_env=env,
         evaluation_env=env,
         exploration_data_collector=expl_path_collector,
         evaluation_data_collector=eval_path_collector,
         replay_buffer=replay_buffer,
         vae=vae,
-        vae_trainer=vae_trainer,
+        vae_trainer=vae_trainer, # this trains the vae
         uniform_dataset=uniform_dataset,
         max_path_length=max_path_length,
         **variant['algo_kwargs']
