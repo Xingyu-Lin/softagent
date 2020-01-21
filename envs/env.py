@@ -4,6 +4,10 @@ import torch
 import gym
 import softgym
 from softgym.envs.pour_water import PourWaterPosControlEnv
+from softgym.envs.rope_flatten import RopeFlattenEnv
+from softgym.envs.cloth_flatten import ClothFlattenEnv
+from softgym.envs.cloth_fold import ClothFoldEnv
+
 from softgym.utils.normalized_env import normalize
 
 softgym.register_flex_envs()
@@ -17,7 +21,10 @@ CONTROL_SUITE_ACTION_REPEATS = {'cartpole': 8, 'reacher': 4, 'finger': 2, 'cheet
 
 SOFTGYM_ENVS = ['PourWaterPosControl-v0']
 
-SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlEnv}
+SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlEnv,
+                       'ClothFlatten': ClothFlattenEnv,
+                       'ClothFold': ClothFoldEnv,
+                       'RopeFlatten': RopeFlattenEnv}
 
 
 # Preprocesses an observation inplace (from float32 Tensor [0, 255] to [-0.5, 0.5])

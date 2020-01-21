@@ -52,10 +52,10 @@ def run_task(arg_vv, log_dir, exp_name):
     if vv['algorithm'] == 'planet':
         from planet.planet_agent import PlaNetAgent
         agent = PlaNetAgent(env, vv, device)
-        agent.train(train_episode=500)
+        agent.train(train_episode=vv['train_episode'])
         env.close()
     elif vv['algorithm'] == 'dreamer':
         from dreamer.dreamer_agent import DreamerAgent
         agent = DreamerAgent(env, vv, device)
-        agent.train(train_episode=500)
+        agent.train(train_episode=vv['train_episode'])
         env.close()

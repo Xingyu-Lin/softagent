@@ -10,7 +10,7 @@ import numpy as np
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0117_walker_walk'
+    exp_prefix = '0118_walker_walk'
     env_arg_dict = {
         'walker-walk': {}
     }
@@ -22,6 +22,7 @@ def main(mode, debug, dry):
     vg.add('image_dim', [64])  # Kept the same as the original paper
     vg.add('action_repeat', [2])
     vg.add('planning_horizon', [12])
+    vg.add('max_episode_length', [1000])
     vg.add('use_value_function', [False])
     vg.add('seed', [100, 200, 300])
 

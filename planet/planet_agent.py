@@ -71,7 +71,6 @@ class PlaNetAgent(object):
             # metrics['steps'], metrics['episodes'] = [D.steps] * D.episodes, list(range(1, D.episodes + 1))
             self.train_episodes += self.D.episodes
             self.train_steps += self.D.steps
-
         else:
             self.D = ExperienceReplay(self.vv['experience_size'], self.vv['symbolic_env'], self.dimo, self.dimu,
                                       self.vv['bit_depth'], self.device, self.vv['use_value_function'])
@@ -102,7 +101,7 @@ class PlaNetAgent(object):
             action.cpu() if isinstance(env, EnvBatcher) else action[0].cpu())  # Perform environment step (action repeats handled internally)
         return belief, posterior_state, action, next_observation, reward, done
 
-    def train(self, train_episode, render=False, experience_replay_path=None):
+    def train(self, train_episode, experience_replay_path=None):
         logger.info('Warming up ...')
         self._init_replay_buffer(experience_replay_path)
         logger.info('Start training ...')
@@ -211,8 +210,6 @@ class PlaNetAgent(object):
                     observations.append(observation), actions.append(action.cpu()), rewards.append(reward), dones.append(done)
                     total_reward += reward
                     observation = next_observation
-                    if render:
-                        self.env.render()
                     if done:
                         pbar.close()
                         break
@@ -254,8 +251,6 @@ class PlaNetAgent(object):
                                 frames.append(observation)
                                 frames_reconstr.append(self.observation_model(belief, posterior_state).cpu())
                             observation = next_observation
-                            if render:
-                                self.env.render()
                             if done:
                                 pbar.close()
                                 break
