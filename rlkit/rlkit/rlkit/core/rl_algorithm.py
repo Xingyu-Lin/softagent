@@ -12,13 +12,15 @@ from rlkit.util.video import dump_video
 from os import path as osp
 import numpy as np
 
+
 def video_multitask_rollout(*args, **kwargs):
     return multitask_rollout(*args, **kwargs,
-                                 observation_key='latent_observation',
-                                 desired_goal_key='latent_desired_goal',) 
+                             observation_key='latent_observation',
+                             desired_goal_key='latent_desired_goal', )
+
 
 def video_rollout(*args, **kwargs):
-    return rollout(*args, **kwargs) 
+    return rollout(*args, **kwargs)
 
 
 def _get_epoch_timings():
@@ -36,13 +38,13 @@ def _get_epoch_timings():
 
 class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
     def __init__(
-            self,
-            trainer,
-            exploration_env,
-            evaluation_env,
-            exploration_data_collector: DataCollector,
-            evaluation_data_collector: DataCollector,
-            replay_buffer: ReplayBuffer,
+      self,
+      trainer,
+      exploration_env,
+      evaluation_env,
+      exploration_data_collector: DataCollector,
+      evaluation_data_collector: DataCollector,
+      replay_buffer: ReplayBuffer,
     ):
         self.trainer = trainer
         self.expl_env = exploration_env
@@ -99,27 +101,32 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         if epoch % self.dump_video_interval == 0:
             video_name = "{}.gif".format(epoch)
             imsize = self.expl_env.imsize
-            old_decode_goals = self.eval_env.decode_goals
             env = self.eval_env
-            env.decode_goals = False # the path collectors would set decode_goals to be true.
-            # and once it is set to be true, image desired goals would be replaced as the decoded images from sampled latents.
+
+            if hasattr(self.eval_env, 'decode_goals'):
+                old_decode_goals = self.eval_env.decode_goals
+                env = self.eval_env
+                env.decode_goals = False  # the path collectors would set decode_goals to be true.
+                # and once it is set to be true, image desired goals would be replaced as the decoded images from sampled latents.
 
             dump_path = logger.get_snapshot_dir()
             policy = self.trainer.policy
-            if isinstance(env, VAEWrappedEnv): # indicates skewfit and multitask env
+            if isinstance(env, VAEWrappedEnv):  # indicates skewfit and multitask env
                 rollout_func = video_multitask_rollout
             else:
                 rollout_func = video_rollout
-            dump_video(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
-                horizon=self.max_path_length, rows=1, columns=5)
+            # dump_video(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
+            #            horizon=self.max_path_length, rows=1, columns=5)
+            if hasattr(self.eval_env, 'decode_goals'):
+                self.eval_env.decode_goals = old_decode_goals
 
-            self.eval_env.decode_goals = old_decode_goals
-        
         non_discounted_returns = []
         policy = self.trainer.policy
-        old_goal_sampling_mode = self.eval_env.goal_sampling_mode
+        if hasattr(self.eval_env, 'goal_sampling_mode'):
+            old_goal_sampling_mode = self.eval_env.goal_sampling_mode
         env = self.eval_env
-        env.goal_sampling_mode = 'reset_of_env'
+        if hasattr(self.eval_env, 'goal_sampling_mode'):
+            env.goal_sampling_mode = 'reset_of_env'
         for _ in range(10):
             if isinstance(env, VAEWrappedEnv):
                 path = multitask_rollout(
@@ -144,8 +151,8 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
 
         if len(non_discounted_returns) > 0:
             logger.record_tabular('no_goal_env_return', np.mean(non_discounted_returns))
-        self.eval_env.goal_sampling_mode = old_goal_sampling_mode
-
+        if hasattr(self.eval_env, 'goal_sampling_mode'):
+            self.eval_env.goal_sampling_mode = old_goal_sampling_mode
 
         """
         Replay Buffer

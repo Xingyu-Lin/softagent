@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import gym
 import softgym
+from gym.spaces import Box
 from softgym.envs.pour_water import PourWaterPosControlEnv
 from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.envs.cloth_flatten import ClothFlattenEnv
@@ -76,7 +77,8 @@ class ControlSuiteEnv():
             return _images_to_observation(self._env.physics.render(camera_id=0), self.bit_depth, self.image_dim)
 
     def step(self, action):
-        action = action.detach().numpy()
+        if not isinstance(action, np.ndarray):
+            action = action.detach().numpy()
         reward = 0
         for k in range(self.action_repeat):
             state = self._env.step(action)
@@ -91,7 +93,7 @@ class ControlSuiteEnv():
                 dtype=torch.float32).unsqueeze(dim=0)
         else:
             observation = _images_to_observation(self._env.physics.render(camera_id=0), self.bit_depth, self.image_dim)
-        return observation, reward, done
+        return observation, reward, done, {}
 
     def render(self):
         cv2.imshow('screen', self._env.physics.render(camera_id=0)[:, :, ::-1])
@@ -136,7 +138,8 @@ class GymEnv():
             return _images_to_observation(self._env.render(mode='rgb_array'), self.bit_depth, self.image_dim)
 
     def step(self, action):
-        action = action.detach().numpy()
+        if not isinstance(action, np.ndarray):
+            action = action.detach().numpy()
         reward = 0
         for k in range(self.action_repeat):
             state, reward_k, done, _ = self._env.step(action)
@@ -149,7 +152,7 @@ class GymEnv():
             observation = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)
         else:
             observation = _images_to_observation(self._env.render(mode='rgb_array'), self.bit_depth, self.image_dim)
-        return observation, reward, done
+        return observation, reward, done, {}
 
     def render(self):
         self._env.render()
@@ -158,6 +161,11 @@ class GymEnv():
         self._env.close()
 
     @property
+    def observation_space(self):
+        return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32) \
+ \
+               @ property
+
     def observation_size(self):
         return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 
@@ -191,17 +199,18 @@ class SoftGymEnv(object):
         return _images_to_observation(obs, self.bit_depth, self.image_dim)
 
     def step(self, action):
-        action = action.detach().numpy()
+        if not isinstance(action, np.ndarray):
+            action = action.detach().numpy()
         reward = 0
         for k in range(self.action_repeat):
             obs, reward_k, done, _ = self._env.step(action)
             reward += reward_k
             self.t += 1  # Increment internal timer
             done = done or self.t == self.max_episode_length
+            obs = _images_to_observation(obs, self.bit_depth, self.image_dim)
             if done:
                 break
-            obs = _images_to_observation(obs, self.bit_depth, self.image_dim)
-        return obs, reward, done
+        return obs, reward, done, {}
 
     def render(self):
         self._env.render()
@@ -210,6 +219,9 @@ class SoftGymEnv(object):
         self._env.close()
 
     @property
+    def observation_space(self):
+        return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
+
     def observation_size(self):
         return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 
@@ -220,6 +232,13 @@ class SoftGymEnv(object):
     # Sample an action randomly from a uniform distribution over all valid actions
     def sample_random_action(self):
         return torch.from_numpy(self._env.action_space.sample())
+
+    def __getattr__(self, name):
+        """ Relay unknown attribute access to the wrapped_env. """
+        if name == '_env':
+            # Prevent recursive call on self._env
+            raise AttributeError('_env not initialized yet!')
+        return getattr(self._env, name)
 
 
 def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None):
@@ -259,7 +278,33 @@ class EnvBatcher():
                                                                                                                 dtype=torch.uint8)
         observations[done_mask] = 0
         rewards[done_mask] = 0
-        return observations, rewards, dones
+        return observations, rewards, dones, {}
 
     def close(self):
         [env.close() for env in self.envs]
+
+
+class WrapperRlkit(object):
+    """ Wrap the image env environment. Use all numpy returns and flatten the observation """
+
+    def __init__(self, env):
+        self._env = env
+
+    def reset(self):
+        obs = self._env.reset()
+        return np.array(obs).flatten()
+
+    def step(self, action):
+        obs, reward, done, info = self._env.step(action)
+        return np.array(obs).flatten(), reward, done, info
+
+    def __getattr__(self, name):
+        """ Relay unknown attribute access to the wrapped_env. """
+        if name == '_env':
+            # Prevent recursive call on self._env
+            raise AttributeError('_env not initialized yet!')
+        return getattr(self._env, name)
+
+    @property
+    def imsize(self):
+        return self._env.image_dim

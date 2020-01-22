@@ -16,6 +16,7 @@ from planet.utils import write_video
 
 from chester import logger
 
+
 class PlaNetAgent(object):
     """
     TODO add documentation
@@ -80,7 +81,7 @@ class PlaNetAgent(object):
                 observations, actions, rewards, dones = [], [], [], []
                 while not done:
                     action = self.env.sample_random_action()  # TODO is there a reason for using tensor instead of numpy here?
-                    next_observation, reward, done = self.env.step(action)
+                    next_observation, reward, done, _ = self.env.step(action)
                     observations.append(observation), actions.append(action), rewards.append(reward), dones.append(done)
                     observation = next_observation
                     t += 1
@@ -97,7 +98,7 @@ class PlaNetAgent(object):
         action = self.planner(belief, posterior_state)  # Get action from planner(q(s_t|o≤t,a<t), p)
         if explore:
             action = action + self.vv['action_noise'] * torch.randn_like(action)  # Add exploration noise ε ~ p(ε) to the action
-        next_observation, reward, done = env.step(
+        next_observation, reward, done, _ = env.step(
             action.cpu() if isinstance(env, EnvBatcher) else action[0].cpu())  # Perform environment step (action repeats handled internally)
         return belief, posterior_state, action, next_observation, reward, done
 
@@ -135,10 +136,9 @@ class PlaNetAgent(object):
                     value_loss = F.mse_loss(bottle(self.value_model, (prev_beliefs, prev_states)), target, reduction='none').mean(dim=(0, 1))
                     value_target_average = target.mean().item()
 
-
                 # Note that normalisation by overshooting distance and weighting by overshooting distance cancel out
                 kl_loss = torch.max(kl_divergence(Normal(posterior_means, posterior_std_devs), Normal(prior_means, prior_std_devs)).sum(dim=2),
-                                        self.free_nats).mean(dim=(0, 1))
+                                    self.free_nats).mean(dim=(0, 1))
 
                 if self.vv['global_kl_beta'] != 0:
                     kl_loss += self.vv['global_kl_beta'] * kl_divergence(Normal(posterior_means, posterior_std_devs),

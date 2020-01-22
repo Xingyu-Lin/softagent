@@ -1,15 +1,16 @@
 import time
 import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
-from experiments.train import run_task
+
+from experiments.model_free.train_model_free import run_task
 
 
 @click.command()
 @click.argument('mode', type=str, default='local')
 @click.option('--debug/--no-debug', default=True)
-@click.option('--dry/--no-dry', default=False)
+@click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0121_three_soft_envs'
+    exp_prefix = '0121_sac'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',
@@ -55,22 +56,36 @@ def main(mode, debug, dry):
                       'deterministic': False}
     }
     vg = VariantGenerator()
-    vg.add('algorithm', ['planet'])
     vg.add('env_name', ['RopeFlatten', 'ClothFlatten', 'ClothFold', 'PourWater'])
-    # vg.add('env_name', ['RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('train_episode', [1000])
-    vg.add('planning_horizon', [12, 24])
-    vg.add('use_value_function', [False])
-    vg.add('seed', [100, 200])
+    vg.add('algorithm', ['SAC'])
+    vg.add('version', ['normal'])
+    vg.add('layer_size', [256])
+    vg.add('replay_buffer_size', [int(1E5)])
+    vg.add('embedding_size', [1024])
+    vg.add('image_dim', [128])
+    vg.add('algorithm_kwargs', [dict(num_epochs=3000,
+                                     num_eval_steps_per_epoch=5000,
+                                     num_trains_per_train_loop=1000,
+                                     num_expl_steps_per_train_loop=1000,
+                                     min_num_steps_before_training=1000,
+                                     max_path_length=75,
+                                     batch_size=256)])
+    vg.add('trainer_kwargs', [dict(discount=0.99,
+                                   soft_target_tau=5e-3,
+                                   target_update_period=1,
+                                   policy_lr=3E-4,
+                                   qf_lr=3E-4,
+                                   reward_scale=1,
+                                   use_automatic_entropy_tuning=True,
+                                   )])
+    vg.add('max_episode_length', [75])
+    vg.add('seed', [100])
 
     if not debug:
-        vg.add('collect_interval', [100])
         # Add possible vgs for non-debug purpose
         pass
     else:
-        vg.add('collect_interval', [1])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))
