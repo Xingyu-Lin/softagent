@@ -15,7 +15,7 @@ def main(mode, debug, dry):
         'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',
                       'render_mode': 'fluid',
-                      'deterministic': True,
+                      'deterministic': False,
                       'render': True,
                       'headless': True,
                       'horizon': 75,
@@ -57,13 +57,14 @@ def main(mode, debug, dry):
     }
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
-    vg.add('env_name', ['ClothFlatten', 'RopeFlatten', 'ClothFold'])
+    vg.add('env_name', ['RopeFlatten', 'ClothFlatten', 'ClothFold', 'PourWater'])
+    # vg.add('env_name', ['RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('train_episode', [1000])
     vg.add('planning_horizon', [12, 24])
     vg.add('use_value_function', [False])
-    vg.add('seed', [100, 200, 300])
+    vg.add('seed', [100, 200])
 
     if not debug:
         vg.add('collect_interval', [100])
