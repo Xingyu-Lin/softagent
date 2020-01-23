@@ -1,6 +1,5 @@
 *.img
 data
-data/*
 *__pycache__*
 build
 .idea

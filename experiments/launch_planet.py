@@ -2,33 +2,68 @@ import time
 import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from experiments.train import run_task
-import numpy as np
+
 
 @click.command()
 @click.argument('mode', type=str, default='local')
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0114_pour_water_value_function'
+    exp_prefix = '0121_three_soft_envs'
     env_arg_dict = {
-        'PourWater': {'observation_mode': 'cam_img',
+        'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',
                       'render_mode': 'fluid',
-                      'deterministic': True,
+                      'deterministic': False,
                       'render': True,
                       'headless': True,
                       'horizon': 75,
                       'camera_name': 'default_camera',
                       'delta_reward': True},
+        'RopeFlatten': {'observation_mode': 'cam_rgb',
+                        'action_mode': 'picker',
+                        'num_picker': 2,
+                        'render': True,
+                        'headless': True,
+                        'horizon': 75,
+                        'action_repeat': 8,
+                        'render_mode': 'cloth',
+                        'num_variations': 200,
+                        'use_cached_states': True,
+                        'deterministic': False},
+        'ClothFlatten': {'observation_mode': 'cam_rgb',
+                         'action_mode': 'picker',
+                         'num_picker': 2,
+                         'render': True,
+                         'headless': True,
+                         'horizon': 100,
+                         'action_repeat': 8,
+                         'render_mode': 'cloth',
+                         'num_variations': 200,
+                         'use_cached_states': True,
+                         'deterministic': False},
+        'ClothFold': {'observation_mode': 'cam_rgb',
+                      'action_mode': 'picker',
+                      'num_picker': 2,
+                      'render': True,
+                      'headless': True,
+                      'horizon': 100,
+                      'action_repeat': 8,
+                      'render_mode': 'cloth',
+                      'num_variations': 200,
+                      'use_cached_states': True,
+                      'deterministic': False}
     }
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
-    vg.add('env_name', ['PourWater'])
+    vg.add('env_name', ['RopeFlatten', 'ClothFlatten', 'ClothFold', 'PourWater'])
+    # vg.add('env_name', ['RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
+    vg.add('train_episode', [1000])
     vg.add('planning_horizon', [12, 24])
-    vg.add('use_value_function', [True, False])
-    vg.add('seed', [100, 200, 300])
+    vg.add('use_value_function', [False])
+    vg.add('seed', [100, 200])
 
     if not debug:
         vg.add('collect_interval', [100])

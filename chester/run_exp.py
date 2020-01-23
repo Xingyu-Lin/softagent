@@ -241,7 +241,7 @@ def variant(*args, **kwargs):
 
 def rsync_code(remote_host, remote_dir):
     os.system(
-        'rsync -avzh --delete --exclude-from=\'./chester/rsync_exclude\' ./ ' + remote_host + ':' + remote_dir)
+        'rsync -avzh --delete --include-from=\'./chester/rsync_include\' --exclude-from=\'./chester/rsync_exclude\' ./ ' + remote_host + ':' + remote_dir)
 
 
 exp_count = 0

@@ -126,14 +126,14 @@ def rollout(
         o = next_o
         if render:
             env.render(**render_kwargs)
-
     actions = np.array(actions)
     if len(actions.shape) == 1:
         actions = np.expand_dims(actions, 1)
-    observations = np.array(observations)
+    observations = np.array([np.array(obs) for obs in observations])
     if len(observations.shape) == 1:
         observations = np.expand_dims(observations, 1)
         next_o = np.array([next_o])
+
     next_observations = np.vstack(
         (
             observations[1:, :],

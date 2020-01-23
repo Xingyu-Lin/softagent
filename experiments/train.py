@@ -1,7 +1,4 @@
 import os
-import sys
-import numpy as np
-import json
 from chester import logger
 from envs.env import Env
 import torch
@@ -49,13 +46,14 @@ def run_task(arg_vv, log_dir, exp_name):
         json.dump(vv, f, indent=2, sort_keys=True)
     env = Env(vv['env_name'], vv['symbolic_env'], vv['seed'], vv['max_episode_length'], vv['action_repeat'], vv['bit_depth'], vv['image_dim'],
               env_kwargs=vv['env_kwargs'])
+
     if vv['algorithm'] == 'planet':
         from planet.planet_agent import PlaNetAgent
         agent = PlaNetAgent(env, vv, device)
-        agent.train(train_episode=500)
+        agent.train(train_episode=vv['train_episode'])
         env.close()
     elif vv['algorithm'] == 'dreamer':
         from dreamer.dreamer_agent import DreamerAgent
         agent = DreamerAgent(env, vv, device)
-        agent.train(train_episode=500)
+        agent.train(train_episode=vv['train_episode'])
         env.close()

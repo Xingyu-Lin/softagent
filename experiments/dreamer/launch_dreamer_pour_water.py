@@ -11,7 +11,7 @@ import numpy as np
 def main(mode, debug, dry):
     exp_prefix = '0117_dreamer_pour_water'
     env_arg_dict = {
-        'PourWater': {'observation_mode': 'cam_img',
+        'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',
                       'render_mode': 'fluid',
                       'deterministic': True,
