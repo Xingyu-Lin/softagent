@@ -4,7 +4,7 @@ from softgym.envs.pour_water import PourWaterPosControlEnv
 from softgym.utils.normalized_env import normalize
 if __name__ == '__main__':
 
-    env_kwargs = {'observation_mode': 'cam_img',
+    env_kwargs = {'observation_mode': 'cam_rgb',
                   'action_mode': 'direct',
                   'render_mode': 'fluid',
                   'deterministic': False,
