@@ -5,25 +5,27 @@ import time
 import numpy as np
 import scipy.misc
 import skvideo.io
-
+import torchvision
+import torch
+from softgym.utils.visualization import save_numpy_as_gif
 from rlkit.envs.vae_wrapper import VAEWrappedEnv
 
 
 def dump_video(
-        env,
-        policy,
-        filename,
-        rollout_function,
-        rows=3,
-        columns=6,
-        pad_length=0,
-        pad_color=255,
-        do_timer=True,
-        horizon=100,
-        dirname_to_save_images=None,
-        subdirname="rollouts",
-        imsize=84,
-        num_channels=3,
+  env,
+  policy,
+  filename,
+  rollout_function,
+  rows=3,
+  columns=6,
+  pad_length=0,
+  pad_color=255,
+  do_timer=True,
+  horizon=100,
+  dirname_to_save_images=None,
+  subdirname="rollouts",
+  imsize=84,
+  num_channels=3,
 ):
     frames = []
     H = 3 * imsize
@@ -47,7 +49,7 @@ def dump_video(
                                 1)
             else:
                 recon = d['image_observation']
-            
+
             l.append(
                 get_image(
                     d['image_desired_goal'],
@@ -77,7 +79,7 @@ def dump_video(
 
     frames = np.array(frames, dtype=np.uint8)
     path_length = frames.size // (
-            N * (H + 2 * pad_length) * (W + 2 * pad_length) * num_channels
+      N * (H + 2 * pad_length) * (W + 2 * pad_length) * num_channels
     )
     frames = np.array(frames, dtype=np.uint8).reshape(
         (N, path_length, H + 2 * pad_length, W + 2 * pad_length, num_channels)
@@ -97,12 +99,45 @@ def dump_video(
     print("Saved video to ", filename)
 
 
+def dump_video_non_goal(
+  env,
+  policy,
+  filename,
+  rollout_function,
+  rows=3,
+  columns=6,
+  pad_length=0,
+  pad_color=255,
+  do_timer=True,
+  horizon=100,
+  dirname_to_save_images=None,
+  subdirname="rollouts",
+  imsize=84,
+):
+    N = rows * columns
+    all_frames = []
+    for i in range(N):
+        frames = []
+        obs = env.reset()
+        frames.append(env.get_image(imsize, imsize))
+        for _ in range(env.horizon):
+            action, _ = policy.get_action(obs)
+            env.step(action)
+            frames.append(env.get_image(imsize, imsize))
+        all_frames.append(frames)
+    # Convert to T x index x C x H x W for pytorch
+    all_frames = np.array(all_frames).transpose([1, 0, 4, 2, 3])
+    grid_imgs = [torchvision.utils.make_grid(torch.from_numpy(frame), nrow=columns).permute(1, 2, 0).data.cpu().numpy() for frame in all_frames]
+
+    save_numpy_as_gif(np.array(grid_imgs), filename)
+
+
 def get_image(goal, obs, recon_obs, imsize=84, pad_length=1, pad_color=255):
     if len(goal.shape) == 1:
         goal = goal.reshape(-1, imsize, imsize).transpose()
         obs = obs.reshape(-1, imsize, imsize).transpose()
-        recon_obs = recon_obs.reshape(-1, imsize, imsize).transpose()\
-
+        recon_obs = recon_obs.reshape(-1, imsize, imsize).transpose() \
+ \
     # from matplotlib import pyplot as plt
     # fig = plt.figure(figsize=(15, 5))
     # ax1 = fig.add_subplot(1, 3, 1)

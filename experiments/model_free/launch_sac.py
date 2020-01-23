@@ -64,13 +64,6 @@ def main(mode, debug, dry):
     vg.add('replay_buffer_size', [int(1E5)])
     vg.add('embedding_size', [1024])
     vg.add('image_dim', [128])
-    vg.add('algorithm_kwargs', [dict(num_epochs=3000,
-                                     num_eval_steps_per_epoch=5000,
-                                     num_trains_per_train_loop=1000,
-                                     num_expl_steps_per_train_loop=1000,
-                                     min_num_steps_before_training=1000,
-                                     max_path_length=75,
-                                     batch_size=256)])
     vg.add('trainer_kwargs', [dict(discount=0.99,
                                    soft_target_tau=5e-3,
                                    target_update_period=1,
@@ -83,9 +76,21 @@ def main(mode, debug, dry):
     vg.add('seed', [100])
 
     if not debug:
-        # Add possible vgs for non-debug purpose
-        pass
+        vg.add('algorithm_kwargs', [dict(num_epochs=3000,
+                                         num_eval_steps_per_epoch=1,
+                                         num_trains_per_train_loop=1,
+                                         num_expl_steps_per_train_loop=100,
+                                         min_num_steps_before_training=1,
+                                         max_path_length=75,
+                                         batch_size=256)])
     else:
+        vg.add('algorithm_kwargs', [dict(num_epochs=3000,
+                                         num_eval_steps_per_epoch=5000,
+                                         num_trains_per_train_loop=1000,
+                                         num_expl_steps_per_train_loop=1000,
+                                         min_num_steps_before_training=1000,
+                                         max_path_length=75,
+                                         batch_size=256)])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))

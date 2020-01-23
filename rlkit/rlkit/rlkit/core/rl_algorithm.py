@@ -8,7 +8,7 @@ from rlkit.data_management.replay_buffer import ReplayBuffer
 from rlkit.samplers.data_collector import DataCollector
 from rlkit.samplers.rollout_functions import multitask_rollout, rollout
 from rlkit.envs.vae_wrapper import VAEWrappedEnv
-from rlkit.util.video import dump_video
+from rlkit.util.video import dump_video, dump_video_non_goal
 from os import path as osp
 import numpy as np
 
@@ -115,10 +115,14 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
                 rollout_func = video_multitask_rollout
             else:
                 rollout_func = video_rollout
-            # dump_video(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
-            #            horizon=self.max_path_length, rows=1, columns=5)
+
             if hasattr(self.eval_env, 'decode_goals'):
+                dump_video(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
+                           horizon=self.max_path_length, rows=1, columns=5)
                 self.eval_env.decode_goals = old_decode_goals
+            else:
+                dump_video_non_goal(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
+                                    horizon=self.max_path_length, rows=2, columns=4)
 
         non_discounted_returns = []
         policy = self.trainer.policy
