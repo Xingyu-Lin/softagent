@@ -185,7 +185,6 @@ class SoftGymEnv(object):
         else:
             self._env = gym.make(env)
         self._env = normalize(self._env)
-        assert not symbolic
         self.symbolic = symbolic
         self._env.seed(seed)
         self.max_episode_length = max_episode_length
@@ -196,7 +195,10 @@ class SoftGymEnv(object):
     def reset(self):
         self.t = 0  # Reset internal timer
         obs = self._env.reset()
-        return _images_to_observation(obs, self.bit_depth, self.image_dim)
+        if self.symbolic:
+            return torch.tensor(obs, dtype=torch.float32)
+        else:
+            return _images_to_observation(obs, self.bit_depth, self.image_dim)
 
     def step(self, action):
         if not isinstance(action, np.ndarray):
@@ -207,7 +209,10 @@ class SoftGymEnv(object):
             reward += reward_k
             self.t += 1  # Increment internal timer
             done = done or self.t == self.max_episode_length
-            obs = _images_to_observation(obs, self.bit_depth, self.image_dim)
+            if self.symbolic:
+                obs = torch.tensor(obs, dtype=torch.float32)
+            else:
+                obs = _images_to_observation(obs, self.bit_depth, self.image_dim)
             if done:
                 break
         return obs, reward, done, {}
@@ -220,7 +225,10 @@ class SoftGymEnv(object):
 
     @property
     def observation_space(self):
-        return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
+        if self.symbolic:
+            return self._env.observation_space
+        else:
+            return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
 
     def observation_size(self):
         return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)

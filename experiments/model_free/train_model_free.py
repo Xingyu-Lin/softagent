@@ -36,19 +36,26 @@ def run_task(arg_vv, log_dir, exp_name):
     else:
         device = torch.device('cpu')
 
-    env = WrapperRlkit(Env(vv['env_name'], False, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'],
+    env_symbolic = vv['env_kwargs']['observation_mode'] != 'cam_rgb'
+    env = WrapperRlkit(Env(vv['env_name'], env_symbolic, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'],
                            env_kwargs=vv['env_kwargs']))
     obs_dim = env.observation_space.low.size
     action_dim = env.action_space.low.size
 
     M = vv['layer_size']
+    if env_symbolic:
+        qf1 = FlattenMlp(input_size=obs_dim + action_dim, output_size=1, hidden_sizes=[M, M], )
+        qf2 = FlattenMlp(input_size=obs_dim + action_dim, output_size=1, hidden_sizes=[M, M], )
+        target_qf1 = FlattenMlp(input_size=obs_dim + action_dim, output_size=1, hidden_sizes=[M, M], )
+        target_qf2 = FlattenMlp(input_size=obs_dim + action_dim, output_size=1, hidden_sizes=[M, M], )
+        policy = TanhGaussianPolicy(obs_dim=obs_dim, action_dim=action_dim, hidden_sizes=[M, M], )
+    else:
+        qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
+        qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
+        target_qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
+        target_qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
 
-    qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
-    qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
-    target_qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
-    target_qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
-
-    policy = ConvPolicy(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
+        policy = ConvPolicy(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
 
     eval_policy = MakeDeterministic(policy)
     eval_path_collector = MdpPathCollector(env, eval_policy, )

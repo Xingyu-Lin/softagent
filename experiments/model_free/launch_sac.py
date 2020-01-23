@@ -10,7 +10,7 @@ from experiments.model_free.train_model_free import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0121_sac'
+    exp_prefix = '0123_sac_key_point'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',
@@ -56,8 +56,9 @@ def main(mode, debug, dry):
                       'deterministic': False}
     }
     vg = VariantGenerator()
-    vg.add('env_name', ['RopeFlatten', 'ClothFlatten', 'ClothFold', 'PourWater'])
+    vg.add('env_name', ['ClothFlatten', 'PourWater', 'RopeFlatten', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
+    vg.add('env_kwargs_observation_mode', ['key_point'])
     vg.add('algorithm', ['SAC'])
     vg.add('version', ['normal'])
     vg.add('layer_size', [256])
@@ -73,22 +74,22 @@ def main(mode, debug, dry):
                                    use_automatic_entropy_tuning=True,
                                    )])
     vg.add('max_episode_length', [75])
-    vg.add('seed', [100])
+    vg.add('seed', [100, 200])
 
     if not debug:
-        vg.add('algorithm_kwargs', [dict(num_epochs=3000,
-                                         num_eval_steps_per_epoch=1,
-                                         num_trains_per_train_loop=1,
-                                         num_expl_steps_per_train_loop=100,
-                                         min_num_steps_before_training=1,
-                                         max_path_length=75,
-                                         batch_size=256)])
-    else:
         vg.add('algorithm_kwargs', [dict(num_epochs=3000,
                                          num_eval_steps_per_epoch=5000,
                                          num_trains_per_train_loop=1000,
                                          num_expl_steps_per_train_loop=1000,
                                          min_num_steps_before_training=1000,
+                                         max_path_length=75,
+                                         batch_size=256)])
+    else:
+        vg.add('algorithm_kwargs', [dict(num_epochs=3000,
+                                         num_eval_steps_per_epoch=120,
+                                         num_trains_per_train_loop=2,
+                                         num_expl_steps_per_train_loop=120,
+                                         min_num_steps_before_training=120,
                                          max_path_length=75,
                                          batch_size=256)])
         exp_prefix += '_debug'
