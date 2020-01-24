@@ -9,7 +9,7 @@ from experiments.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0123_planet'
+    exp_prefix = '0124_planet'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',

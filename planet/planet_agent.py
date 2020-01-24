@@ -215,7 +215,7 @@ class PlaNetAgent(object):
                             pbar.close()
                             break
                     self.D.append_episode(observations, actions, rewards, dones)
-                    self.train_episodes += self.vv['episodes_per_loop']
+                    self.train_episodes += 1
                     self.train_steps += t
 
             # Log
