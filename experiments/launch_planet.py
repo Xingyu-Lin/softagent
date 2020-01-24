@@ -9,7 +9,7 @@ from experiments.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0121_three_soft_envs'
+    exp_prefix = '0123_planet'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',
@@ -18,8 +18,7 @@ def main(mode, debug, dry):
                       'render': True,
                       'headless': True,
                       'horizon': 75,
-                      'camera_name': 'default_camera',
-                      'delta_reward': True},
+                      'camera_name': 'default_camera'},
         'RopeFlatten': {'observation_mode': 'cam_rgb',
                         'action_mode': 'picker',
                         'num_picker': 2,
@@ -57,20 +56,23 @@ def main(mode, debug, dry):
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
     vg.add('env_name', ['RopeFlatten', 'ClothFlatten', 'ClothFold', 'PourWater'])
-    # vg.add('env_name', ['RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('train_episode', [1000])
-    vg.add('planning_horizon', [12, 24])
+    vg.add('env_kwargs_delta_reward', [True, False])
+
+    vg.add('train_episode', [2000])
+    vg.add('planning_horizon', [24])
     vg.add('use_value_function', [False])
     vg.add('seed', [100, 200])
 
     if not debug:
         vg.add('collect_interval', [100])
+        vg.add('episodes_per_loop', [10])
         # Add possible vgs for non-debug purpose
         pass
     else:
         vg.add('collect_interval', [1])
+        vg.add('episodes_per_loop', [1])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))

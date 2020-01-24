@@ -162,10 +162,9 @@ class GymEnv():
 
     @property
     def observation_space(self):
-        return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32) \
- \
-               @ property
+        return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
 
+    @property
     def observation_size(self):
         return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 
@@ -230,6 +229,7 @@ class SoftGymEnv(object):
         else:
             return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
 
+    @property
     def observation_size(self):
         return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 

@@ -196,26 +196,27 @@ class PlaNetAgent(object):
                 if self.value_model is not None:
                     losses[-1].append(value_loss.item())
 
-            # Data collection (1 episode)
+            # Data collection
             with torch.no_grad():
-                observation, total_reward = self.env.reset(), 0
-                observations, actions, rewards, dones = [], [], [], []
-                belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
-                                                  torch.zeros(1, self.vv['state_size'], device=self.device), \
-                                                  torch.zeros(1, self.env.action_size, device=self.device)
-                pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
-                for t in pbar:
-                    belief, posterior_state, action, next_observation, reward, done = \
-                        self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device), explore=True)
-                    observations.append(observation), actions.append(action.cpu()), rewards.append(reward), dones.append(done)
-                    total_reward += reward
-                    observation = next_observation
-                    if done:
-                        pbar.close()
-                        break
-                self.D.append_episode(observations, actions, rewards, dones)
-                self.train_episodes += 1
-                self.train_steps += t
+                for i in range(self.vv['episodes_per_loop']):
+                    observation, total_reward = self.env.reset(), 0
+                    observations, actions, rewards, dones = [], [], [], []
+                    belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
+                                                      torch.zeros(1, self.vv['state_size'], device=self.device), \
+                                                      torch.zeros(1, self.env.action_size, device=self.device)
+                    pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
+                    for t in pbar:
+                        belief, posterior_state, action, next_observation, reward, done = \
+                            self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device), explore=True)
+                        observations.append(observation), actions.append(action.cpu()), rewards.append(reward), dones.append(done)
+                        total_reward += reward
+                        observation = next_observation
+                        if done:
+                            pbar.close()
+                            break
+                    self.D.append_episode(observations, actions, rewards, dones)
+                    self.train_episodes += self.vv['episodes_per_loop']
+                    self.train_steps += t
 
             # Log
             losses = np.array(losses)
@@ -259,6 +260,8 @@ class PlaNetAgent(object):
                         all_frames.append(frames)
                         all_frames_reconstr.append(frames_reconstr)
 
+                    all_frames = all_frames[:8] # Only take the first 8 episodes to visualize
+                    all_frames_reconstr = all_frames_reconstr[:8]
                     video_frames = []
                     for i in range(len(all_frames[0])):
                         frame = torch.cat([x[i] for x in all_frames])
