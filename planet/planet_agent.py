@@ -198,6 +198,7 @@ class PlaNetAgent(object):
 
             # Data collection
             with torch.no_grad():
+                all_total_rewards = []  # Average across all episodes
                 for i in range(self.vv['episodes_per_loop']):
                     observation, total_reward = self.env.reset(), 0
                     observations, actions, rewards, dones = [], [], [], []
@@ -217,6 +218,7 @@ class PlaNetAgent(object):
                     self.D.append_episode(observations, actions, rewards, dones)
                     self.train_episodes += 1
                     self.train_steps += t
+                    all_total_rewards.append(total_reward)
 
             # Log
             losses = np.array(losses)
@@ -226,7 +228,7 @@ class PlaNetAgent(object):
             if self.value_model is not None:
                 logger.record_tabular('value_loss', np.mean(losses[:, 3]))
                 logger.record_tabular('value_target_average', value_target_average)
-            logger.record_tabular('train_rewards', total_reward)
+            logger.record_tabular('train_rewards', np.mean(all_total_rewards))
             logger.record_tabular('num_episodes', self.train_episodes)
             logger.record_tabular('num_steps', self.train_steps)
 
@@ -235,6 +237,7 @@ class PlaNetAgent(object):
                 self.set_model_eval()
                 # Initialise parallelised test environments
                 with torch.no_grad():
+                    all_total_rewards = []
                     all_frames, all_frames_reconstr = [], []
                     for _ in range(self.vv['test_episodes']):
                         frames, frames_reconstr = [], []
@@ -259,8 +262,9 @@ class PlaNetAgent(object):
                         # frames_reconstr = torch.cat([x for x in frames_reconstr], dim=0)
                         all_frames.append(frames)
                         all_frames_reconstr.append(frames_reconstr)
+                        all_total_rewards.append(total_reward)
 
-                    all_frames = all_frames[:8] # Only take the first 8 episodes to visualize
+                    all_frames = all_frames[:8]  # Only take the first 8 episodes to visualize
                     all_frames_reconstr = all_frames_reconstr[:8]
                     video_frames = []
                     for i in range(len(all_frames[0])):
@@ -272,7 +276,7 @@ class PlaNetAgent(object):
                 self.test_episodes += self.vv['test_episodes']
 
                 logger.record_tabular('test_episodes', self.test_episodes)
-                logger.record_tabular('test_rewards', total_reward)
+                logger.record_tabular('test_rewards', np.mean(all_total_rewards))
                 if not self.vv['symbolic_env']:
                     episode_str = str(self.train_episodes).zfill(len(str(train_episode)))
                     write_video(video_frames, 'test_episode_%s' % episode_str, logger.get_dir())  # Lossy compression
