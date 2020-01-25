@@ -2,6 +2,8 @@ import os
 import cv2
 import numpy as np
 import plotly
+
+
 # from plotly.graph_objs import Scatter
 # from plotly.graph_objs.scatter import Line
 #
@@ -40,3 +42,21 @@ def write_video(frames, title, path=''):
     for frame in frames:
         writer.write(frame)
     writer.release()
+
+
+def transform_info(all_infos):
+    """ Input: All info is a nested list with the index of [episode][time]{info_key:info_value}
+        Output: transformed_infos is a diction with the index of [info_key][episode][time]
+    """
+    if len(all_infos) == 0:
+        return []
+    transformed_info = {}
+    num_episode = len(all_infos)
+    T = len(all_infos[0])
+
+    for info_name in all_infos[0][0].keys():
+        infos = np.zeros([num_episode, T], dtype=np.float32)
+        for i in range(num_episode):
+            infos[i, :] = np.array([info[info_name] for info in all_infos[i]])
+        transformed_info[info_name] = infos
+    return transformed_info

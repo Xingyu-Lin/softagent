@@ -9,7 +9,7 @@ from experiments.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0124_planet'
+    exp_prefix = '0125_planet'
     env_arg_dict = {
         'PourWater': {'observation_mode': 'cam_rgb',
                       'action_mode': 'direct',
@@ -51,11 +51,31 @@ def main(mode, debug, dry):
                       'render_mode': 'cloth',
                       'num_variations': 200,
                       'use_cached_states': True,
-                      'deterministic': False}
+                      'deterministic': False},
+        'ClothDrop': dict(observation_mode='cam_rgb',
+                          action_mode='picker',
+                          num_picker=2,
+                          render=True,
+                          headless=True,
+                          horizon=50,
+                          action_repeat=8,
+                          render_mode='cloth',
+                          num_variations=200,
+                          use_cached_states=True,
+                          deterministic=False),
+        'PassWater': dict(observation_mode='cam_rgb',
+                          action_mode='direct',
+                          render=True,
+                          headless=True,
+                          horizon=75,
+                          action_repeat=8,
+                          render_mode='fluid',
+                          delta_reward=False,
+                          deterministic=False)
     }
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
-    vg.add('env_name', ['RopeFlatten', 'ClothFlatten', 'ClothFold', 'PourWater'])
+    vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_delta_reward', [True, False])
@@ -67,11 +87,15 @@ def main(mode, debug, dry):
 
     if not debug:
         vg.add('collect_interval', [100])
+        vg.add('test_interval', [10])
+        vg.add('test_episodes', [30])
         vg.add('episodes_per_loop', [10])
         # Add possible vgs for non-debug purpose
         pass
     else:
         vg.add('collect_interval', [1])
+        vg.add('test_interval', [1])
+        vg.add('test_episodes', [1])
         vg.add('episodes_per_loop', [1])
         exp_prefix += '_debug'
 
