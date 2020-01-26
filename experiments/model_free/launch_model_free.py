@@ -3,6 +3,7 @@ import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
 
 from experiments.model_free.train_model_free import run_task
+from experiments.registered_env import env_arg_dict
 
 
 @click.command()
@@ -10,56 +11,12 @@ from experiments.model_free.train_model_free import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0123_sac_key_point'
-    env_arg_dict = {
-        'PourWater': {'observation_mode': 'cam_rgb',
-                      'action_mode': 'direct',
-                      'render_mode': 'fluid',
-                      'deterministic': False,
-                      'render': True,
-                      'headless': True,
-                      'horizon': 75,
-                      'camera_name': 'default_camera',
-                      'delta_reward': True},
-        'RopeFlatten': {'observation_mode': 'cam_rgb',
-                        'action_mode': 'picker',
-                        'num_picker': 2,
-                        'render': True,
-                        'headless': True,
-                        'horizon': 75,
-                        'action_repeat': 8,
-                        'render_mode': 'cloth',
-                        'num_variations': 200,
-                        'use_cached_states': True,
-                        'deterministic': False},
-        'ClothFlatten': {'observation_mode': 'cam_rgb',
-                         'action_mode': 'picker',
-                         'num_picker': 2,
-                         'render': True,
-                         'headless': True,
-                         'horizon': 100,
-                         'action_repeat': 8,
-                         'render_mode': 'cloth',
-                         'num_variations': 200,
-                         'use_cached_states': True,
-                         'deterministic': False},
-        'ClothFold': {'observation_mode': 'cam_rgb',
-                      'action_mode': 'picker',
-                      'num_picker': 2,
-                      'render': True,
-                      'headless': True,
-                      'horizon': 100,
-                      'action_repeat': 8,
-                      'render_mode': 'cloth',
-                      'num_variations': 200,
-                      'use_cached_states': True,
-                      'deterministic': False}
-    }
+    exp_prefix = '0125_td3_key_point'
     vg = VariantGenerator()
     vg.add('env_name', ['ClothFlatten', 'PourWater', 'RopeFlatten', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['key_point'])
-    vg.add('algorithm', ['SAC'])
+    vg.add('algorithm', ['TD3'])
     vg.add('version', ['normal'])
     vg.add('layer_size', [256])
     vg.add('replay_buffer_size', [int(1E5)])
@@ -73,7 +30,7 @@ def main(mode, debug, dry):
                                    reward_scale=1,
                                    use_automatic_entropy_tuning=True,
                                    )])
-    vg.add('max_episode_length', [75])
+    vg.add('max_episode_length', [200])
     vg.add('seed', [100, 200])
 
     if not debug:

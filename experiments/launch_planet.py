@@ -2,6 +2,7 @@ import time
 import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from experiments.train import run_task
+from experiments.registered_env import env_arg_dict
 
 
 @click.command()
@@ -10,69 +11,6 @@ from experiments.train import run_task
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
     exp_prefix = '0125_planet'
-    env_arg_dict = {
-        'PourWater': {'observation_mode': 'cam_rgb',
-                      'action_mode': 'direct',
-                      'render_mode': 'fluid',
-                      'deterministic': False,
-                      'render': True,
-                      'headless': True,
-                      'horizon': 75,
-                      'camera_name': 'default_camera'},
-        'RopeFlatten': {'observation_mode': 'cam_rgb',
-                        'action_mode': 'picker',
-                        'num_picker': 2,
-                        'render': True,
-                        'headless': True,
-                        'horizon': 75,
-                        'action_repeat': 8,
-                        'render_mode': 'cloth',
-                        'num_variations': 200,
-                        'use_cached_states': True,
-                        'deterministic': False},
-        'ClothFlatten': {'observation_mode': 'cam_rgb',
-                         'action_mode': 'picker',
-                         'num_picker': 2,
-                         'render': True,
-                         'headless': True,
-                         'horizon': 100,
-                         'action_repeat': 8,
-                         'render_mode': 'cloth',
-                         'num_variations': 200,
-                         'use_cached_states': True,
-                         'deterministic': False},
-        'ClothFold': {'observation_mode': 'cam_rgb',
-                      'action_mode': 'picker',
-                      'num_picker': 2,
-                      'render': True,
-                      'headless': True,
-                      'horizon': 100,
-                      'action_repeat': 8,
-                      'render_mode': 'cloth',
-                      'num_variations': 200,
-                      'use_cached_states': True,
-                      'deterministic': False},
-        'ClothDrop': dict(observation_mode='cam_rgb',
-                          action_mode='picker',
-                          num_picker=2,
-                          render=True,
-                          headless=True,
-                          horizon=50,
-                          action_repeat=8,
-                          render_mode='cloth',
-                          num_variations=200,
-                          use_cached_states=True,
-                          deterministic=False),
-        'PassWater': dict(observation_mode='cam_rgb',
-                          action_mode='direct',
-                          render=True,
-                          headless=True,
-                          horizon=75,
-                          action_repeat=8,
-                          render_mode='fluid',
-                          delta_reward=False,
-                          deterministic=False)
-    }
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
     vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
