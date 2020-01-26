@@ -131,3 +131,5 @@ class MakeDeterministic(Policy):
     def get_action(self, observation):
         return self.stochastic_policy.get_action(observation,
                                                  deterministic=True)
+    def cuda(self):
+        self.stochastic_policy.cuda()

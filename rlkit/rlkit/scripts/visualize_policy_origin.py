@@ -86,7 +86,7 @@ def simulate_policy(args, dir):
     # exit()
     # env = env._wrapped_env
 
-    # Debug reset images
+    # Debug reset imags
     # goal_imgs = []
     # reconstruct_imgs = []
     # for i in range(30):

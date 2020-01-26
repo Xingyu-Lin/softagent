@@ -82,7 +82,7 @@ def main(mode, debug, dry):
                                          num_trains_per_train_loop=1000,
                                          num_expl_steps_per_train_loop=1000,
                                          min_num_steps_before_training=1000,
-                                         max_path_length=75,
+                                         max_path_length=200,
                                          batch_size=256)])
     else:
         vg.add('algorithm_kwargs', [dict(num_epochs=3000,
@@ -90,7 +90,7 @@ def main(mode, debug, dry):
                                          num_trains_per_train_loop=2,
                                          num_expl_steps_per_train_loop=120,
                                          min_num_steps_before_training=120,
-                                         max_path_length=75,
+                                         max_path_length=200,
                                          batch_size=256)])
         exp_prefix += '_debug'
 
