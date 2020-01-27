@@ -5,9 +5,11 @@ import gym
 import softgym
 from gym.spaces import Box
 from softgym.envs.pour_water import PourWaterPosControlEnv
+from softgym.envs.pass_water import PassWater1DEnv
 from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.envs.cloth_fold import ClothFoldEnv
+from softgym.envs.cloth_drop import ClothDropEnv
 
 from softgym.utils.normalized_env import normalize
 
@@ -22,9 +24,11 @@ CONTROL_SUITE_ACTION_REPEATS = {'cartpole': 8, 'reacher': 4, 'finger': 2, 'cheet
 
 SOFTGYM_ENVS = ['PourWaterPosControl-v0']
 
-SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlEnv,
+SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
+                       'PourWater': PourWaterPosControlEnv,
                        'ClothFlatten': ClothFlattenEnv,
                        'ClothFold': ClothFoldEnv,
+                       'ClothDrop': ClothDropEnv,
                        'RopeFlatten': RopeFlattenEnv}
 
 
@@ -162,10 +166,9 @@ class GymEnv():
 
     @property
     def observation_space(self):
-        return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32) \
- \
-               @ property
+        return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
 
+    @property
     def observation_size(self):
         return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 
@@ -205,7 +208,7 @@ class SoftGymEnv(object):
             action = action.detach().numpy()
         reward = 0
         for k in range(self.action_repeat):
-            obs, reward_k, done, _ = self._env.step(action)
+            obs, reward_k, done, info = self._env.step(action)
             reward += reward_k
             self.t += 1  # Increment internal timer
             done = done or self.t == self.max_episode_length
@@ -215,7 +218,7 @@ class SoftGymEnv(object):
                 obs = _images_to_observation(obs, self.bit_depth, self.image_dim)
             if done:
                 break
-        return obs, reward, done, {}
+        return obs, reward, done, info
 
     def render(self):
         self._env.render()
@@ -230,6 +233,7 @@ class SoftGymEnv(object):
         else:
             return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
 
+    @property
     def observation_size(self):
         return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
 

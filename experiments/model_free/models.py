@@ -3,6 +3,7 @@ import torch
 from torch.nn import functional as F
 from rlkit.torch.networks import FlattenMlp
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
+from rlkit.torch.networks import FlattenMlp, TanhMlpPolicy
 from rlkit.torch.core import eval_np
 
 
@@ -54,11 +55,14 @@ class ConvQ(nn.Module):
 
 
 class ConvPolicy(nn.Module):
-    def __init__(self, embedding_dim, image_dim, hidden_sizes, action_dim, activation_function='relu', **kwargs):
+    def __init__(self, embedding_dim, image_dim, hidden_sizes, action_dim, policy_class, activation_function='relu', **kwargs):
         super().__init__()
         self.image_dim = image_dim
         self.encoder = VisualEncoder(embedding_dim, image_dim)
-        self.mlp_policy = TanhGaussianPolicy(obs_dim=embedding_dim, action_dim=action_dim, hidden_sizes=hidden_sizes, **kwargs)
+        if isinstance(policy_class, TanhGaussianPolicy):
+            self.mlp_policy = policy_class(obs_dim=embedding_dim, action_dim=action_dim, hidden_sizes=hidden_sizes, **kwargs)
+        elif isinstance(policy_class, TanhMlpPolicy):
+            self.mlp_policy = policy_class(input_size=embedding_dim, output_size=action_dim, hidden_sizes=hidden_sizes, **kwargs)
         self.act_fn = getattr(F, activation_function)
 
     def forward(self, obs, **kwargs):

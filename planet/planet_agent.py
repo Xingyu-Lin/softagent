@@ -12,7 +12,7 @@ from envs.env import CONTROL_SUITE_ENVS, Env, GYM_ENVS, EnvBatcher
 from planet.memory import ExperienceReplay
 from planet.models import bottle, Encoder, ObservationModel, RewardModel, TransitionModel, ValueModel
 from planet.planner import MPCPlanner
-from planet.utils import write_video
+from planet.utils import write_video, transform_info
 
 from chester import logger
 
@@ -80,8 +80,8 @@ class PlaNetAgent(object):
                 observation, done, t = self.env.reset(), False, 0
                 observations, actions, rewards, dones = [], [], [], []
                 while not done:
-                    action = self.env.sample_random_action()  # TODO is there a reason for using tensor instead of numpy here?
-                    next_observation, reward, done, _ = self.env.step(action)
+                    action = self.env.sample_random_action()
+                    next_observation, reward, done, info = self.env.step(action)
                     observations.append(observation), actions.append(action), rewards.append(reward), dones.append(done)
                     observation = next_observation
                     t += 1
@@ -98,9 +98,9 @@ class PlaNetAgent(object):
         action = self.planner(belief, posterior_state)  # Get action from planner(q(s_t|o≤t,a<t), p)
         if explore:
             action = action + self.vv['action_noise'] * torch.randn_like(action)  # Add exploration noise ε ~ p(ε) to the action
-        next_observation, reward, done, _ = env.step(
+        next_observation, reward, done, info = env.step(
             action.cpu() if isinstance(env, EnvBatcher) else action[0].cpu())  # Perform environment step (action repeats handled internally)
-        return belief, posterior_state, action, next_observation, reward, done
+        return belief, posterior_state, action, next_observation, reward, done, info
 
     def train(self, train_episode, experience_replay_path=None):
         logger.info('Warming up ...')
@@ -196,26 +196,29 @@ class PlaNetAgent(object):
                 if self.value_model is not None:
                     losses[-1].append(value_loss.item())
 
-            # Data collection (1 episode)
+            # Data collection
             with torch.no_grad():
-                observation, total_reward = self.env.reset(), 0
-                observations, actions, rewards, dones = [], [], [], []
-                belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
-                                                  torch.zeros(1, self.vv['state_size'], device=self.device), \
-                                                  torch.zeros(1, self.env.action_size, device=self.device)
-                pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
-                for t in pbar:
-                    belief, posterior_state, action, next_observation, reward, done = \
-                        self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device), explore=True)
-                    observations.append(observation), actions.append(action.cpu()), rewards.append(reward), dones.append(done)
-                    total_reward += reward
-                    observation = next_observation
-                    if done:
-                        pbar.close()
-                        break
-                self.D.append_episode(observations, actions, rewards, dones)
-                self.train_episodes += 1
-                self.train_steps += t
+                all_total_rewards = []  # Average across all episodes
+                for i in range(self.vv['episodes_per_loop']):
+                    observation, total_reward = self.env.reset(), 0
+                    observations, actions, rewards, dones = [], [], [], []
+                    belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
+                                                      torch.zeros(1, self.vv['state_size'], device=self.device), \
+                                                      torch.zeros(1, self.env.action_size, device=self.device)
+                    pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
+                    for t in pbar:
+                        belief, posterior_state, action, next_observation, reward, done, info = \
+                            self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device), explore=True)
+                        observations.append(observation), actions.append(action.cpu()), rewards.append(reward), dones.append(done)
+                        total_reward += reward
+                        observation = next_observation
+                        if done:
+                            pbar.close()
+                            break
+                    self.D.append_episode(observations, actions, rewards, dones)
+                    self.train_episodes += 1
+                    self.train_steps += t
+                    all_total_rewards.append(total_reward)
 
             # Log
             losses = np.array(losses)
@@ -225,7 +228,7 @@ class PlaNetAgent(object):
             if self.value_model is not None:
                 logger.record_tabular('value_loss', np.mean(losses[:, 3]))
                 logger.record_tabular('value_target_average', value_target_average)
-            logger.record_tabular('train_rewards', total_reward)
+            logger.record_tabular('train_rewards', np.mean(all_total_rewards))
             logger.record_tabular('num_episodes', self.train_episodes)
             logger.record_tabular('num_steps', self.train_steps)
 
@@ -234,19 +237,22 @@ class PlaNetAgent(object):
                 self.set_model_eval()
                 # Initialise parallelised test environments
                 with torch.no_grad():
+                    all_total_rewards = []
+                    all_infos = []
                     all_frames, all_frames_reconstr = [], []
                     for _ in range(self.vv['test_episodes']):
-                        frames, frames_reconstr = [], []
+                        frames, frames_reconstr, infos = [], [], []
                         observation, total_reward, observation_reconstr = self.env.reset(), 0, []
                         belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
                                                           torch.zeros(1, self.vv['state_size'], device=self.device), \
                                                           torch.zeros(1, self.env.action_size, device=self.device)
                         pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
                         for t in pbar:
-                            belief, posterior_state, action, next_observation, reward, done = \
+                            belief, posterior_state, action, next_observation, reward, done, info = \
                                 self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device),
                                                            explore=True)
                             total_reward += reward
+                            infos.append(info)
                             if not self.vv['symbolic_env']:  # Collect real vs. predicted frames for video
                                 frames.append(observation)
                                 frames_reconstr.append(self.observation_model(belief, posterior_state).cpu())
@@ -254,11 +260,13 @@ class PlaNetAgent(object):
                             if done:
                                 pbar.close()
                                 break
-                        # frames = torch.cat([x for x in frames], dim=0)
-                        # frames_reconstr = torch.cat([x for x in frames_reconstr], dim=0)
                         all_frames.append(frames)
                         all_frames_reconstr.append(frames_reconstr)
+                        all_total_rewards.append(total_reward)
+                        all_infos.append(infos)
 
+                    all_frames = all_frames[:8]  # Only take the first 8 episodes to visualize
+                    all_frames_reconstr = all_frames_reconstr[:8]
                     video_frames = []
                     for i in range(len(all_frames[0])):
                         frame = torch.cat([x[i] for x in all_frames])
@@ -269,7 +277,13 @@ class PlaNetAgent(object):
                 self.test_episodes += self.vv['test_episodes']
 
                 logger.record_tabular('test_episodes', self.test_episodes)
-                logger.record_tabular('test_rewards', total_reward)
+                logger.record_tabular('test_rewards', np.mean(all_total_rewards))
+                transformed_info = transform_info(all_infos)
+                for info_name in transformed_info:
+                    print('info_name:', info_name)
+                    logger.record_tabular('info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
+                    logger.record_tabular('info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
+                    logger.record_tabular('info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))
                 if not self.vv['symbolic_env']:
                     episode_str = str(self.train_episodes).zfill(len(str(train_episode)))
                     write_video(video_frames, 'test_episode_%s' % episode_str, logger.get_dir())  # Lossy compression

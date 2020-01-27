@@ -27,6 +27,7 @@ def run_task(arg_vv, log_dir, exp_name):
     vv = DEFAULT_PARAMS
     vv.update(**arg_vv)
     vv = update_env_kwargs(vv)
+    vv['max_episode_length'] = vv['env_kwargs']['horizon']
 
     # Configure logger
     logger.configure(dir=log_dir, exp_name=exp_name)
