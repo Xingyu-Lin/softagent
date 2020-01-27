@@ -118,7 +118,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
 
             if hasattr(self.eval_env, 'decode_goals'):
                 dump_video(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
-                           horizon=self.max_path_length, rows=1, columns=5)
+                           horizon=self.max_path_length, rows=2, columns=4)
                 self.eval_env.decode_goals = old_decode_goals
             else:
                 dump_video_non_goal(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,

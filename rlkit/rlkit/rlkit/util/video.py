@@ -136,8 +136,8 @@ def get_image(goal, obs, recon_obs, imsize=84, pad_length=1, pad_color=255):
     if len(goal.shape) == 1:
         goal = goal.reshape(-1, imsize, imsize).transpose()
         obs = obs.reshape(-1, imsize, imsize).transpose()
-        recon_obs = recon_obs.reshape(-1, imsize, imsize).transpose() \
- \
+        recon_obs = recon_obs.reshape(-1, imsize, imsize).transpose() 
+
     # from matplotlib import pyplot as plt
     # fig = plt.figure(figsize=(15, 5))
     # ax1 = fig.add_subplot(1, 3, 1)

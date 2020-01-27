@@ -22,9 +22,11 @@ from rlkit.launchers import conf
 import __main__ as main
 import torch
 from softgym.envs.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
-from softgym.envs.pour_water import PourWaterPosControlEnv
-SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlGoalConditionedEnv}
-SOFTGYM_NOGOALCONDITIONED_ENVS = {'PourWater': PourWaterPosControlEnv}
+from softgym.envs.pass_water_multitask import PassWater1DGoalConditionedEnv
+SOFTGYM_CUSTOM_ENVS = {
+    'PourWater': PourWaterPosControlGoalConditionedEnv,
+    'PassWater': PassWater1DGoalConditionedEnv
+}
 
 def skewfit_full_experiment(variant, log_dir, exp_prefix):
 
@@ -345,8 +347,10 @@ def generate_vae_dataset(variant):
                             obs, _, _, _ = env.step(action)
                 elif oracle_dataset_using_set_to_goal:
                     print(i)
-                    goal = env.sample_goal()
-                    env.set_to_goal(goal)
+                    # goal = env.sample_goal()
+                    env.reset()
+                    # env.set_to_goal(goal)
+                    env.set_to_goal(env.get_goal())
                     obs = env._get_obs()
                 elif random_rollout_data:
                     if i % n_random_steps == 0:
@@ -547,18 +551,11 @@ def skewfit_experiment(variant, env = None): # YF
     from rlkit.torch.sac.policies import TanhGaussianPolicy
     from rlkit.torch.vae.vae_trainer import ConvVAETrainer
 
-    no_goal_conditioned_env_kwargs = variant['no_goal_conditioned_env_arg_dict']
     env_id = variant['env_id']
     variant = variant['skewfit_variant']
 
     skewfit_preprocess_variant(variant)
     env = get_envs(variant, env) # YF
-    # do not use the following code!
-    # current softgym still does not support using two envs (both doing rendering) in the same program
-    # but it supports one render + many not render. 
-    # ***** However, they would still interface with each other, as they are in the same pyflex instance!********
-    # no_goal_env = SOFTGYM_NOGOALCONDITIONED_ENVS[env_id](**no_goal_conditioned_env_kwargs) 
-    # no_goal_env = None
 
     uniform_dataset_fn = variant.get('generate_uniform_dataset_fn', None)
     if uniform_dataset_fn:

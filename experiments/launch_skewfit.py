@@ -11,7 +11,30 @@ from rlkit.torch.vae.conv_vae import imsize48_default_architecture, imsize84_def
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False) # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0115-pour-water-3-RIG-128'
+    
+    env_arg_dicts = {
+        # "PourWater": {
+        #     'observation_mode': 'point_cloud', # will be later wrapped by ImageEnv
+        #     'action_mode': 'direct',
+        #     'render_mode': 'fluid',
+        #     'deterministic': False,
+        #     'render': True,
+        #     'headless': True,
+        #     'horizon': 75,
+        #     "num_variations": 200,
+        # },
+        "PassWater": {
+            "observation_mode": 'point_cloud', 
+            "horizon": 75, 
+            "action_mode": 'direct', 
+            "deterministic": False, 
+            "render_mode":'fluid', 
+            "render": True, 
+            "headless": True,
+            "num_variations": 200,
+        }
+    }
+
 
     skewfit_args = dict(
         algorithm='Skew-Fit',
@@ -19,23 +42,6 @@ def main(mode, debug, dry):
         online_vae_exploration=False,
         imsize=128,
         init_camera=None,
-        env_id='PourWater',
-        env_arg_dict = {'observation_mode': 'full_state', # will be later wrapped by ImageEnv
-                      'action_mode': 'direct',
-                      'render_mode': 'fluid',
-                      'deterministic': True,
-                      'render': True,
-                      'headless': True,
-                      'horizon': 75,
-                      },
-        no_goal_conditioned_env_arg_dict = {'observation_mode': 'cam_img', # for giving a numerical evaluation of the env
-                      'action_mode': 'direct',
-                      'render_mode': 'fluid',
-                      'deterministic': True,
-                      'render': False,
-                      'headless': True,
-                      'horizon': 75,
-                      },
         skewfit_variant=dict(
             save_video=True,
             custom_goal_sampler='replay_buffer',
@@ -86,10 +92,10 @@ def main(mode, debug, dry):
                     decoder_distribution='gaussian_identity_variance',
                     num_latents_to_sample=10,
                 ),
-                power=-1,
-                relabeling_goal_sampling_mode='vae_prior',
+                power=0,
+                relabeling_goal_sampling_mode='vae_prior', # this is useless
             ),
-            exploration_goal_sampling_mode='vae_prior',
+            exploration_goal_sampling_mode='reset_of_env', # using this, we do not use goals sampled from vae prior for exploration
             evaluation_goal_sampling_mode='reset_of_env',
             normalize=False,
             render=False,
@@ -135,7 +141,7 @@ def main(mode, debug, dry):
                 lr=1e-3,
                 skew_config=dict(
                     method='vae_prob',
-                    power=-1,
+                    power=0,
                 ),
                 skew_dataset=True,
                 priority_function_kwargs=dict(
@@ -151,28 +157,32 @@ def main(mode, debug, dry):
     )
 
 
-
+    exp_prefix = '0125-pass-water-RIG-128'
     if not debug:
         vg = VariantGenerator()
-        assert skewfit_args['imsize'] == 84 or skewfit_args['imsize'] == 128
+        assert skewfit_args['imsize'] == 128
         print("imsize is: ", skewfit_args['imsize'])
 
         import copy
         skewfit_argss = []
-        if skewfit_args['imsize'] == 84:
-            for representation_size in [4, 16, 64]:
-                for power in [0]:
-                    s_args = copy.deepcopy(skewfit_args)
-                    s_args['train_vae_variant']['representation_size'] = representation_size
-                    s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
-                    s_args['train_vae_variant']['algo_kwargs']['skew_config']['power'] = power
-                    print("representation size {} power {}".format(representation_size, power))
-                    skewfit_argss.append(s_args)
 
-        elif skewfit_args['imsize'] == 128:
-            for representation_size in [4, 64, 1024]:
+        for env_id, env_arg_dict in env_arg_dicts.items():
+            print("-" * 50, env_id, '-' * 50)
+            # if skewfit_args['imsize'] == 84:
+            #     for representation_size in [4, 16, 64]:
+            #         for power in [0]:
+                        
+            #             s_args['train_vae_variant']['representation_size'] = representation_size
+            #             s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
+            #             s_args['train_vae_variant']['algo_kwargs']['skew_config']['power'] = power
+            #             print("representation size {} power {}".format(representation_size, power))
+            #             skewfit_argss.append(s_args)
+
+            for representation_size in [4, 16]:
                 for power in [0]:
                     s_args = copy.deepcopy(skewfit_args)
+                    s_args['env_id'] = env_id
+                    s_args['env_arg_dict'] = env_arg_dict
                     s_args['train_vae_variant']['representation_size'] = representation_size
                     s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
                     s_args['train_vae_variant']['algo_kwargs']['skew_config']['power'] = power
@@ -183,8 +193,11 @@ def main(mode, debug, dry):
         vg.add('seed', [100, 200, 300])
 
     else: # not for training, but just ensures there is no bug in the code
+        exp_prefix = "debug"
         vg = VariantGenerator()
         mode = 'local'
+        skewfit_args["env_id"] = "PassWater"
+        skewfit_args['env_arg_dict'] = env_arg_dicts['PassWater']
         skewfit_args['imsize'] = 84
         skewfit_args['train_vae_variant']['vae_kwargs']['architecture'] = imsize84_default_architecture
         skewfit_args['train_vae_variant']['representation_size'] = 4
