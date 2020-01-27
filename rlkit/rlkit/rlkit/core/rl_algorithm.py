@@ -147,10 +147,10 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
                 )
 
             env_infos = path['env_infos']
-            if env_infos[0].get('real_task_reward') is None:
+            if env_infos[0].get('performance') is None:
                 break
 
-            true_rewards = [d['real_task_reward'] for d in env_infos]
+            true_rewards = [d['performance'] for d in env_infos]
             non_discounted_returns.append(np.sum(true_rewards))
 
         if len(non_discounted_returns) > 0:

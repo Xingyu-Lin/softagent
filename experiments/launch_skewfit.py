@@ -13,26 +13,26 @@ from rlkit.torch.vae.conv_vae import imsize48_default_architecture, imsize84_def
 def main(mode, debug, dry):
     
     env_arg_dicts = {
-        # "PourWater": {
-        #     'observation_mode': 'point_cloud', # will be later wrapped by ImageEnv
-        #     'action_mode': 'direct',
-        #     'render_mode': 'fluid',
-        #     'deterministic': False,
-        #     'render': True,
-        #     'headless': True,
-        #     'horizon': 75,
-        #     "num_variations": 200,
-        # },
-        "PassWater": {
-            "observation_mode": 'point_cloud', 
-            "horizon": 75, 
-            "action_mode": 'direct', 
-            "deterministic": False, 
-            "render_mode":'fluid', 
-            "render": True, 
-            "headless": True,
+        "PourWater": {
+            'observation_mode': 'point_cloud', # will be later wrapped by ImageEnv
+            'action_mode': 'direct',
+            'render_mode': 'fluid',
+            'deterministic': False,
+            'render': True,
+            'headless': True,
+            'horizon': 75,
             "num_variations": 200,
-        }
+        },
+        # "PassWater": {
+        #     "observation_mode": 'point_cloud', 
+        #     "horizon": 75, 
+        #     "action_mode": 'direct', 
+        #     "deterministic": False, 
+        #     "render_mode":'fluid', 
+        #     "render": True, 
+        #     "headless": True,
+        #     "num_variations": 200,
+        # }
     }
 
 
@@ -178,7 +178,7 @@ def main(mode, debug, dry):
             #             print("representation size {} power {}".format(representation_size, power))
             #             skewfit_argss.append(s_args)
 
-            for representation_size in [4, 16]:
+            for representation_size in [4]:
                 for power in [0]:
                     s_args = copy.deepcopy(skewfit_args)
                     s_args['env_id'] = env_id
