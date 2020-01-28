@@ -80,7 +80,7 @@ imsize128_default_architecture = dict(
     ),
     conv_kwargs=dict(
         hidden_sizes=[],
-        batch_norm_conv=True,
+        batch_norm_conv=False,
         batch_norm_fc=False,
     ),
     deconv_args=dict(
@@ -249,13 +249,26 @@ class ConvVAE(GaussianLatentVAE):
             logvar = self.log_min_variance + torch.abs(self.fc2(h))
         return (mu, logvar)
 
-    def decode(self, latents):
+    def decode(self, latents, test=False):
         decoded = self.decoder(latents).view(-1,
                                              self.imsize * self.imsize * self.input_channels)
+        
         if self.decoder_distribution == 'bernoulli':
             return decoded, [decoded]
         elif self.decoder_distribution == 'gaussian_identity_variance':
-            return torch.clamp(decoded, 0, 1), [torch.clamp(decoded, 0, 1), # NOTE: why clamp to (0, 1) ?
+            if not test:
+                # return torch.clamp(decoded, 0, 1), [torch.clamp(decoded, 0, 1), # clamp to [0, 1] as these are outputting normalized images.
+                #                                 torch.ones_like(decoded)]
+
+                tanh_decoded = torch.tanh(decoded) * 0.5 + 0.5
+                return tanh_decoded, [tanh_decoded,
+                                                torch.ones_like(decoded)]
+            else: # return also the unclamped value for debugging
+                # return torch.clamp(decoded, 0, 1), decoded, [torch.clamp(decoded, 0, 1), # clamp to [0, 1] as these are outputting normalized images.
+                #                                 torch.ones_like(decoded)]
+
+                tanh_decoded = torch.tanh(decoded) * 0.5 + 0.5
+                return tanh_decoded, decoded, [tanh_decoded, 
                                                 torch.ones_like(decoded)]
         else:
             raise NotImplementedError('Distribution {} not supported'.format(

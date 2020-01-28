@@ -469,10 +469,12 @@ class ConvVAETrainer(object):
         log_probs = []
         kles = []
         zs = []
+        test_reconstructions = []
+        test_recon_before_clamp = []
         beta = float(self.beta_schedule.get_value(epoch))
         for batch_idx in range(10):
             next_obs = self.get_batch(train=False)
-            reconstructions, obs_distribution_params, latent_distribution_params = self.model(next_obs)
+            reconstructions, recon_before_clamp, obs_distribution_params, latent_distribution_params = self.model(next_obs, test=True)
             log_prob = self.model.logprob(next_obs, obs_distribution_params)
             kle = self.model.kl_divergence(latent_distribution_params)
             loss = -1 * log_prob + beta * kle
@@ -484,6 +486,8 @@ class ConvVAETrainer(object):
             losses.append(loss.item())
             log_probs.append(log_prob.item())
             kles.append(kle.item())
+            test_reconstructions.append(reconstructions.detach().cpu().numpy())
+            test_recon_before_clamp.append(recon_before_clamp.detach().cpu().numpy())
 
             if batch_idx == 0 and save_reconstruction:
                 n = min(next_obs.size(0), 8)
@@ -510,6 +514,8 @@ class ConvVAETrainer(object):
         self.eval_statistics['test/KL'] = np.mean(kles)
         self.eval_statistics['test/loss'] = np.mean(losses)
         self.eval_statistics['beta'] = beta
+        self.eval_statistics['vae_reconstructions'] = np.mean(test_reconstructions)
+        self.eval_statistics['vae_recon_before_tanh'] = np.mean(test_recon_before_clamp)
         if not from_rl:
             for k, v in self.eval_statistics.items():
                 logger.record_tabular(k, v)

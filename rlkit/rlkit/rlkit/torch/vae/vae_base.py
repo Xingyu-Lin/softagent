@@ -41,7 +41,7 @@ class VAEBase(torch.nn.Module, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def decode(self, latents):
+    def decode(self, latents, test):
         """
         :param latents:
         :return: reconstruction, obs_distribution_params
@@ -74,15 +74,19 @@ class VAEBase(torch.nn.Module, metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
-    def forward(self, input):
+    def forward(self, input, test=False):
         """
         :param input:
         :return: reconstructed input, obs_distribution_params, latent_distribution_params
         """
         latent_distribution_params = self.encode(input)
         latents = self.reparameterize(latent_distribution_params)
-        reconstructions, obs_distribution_params = self.decode(latents)
-        return reconstructions, obs_distribution_params, latent_distribution_params
+        if not test:
+            reconstructions, obs_distribution_params = self.decode(latents, test)
+            return reconstructions, obs_distribution_params, latent_distribution_params
+        else:
+            reconstructions, recon_before_clamp, obs_distribution_params = self.decode(latents, test)
+            return reconstructions, recon_before_clamp, obs_distribution_params, latent_distribution_params
 
 
 class GaussianLatentVAE(VAEBase):

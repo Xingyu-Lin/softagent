@@ -154,7 +154,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
             non_discounted_returns.append(np.sum(true_rewards))
 
         if len(non_discounted_returns) > 0:
-            logger.record_tabular('no_goal_env_return', np.mean(non_discounted_returns))
+            logger.record_tabular('performance', np.mean(non_discounted_returns))
         if hasattr(self.eval_env, 'goal_sampling_mode'):
             self.eval_env.goal_sampling_mode = old_goal_sampling_mode
 
