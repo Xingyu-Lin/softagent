@@ -59,25 +59,33 @@ class ConvPolicy(nn.Module):
         super().__init__()
         self.image_dim = image_dim
         self.encoder = VisualEncoder(embedding_dim, image_dim)
-        if isinstance(policy_class, TanhGaussianPolicy):
+        if policy_class == TanhGaussianPolicy:
             self.mlp_policy = policy_class(obs_dim=embedding_dim, action_dim=action_dim, hidden_sizes=hidden_sizes, **kwargs)
-        elif isinstance(policy_class, TanhMlpPolicy):
+        elif policy_class == TanhMlpPolicy:
             self.mlp_policy = policy_class(input_size=embedding_dim, output_size=action_dim, hidden_sizes=hidden_sizes, **kwargs)
         self.act_fn = getattr(F, activation_function)
 
     def forward(self, obs, **kwargs):
         obs = obs.view(-1, 3, self.image_dim, self.image_dim)
         embed_repr = self.encoder(obs)
-        return self.mlp_policy(self.act_fn(embed_repr), **kwargs)
+        if isinstance(self.mlp_policy, TanhMlpPolicy):
+            return self.mlp_policy(self.act_fn(embed_repr))  # Does not need additional keyword arguments
+        else:
+            return self.mlp_policy(self.act_fn(embed_repr), **kwargs)
 
     def get_action(self, obs_np, deterministic=False):
-        return eval_np(self, obs_np, deterministic=deterministic)[0][0], {}
-
+        if isinstance(self.mlp_policy, TanhMlpPolicy):
+            return eval_np(self, obs_np, deterministic=deterministic)[0], {}
+        else:
+            return eval_np(self, obs_np, deterministic=deterministic)[0][0], {}
         # actions = self.get_actions(obs_np[None], deterministic=deterministic)
         # return actions[0, :], {}
 
     def get_actions(self, obs_np, deterministic=False):
-        return eval_np(self, obs_np, deterministic=deterministic)[0]
+        if isinstance(self.mlp_policy, TanhMlpPolicy):
+            return eval_np(self, obs_np, deterministic=deterministic)
+        else:
+            return eval_np(self, obs_np, deterministic=deterministic)[0]
 
     def reset(self):
         pass

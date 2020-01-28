@@ -4,7 +4,6 @@ import argparse
 import torch
 import uuid
 from rlkit.core import logger
-from rlkit.util.video import dump_video_non_goal
 filename = str(uuid.uuid4())
 
 

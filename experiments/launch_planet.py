@@ -2,7 +2,7 @@ import time
 import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from experiments.train import run_task
-from experiments.registered_env import env_arg_dict
+from softgym.registered_env import env_arg_dict
 
 
 @click.command()
