@@ -119,10 +119,11 @@ def dump_video_non_goal(
     for i in range(N):
         frames = []
         obs = env.reset()
+        policy.reset()
         frames.append(env.get_image(imsize, imsize))
         for _ in range(env.horizon):
             action, _ = policy.get_action(obs)
-            env.step(action)
+            obs, _, _, _ = env.step(action)
             frames.append(env.get_image(imsize, imsize))
         all_frames.append(frames)
     # Convert to T x index x C x H x W for pytorch

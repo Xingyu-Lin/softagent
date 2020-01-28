@@ -3,7 +3,7 @@ import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
 
 from experiments.model_free.train_model_free import run_task
-from experiments.registered_env import env_arg_dict
+from softgym.registered_env import env_arg_dict
 
 
 @click.command()
@@ -11,11 +11,11 @@ from experiments.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0125_td3_key_point'
+    exp_prefix = '0126_cam_rgb'
     vg = VariantGenerator()
-    vg.add('env_name', ['ClothFlatten', 'PourWater', 'RopeFlatten', 'ClothFold'])
+    vg.add('env_name', ['PassWater', 'ClothDrop', 'ClothFlatten', 'PourWater', 'RopeFlatten', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['key_point'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
     vg.add('algorithm', ['TD3'])
     vg.add('version', ['normal'])
     vg.add('layer_size', [256])
