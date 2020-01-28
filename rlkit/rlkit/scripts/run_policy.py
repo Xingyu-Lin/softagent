@@ -4,7 +4,7 @@ import argparse
 import torch
 import uuid
 from rlkit.core import logger
-
+from rlkit.util.video import dump_video_non_goal
 filename = str(uuid.uuid4())
 
 
@@ -12,6 +12,8 @@ def simulate_policy(args, flex_env):
     data = torch.load(args.file)
     policy = data['evaluation/policy']
     env = data['evaluation/env']
+
+
     if flex_env:
         import pyflex
         headless, render, camera_width, camera_height = False, True, 720, 720
@@ -20,6 +22,9 @@ def simulate_policy(args, flex_env):
     if args.gpu:
         set_gpu_mode(True)
         policy.cuda()
+
+    # dump_video_non_goal(env, policy, 'test.gif', rollout_function=None, imsize=128, horizon=50, rows=2, columns=4)
+
     while True:
         path = rollout(
             env,
