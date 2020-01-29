@@ -1,8 +1,7 @@
 import time
 import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
-from experiments.train import run_task
-import numpy as np
+from experiments.planet.train import run_task
 
 
 @click.command()

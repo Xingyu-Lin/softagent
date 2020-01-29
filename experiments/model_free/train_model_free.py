@@ -7,17 +7,13 @@ from rlkit.torch.sac.sac import SACTrainer
 from rlkit.torch.td3.td3 import TD3Trainer
 from rlkit.torch.networks import FlattenMlp, TanhMlpPolicy
 from rlkit.launchers.launcher_util import setup_logger
-from rlkit.core import logger
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 import rlkit.torch.pytorch_util as ptu
 
-from experiments.train import update_env_kwargs
+from experiments.planet.train import update_env_kwargs
 from experiments.model_free.models import ConvQ, ConvPolicy
 from envs.env import Env, WrapperRlkit
 import torch
-import os
-import os.path as osp
-import json
 
 
 def run_task(arg_vv, log_dir, exp_name):
