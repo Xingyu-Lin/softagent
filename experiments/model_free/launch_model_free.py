@@ -11,9 +11,9 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0126_cam_rgb'
+    exp_prefix = '0127_td3_cam_rgb'
     vg = VariantGenerator()
-    vg.add('env_name', ['PassWater', 'ClothDrop', 'ClothFlatten', 'PourWater', 'RopeFlatten', 'ClothFold'])
+    vg.add('env_name', ['PourWater', 'PassWater', 'ClothDrop', 'ClothFlatten', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['cam_rgb'])
     vg.add('algorithm', ['TD3'])

@@ -1,7 +1,8 @@
 import time
 import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
-from experiments.planet.train import run_task
+from experiments.cem.eval_cem import run_task
+from softgym.registered_env import env_arg_dict
 
 
 @click.command()
@@ -9,32 +10,32 @@ from experiments.planet.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0117_dreamer_pour_water'
-    env_arg_dict = {
-        'PourWater': {'observation_mode': 'cam_rgb',
-                      'action_mode': 'direct',
-                      'render_mode': 'fluid',
-                      'deterministic': True,
-                      'render': True,
-                      'headless': True,
-                      'horizon': 75,
-                      'camera_name': 'default_camera',
-                      'delta_reward': True},
-    }
+    exp_prefix = '0129_cem'
     vg = VariantGenerator()
-    vg.add('algorithm', ['dreamer'])
-    vg.add('env_name', ['PourWater'])
+    vg.add('algorithm', ['CEM'])
+    vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('planning_horizon', [15])
-    vg.add('seed', [100, 200, 300])
+    vg.add('env_kwargs_render', [False])
+    vg.add('env_kwargs_observation_mode', ['key_point'])
+
+    vg.add('seed', [100])
+    vg.add('max_episode_length', [200])
 
     if not debug:
-        vg.add('collect_interval', [100])
+        vg.add('max_iters', [20])
+        vg.add('population_size', [1000])
+        vg.add('num_elites', [100])
+        vg.add('test_episodes', [10])
+        vg.add('use_mpc', [False])
         # Add possible vgs for non-debug purpose
         pass
     else:
-        vg.add('collect_interval', [1])
+        vg.add('max_iters', [1])
+        vg.add('population_size', [2])
+        vg.add('num_elites', [1])
+        vg.add('test_episodes', [2])
+        vg.add('use_mpc', [False])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))
