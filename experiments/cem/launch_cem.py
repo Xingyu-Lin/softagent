@@ -23,9 +23,9 @@ def main(mode, debug, dry):
     vg.add('max_episode_length', [200])
 
     if not debug:
-        vg.add('max_iters', [20])
-        vg.add('population_size', [1000])
-        vg.add('num_elites', [100])
+        vg.add('max_iters', [5])
+        vg.add('population_size', [100])
+        vg.add('num_elites', [10])
         vg.add('test_episodes', [10])
         vg.add('use_mpc', [False])
         # Add possible vgs for non-debug purpose
@@ -42,7 +42,7 @@ def main(mode, debug, dry):
 
     sub_process_popens = []
     for idx, vv in enumerate(vg.variants()):
-        while len(sub_process_popens) >= 2:
+        while len(sub_process_popens) >= 1:
             sub_process_popens = [x for x in sub_process_popens if x.poll() is None]
             time.sleep(10)
         if mode == 'seuss':
