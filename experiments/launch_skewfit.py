@@ -23,16 +23,16 @@ def main(mode, debug, dry):
             'horizon': 75,
             "num_variations": 200,
         },
-        # "PassWater": {
-        #     "observation_mode": 'point_cloud', 
-        #     "horizon": 75, 
-        #     "action_mode": 'direct', 
-        #     "deterministic": False, 
-        #     "render_mode":'fluid', 
-        #     "render": True, 
-        #     "headless": True,
-        #     "num_variations": 200,
-        # }
+        "PassWater": {
+            "observation_mode": 'point_cloud', 
+            "horizon": 75, 
+            "action_mode": 'direct', 
+            "deterministic": False, 
+            "render_mode":'fluid', 
+            "render": True, 
+            "headless": True,
+            "num_variations": 200,
+        }
     }
 
 
@@ -193,19 +193,19 @@ def main(mode, debug, dry):
         vg.add('seed', [100, 200, 300])
 
     else: # not for training, but just ensures there is no bug in the code
-        exp_prefix = "debug"
+        exp_prefix = "debug2"
         vg = VariantGenerator()
         mode = 'local'
-        skewfit_args["env_id"] = "PassWater"
-        skewfit_args['env_arg_dict'] = env_arg_dicts['PassWater']
-        skewfit_args['imsize'] = 84
-        skewfit_args['train_vae_variant']['vae_kwargs']['architecture'] = imsize84_default_architecture
-        skewfit_args['train_vae_variant']['representation_size'] = 4
+        skewfit_args["env_id"] = "PourWater"
+        skewfit_args['env_arg_dict'] = env_arg_dicts['PourWater']
+        skewfit_args['imsize'] = 128
+        skewfit_args['train_vae_variant']['vae_kwargs']['architecture'] = imsize128_default_architecture
+        skewfit_args['train_vae_variant']['representation_size'] = 32
         skewfit_args['skewfit_variant']['algo_kwargs']['batch_size'] = 10
         skewfit_args['skewfit_variant']['algo_kwargs']['num_trains_per_train_loop'] = 1
         skewfit_args['skewfit_variant']['algo_kwargs']['min_num_steps_before_training'] = 10
         skewfit_args['skewfit_variant']['algo_kwargs']['dump_policy_video_interval'] = 1
-        skewfit_args['skewfit_variant']['replay_buffer_kwargs']['max_size'] = int(100)
+        skewfit_args['skewfit_variant']['replay_buffer_kwargs']['max_size'] = int(1000)
         skewfit_args['train_vae_variant']['generate_vae_dataset_kwargs']['N'] = 5 
         vg.add('skewfit_kwargs', [skewfit_args])
         vg.add('seed', [100])
