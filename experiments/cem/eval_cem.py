@@ -5,9 +5,11 @@ from chester import logger
 import torch
 import os
 import copy
+import multiprocessing as mp
 
 
 def run_task(arg_vv, log_dir, exp_name):
+    mp.set_start_method('spawn')
     vv = arg_vv
     vv = update_env_kwargs(vv)
 
@@ -39,7 +41,7 @@ def run_task(arg_vv, log_dir, exp_name):
     obs_dim = env.observation_space.low.size
     action_dim = env.action_space.low.size
 
-    policy = CEMPolicy(env, env_class, env_kwargs, vv['use_mpc'], plan_horizon=vv['planning_horizon'], max_iters=vv['max_iters'],
+    policy = CEMPolicy(env, env_class, env_kwargs, vv['use_mpc'], plan_horizon=env.horizon, max_iters=vv['max_iters'],
                        population_size=vv['population_size'], num_elites=vv['num_elites'])
 
     # Run policy

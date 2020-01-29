@@ -72,7 +72,7 @@ class CEMPolicy(object):
         self.use_mpc = use_mpc
         self.plan_horizon, self.action_dim = plan_horizon, len(env.action_space.sample())
         self.action_buffer = []
-        self.rollout_worker = ParallelRolloutWorker(env_class, env_kwargs)
+        self.rollout_worker = ParallelRolloutWorker(env_class, env_kwargs, plan_horizon, self.action_dim)
 
         lower_bound = np.tile(env.action_space.low[None], [self.plan_horizon, 1]).flatten()
         upper_bound = np.tile(env.action_space.high[None], [self.plan_horizon, 1]).flatten()
