@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0125_planet'
+    exp_prefix = '0129_cem'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
     vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
@@ -18,18 +18,24 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
     vg.add('env_kwargs_observation_mode', ['key_point'])
-    vg.add('max_iters', [20])
-    vg.add('population_size', [1000])
-    vg.add('num_elites', [100])
-    vg.add('use_mpc', [True])
+
     vg.add('seed', [100])
     vg.add('max_episode_length', [200])
-    vg.add('test_episodes', [10])
 
     if not debug:
+        vg.add('max_iters', [20])
+        vg.add('population_size', [1000])
+        vg.add('num_elites', [100])
+        vg.add('test_episodes', [10])
+        vg.add('use_mpc', [False])
         # Add possible vgs for non-debug purpose
         pass
     else:
+        vg.add('max_iters', [1])
+        vg.add('population_size', [2])
+        vg.add('num_elites', [1])
+        vg.add('test_episodes', [2])
+        vg.add('use_mpc', [False])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))
