@@ -34,7 +34,7 @@ from rllab.viskit import core
 # import plotly.graph_objs as go
 
 
-def reload_data(data_path):
+def reload_data(data_paths):
     """
     Iterate through the data folder and organize each experiment into a list, with their progress data, hyper-parameters
     and also analyze all the curves and give the distinct hyper-parameters.
@@ -49,7 +49,7 @@ def reload_data(data_path):
                     to split the graph into multiple figures. Each element is a tuple (param, list_of_values_to_take).
     """
 
-    exps_data = copy.copy(core.load_exps_data([data_path], disable_variant=False, ignore_missing_keys=True))
+    exps_data = copy.copy(core.load_exps_data(data_paths, disable_variant=False, ignore_missing_keys=True))
     plottable_keys = copy.copy(sorted(list(set(flatten(list(exp.progress.keys()) for exp in exps_data)))))
     distinct_params = copy.copy(sorted(core.extract_distinct_params(exps_data)))
 
