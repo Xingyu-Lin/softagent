@@ -6,7 +6,7 @@ from torch import optim
 from torch.distributions import Normal
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
-from multiworld.core.image_env import normalize_image
+from softgym.core.image_env import normalize_image
 from rlkit.core import logger
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch import pytorch_util as ptu

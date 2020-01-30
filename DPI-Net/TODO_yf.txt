@@ -1,0 +1,9 @@
+1. write a controller.
+    - how is action used in the model?
+        current particle/shape velocity/pos ----action-on-shape---> next shape velocity/pos -> prepare input -> forward model 
+        -> next particle/shape vel/pos -> compare particle pos to give loss.
+
+        key is to make prepare input differentiable. 
+        There is also some preparation work in the forward model, need to make that differentiable either. 
+
+2. design the model structure and generate training data for sphere controlled cloth flattening. 

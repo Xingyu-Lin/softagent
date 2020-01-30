@@ -5,6 +5,8 @@ import numpy as np
 import rlkit.torch.vae.vae_schedules as vae_schedules
 from rlkit.launchers.skewfit_experiments import skewfit_full_experiment
 from rlkit.torch.vae.conv_vae import imsize48_default_architecture, imsize84_default_architecture, imsize128_default_architecture
+from softgym.registered_env import env_arg_dict as env_arg_dicts
+
 
 @click.command()
 @click.argument('mode', type=str, default='local')
@@ -12,28 +14,28 @@ from rlkit.torch.vae.conv_vae import imsize48_default_architecture, imsize84_def
 @click.option('--dry/--no-dry', default=False) # mainly for debug
 def main(mode, debug, dry):
     
-    env_arg_dicts = {
-        "PourWater": {
-            'observation_mode': 'point_cloud', # will be later wrapped by ImageEnv
-            'action_mode': 'direct',
-            'render_mode': 'fluid',
-            'deterministic': False,
-            'render': True,
-            'headless': True,
-            'horizon': 75,
-            "num_variations": 200,
-        },
-        "PassWater": {
-            "observation_mode": 'point_cloud', 
-            "horizon": 75, 
-            "action_mode": 'direct', 
-            "deterministic": False, 
-            "render_mode":'fluid', 
-            "render": True, 
-            "headless": True,
-            "num_variations": 200,
-        }
-    }
+    # env_arg_dicts = {
+    #     "PourWater": {
+    #         'observation_mode': 'point_cloud', # will be later wrapped by ImageEnv
+    #         'action_mode': 'direct',
+    #         'render_mode': 'fluid',
+    #         'deterministic': False,
+    #         'render': True,
+    #         'headless': True,
+    #         'horizon': 75,
+    #         "num_variations": 200,
+    #     },
+    #     "PassWater": {
+    #         "observation_mode": 'point_cloud', 
+    #         "horizon": 75, 
+    #         "action_mode": 'direct', 
+    #         "deterministic": False, 
+    #         "render_mode":'fluid', 
+    #         "render": True, 
+    #         "headless": True,
+    #         "num_variations": 200,
+    #     }
+    # }
 
 
     skewfit_args = dict(
@@ -69,9 +71,9 @@ def main(mode, debug, dry):
                 min_num_steps_before_training=10000,
                 vae_training_schedule=vae_schedules.custom_schedule_2,
                 oracle_data=False,
-                vae_save_period=50,
+                vae_save_period=20,
                 parallel_vae_train=False,
-                dump_policy_video_interval=50
+                dump_policy_video_interval=20
             ),
             twin_sac_trainer_kwargs=dict(
                 discount=0.99,
@@ -157,7 +159,7 @@ def main(mode, debug, dry):
     )
 
 
-    exp_prefix = '0125-pass-water-RIG-128'
+    exp_prefix = '0128-cloth-rope-RIG-128'
     if not debug:
         vg = VariantGenerator()
         assert skewfit_args['imsize'] == 128
@@ -166,7 +168,7 @@ def main(mode, debug, dry):
         import copy
         skewfit_argss = []
 
-        for env_id, env_arg_dict in env_arg_dicts.items():
+        for env_id in ['ClothManipulate', 'ClothDropGoal', 'RopeManipulate']:
             print("-" * 50, env_id, '-' * 50)
             # if skewfit_args['imsize'] == 84:
             #     for representation_size in [4, 16, 64]:
@@ -178,7 +180,8 @@ def main(mode, debug, dry):
             #             print("representation size {} power {}".format(representation_size, power))
             #             skewfit_argss.append(s_args)
 
-            for representation_size in [4]:
+            env_arg_dict = env_arg_dicts[env_id]
+            for representation_size in [32]:
                 for power in [0]:
                     s_args = copy.deepcopy(skewfit_args)
                     s_args['env_id'] = env_id
@@ -190,15 +193,15 @@ def main(mode, debug, dry):
                     skewfit_argss.append(s_args)
 
         vg.add('skewfit_kwargs', skewfit_argss)
-        vg.add('seed', [100, 200, 300])
+        vg.add('seed', [100, 200])
 
     else: # not for training, but just ensures there is no bug in the code
-        exp_prefix = "debug2"
+        exp_prefix = "debug1"
         vg = VariantGenerator()
         mode = 'local'
-        skewfit_args["env_id"] = "PourWater"
-        skewfit_args['env_arg_dict'] = env_arg_dicts['PourWater']
-        skewfit_args['imsize'] = 128
+        skewfit_args["env_id"] = "PassWaterGoal"
+        skewfit_args['env_arg_dict'] = env_arg_dicts['PassWaterGoal']
+        skewfit_args['imsize'] = 128    
         skewfit_args['train_vae_variant']['vae_kwargs']['architecture'] = imsize128_default_architecture
         skewfit_args['train_vae_variant']['representation_size'] = 32
         skewfit_args['skewfit_variant']['algo_kwargs']['batch_size'] = 10
