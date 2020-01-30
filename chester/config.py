@@ -39,7 +39,7 @@ REMOTE_HEADER = dict(seuss="""
 #SBATCH --ntasks-per-node=8
 #SBATCH --time=480:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=90G
+#SBATCH --mem=60G
 """.strip(), psc="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1

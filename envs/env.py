@@ -195,9 +195,9 @@ class SoftGymEnv(object):
         self.bit_depth = bit_depth
         self.image_dim = image_dim
 
-    def reset(self):
+    def reset(self, **kwargs):
         self.t = 0  # Reset internal timer
-        obs = self._env.reset()
+        obs = self._env.reset(**kwargs)
         if self.symbolic:
             return torch.tensor(obs, dtype=torch.float32)
         else:
@@ -302,8 +302,8 @@ class WrapperRlkit(object):
     def __init__(self, env):
         self._env = env
 
-    def reset(self):
-        obs = self._env.reset()
+    def reset(self, **kwargs):
+        obs = self._env.reset(**kwargs)
         return np.array(obs).flatten()
 
     def step(self, action, **kwargs):

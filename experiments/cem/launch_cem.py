@@ -13,7 +13,7 @@ def main(mode, debug, dry):
     exp_prefix = '0129_cem'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
+    vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
@@ -23,9 +23,9 @@ def main(mode, debug, dry):
     vg.add('max_episode_length', [200])
 
     if not debug:
-        vg.add('max_iters', [5])
-        vg.add('population_size', [100])
-        vg.add('num_elites', [10])
+        vg.add('max_iters', [20])
+        vg.add('population_size', [1000])
+        vg.add('num_elites', [100])
         vg.add('test_episodes', [10])
         vg.add('use_mpc', [False])
         # Add possible vgs for non-debug purpose
