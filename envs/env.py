@@ -203,12 +203,12 @@ class SoftGymEnv(object):
         else:
             return _images_to_observation(obs, self.bit_depth, self.image_dim)
 
-    def step(self, action):
+    def step(self, action, **kwargs):
         if not isinstance(action, np.ndarray):
             action = action.detach().numpy()
         reward = 0
         for k in range(self.action_repeat):
-            obs, reward_k, done, info = self._env.step(action)
+            obs, reward_k, done, info = self._env.step(action, **kwargs)
             reward += reward_k
             self.t += 1  # Increment internal timer
             done = done or self.t == self.max_episode_length
@@ -306,8 +306,8 @@ class WrapperRlkit(object):
         obs = self._env.reset()
         return np.array(obs).flatten()
 
-    def step(self, action):
-        obs, reward, done, info = self._env.step(action)
+    def step(self, action, **kwargs):
+        obs, reward, done, info = self._env.step(action, **kwargs)
         return np.array(obs).flatten(), reward, done, info
 
     def __getattr__(self, name):

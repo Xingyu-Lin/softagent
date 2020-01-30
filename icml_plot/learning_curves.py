@@ -19,31 +19,13 @@ def export_legend(legend, filename="legend.png"):
 
 def custom_series_splitter(x):
     params = x['flat_params']
-    return params['algorithm'] + '_' + params['env_kwargs.observation_mode']
-    # if 'use_ae_reward' in params and params['use_ae_reward']:
-    #     return 'AE'
-    # if 'use_latent_representation' in params and params['use_latent_representation'] is not None:
-    #     return params['use_latent_representation']
-    # if params['env_kwargs.use_true_reward']:
-    #     if 'filter' in params['her_replay_strategy']:
-    #         return 'Oracle+Filter'
-    #     else:
-    #         return 'Oracle'
-    # else:
-    #     if params['her_replay_strategy'] == 'balance_filter':
-    #         return 'Indicator+Balance+Filter'
-    #     if params['her_replay_strategy'] == 'balance' or params['her_replay_strategy'] == 'balances':
-    #         return 'Indicator+Balance'
-    #     if params['her_replay_strategy'] == 'HER_future_filter':
-    #         return 'Indicator+Filter'
-    #     if params['her_replay_strategy'] == 'balance_filter_mix':
-    #         return 'Indicator+Balance+Mix'
-    #     return 'Indicator'
+    if 'env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True:
+        return 'filtered'
+    else:
+        return params['algorithm'] + '_' + params['env_kwargs.observation_mode']
 
 
-dict_leg2col = {'planet_cam_rgb': 0, 'TD3_key_point': 1, 'TD3_cam_rgb': 2}
-ablation_legend = ['Oracle+Filter', 'Indicator+Filter', 'Indicator+Balance']
-non_ablation_legend = ['Oracle+Filter', 'Oracle']
+dict_leg2col = {'planet_cam_rgb': 0, 'TD3_key_point': 1, 'TD3_cam_rgb': 2, 'SAC_key_point': 3}
 save_path = './data/icml/'
 
 
@@ -66,18 +48,19 @@ def plot_all():
 
     plot_keys = ['info_final_performance']
     plot_keys_rlkit = ['evaluation/env_infos/final/performance Mean']
+    # plot_keys_rlkit = ['evaluation/Average Returns']
     plot_ylabels = ['Return']
-    plot_envs = ['PassWater', 'PourWater', 'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten']
+    plot_envs = ['PassWater', 'PourWater', 'RopeFlatten', 'ClothFlatten', 'ClothDrop', 'ClothFold']
     exps_data, plottable_keys, distinct_params = reload_data(data_path)
     group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
-    group_selectors, group_legends = filter_legend(group_selectors, group_legends, [])
+    group_selectors, group_legends = filter_legend(group_selectors, group_legends, ['filtered'])
     for (plot_key, plot_key_rlkit, plot_ylabel) in zip(plot_keys, plot_keys_rlkit, plot_ylabels):
         plt.figure(figsize=(24, 10))
         for plot_idx, env_name in enumerate(plot_envs):
             ax = plt.subplot('23' + str(plot_idx + 1))
 
             for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
-                if len(selector.where('env_name', env_name).extract()) ==0:
+                if len(selector.where('env_name', env_name).extract()) == 0:
                     continue
                 env_horizon = selector.where('env_name', env_name).extract()[0].params["env_kwargs"]["horizon"]
 
@@ -124,16 +107,10 @@ def plot_all():
             #         legobj.set_linewidth(7.0)
             #     export_legend(leg)
 
-            save_name = filter_save_name('learning_curves' + plot_key)
+            save_name = filter_save_name('learning_curves'+'_' + plot_key)
         plt.tight_layout()
         plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
 
 
 if __name__ == '__main__':
     plot_all()
-    # plot_state_learning()
-    # plot_visual_learning()
-    # plot_visual_robot_learning()
-    # plot_ablation()
-    # Temporary
-    # plot_fetch_slide()
