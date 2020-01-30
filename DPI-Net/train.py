@@ -175,7 +175,7 @@ elif args.env == 'FluidShake':
     args.outf = 'dump_FluidShake/' + args.outf
 
 elif args.env == 'PassWater':
-    args.n_rollout = 20 # 2000
+    args.n_rollout = 100 # 2000
 
     # object states:
     # [x, y, z, xdot, ydot, zdot]

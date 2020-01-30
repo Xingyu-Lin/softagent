@@ -260,14 +260,14 @@ class ConvVAE(GaussianLatentVAE):
                 # return torch.clamp(decoded, 0, 1), [torch.clamp(decoded, 0, 1), # clamp to [0, 1] as these are outputting normalized images.
                 #                                 torch.ones_like(decoded)]
 
-                tanh_decoded = torch.tanh(decoded) * 0.5 + 0.5
+                tanh_decoded = torch.tanh(decoded) * 0.5
                 return tanh_decoded, [tanh_decoded,
                                                 torch.ones_like(decoded)]
             else: # return also the unclamped value for debugging
                 # return torch.clamp(decoded, 0, 1), decoded, [torch.clamp(decoded, 0, 1), # clamp to [0, 1] as these are outputting normalized images.
                 #                                 torch.ones_like(decoded)]
 
-                tanh_decoded = torch.tanh(decoded) * 0.5 + 0.5
+                tanh_decoded = torch.tanh(decoded) * 0.5
                 return tanh_decoded, decoded, [tanh_decoded, 
                                                 torch.ones_like(decoded)]
         else:

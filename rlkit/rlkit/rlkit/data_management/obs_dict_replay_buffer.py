@@ -2,6 +2,7 @@ import numpy as np
 from gym.spaces import Dict, Discrete
 
 from rlkit.data_management.replay_buffer import ReplayBuffer
+from softgym.core.image_env import normalize_image, unormalize_image
 
 
 class ObsDictRelabelingBuffer(ReplayBuffer):
@@ -288,7 +289,7 @@ def preprocess_obs_dict(obs_dict):
     """
     for obs_key, obs in obs_dict.items():
         if 'image' in obs_key and obs is not None:
-            obs_dict[obs_key] = unnormalize_image(obs)
+            obs_dict[obs_key] = unormalize_image(obs)
     return obs_dict
 
 
@@ -301,12 +302,12 @@ def postprocess_obs_dict(obs_dict):
             obs_dict[obs_key] = normalize_image(obs)
     return obs_dict
 
+# use the functions in softgym.image_env
+# def normalize_image(image):
+#     assert image.dtype == np.uint8
+#     return np.float64(image) / 255.0
 
-def normalize_image(image):
-    assert image.dtype == np.uint8
-    return np.float64(image) / 255.0
 
-
-def unnormalize_image(image):
-    assert image.dtype != np.uint8
-    return np.uint8(image * 255.0)
+# def unnormalize_image(image):
+#     assert image.dtype != np.uint8
+#     return np.uint8(image * 255.0)

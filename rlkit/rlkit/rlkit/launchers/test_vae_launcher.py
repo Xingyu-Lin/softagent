@@ -1,5 +1,5 @@
 import time
-from multiworld.core.image_env import ImageEnv
+from softgym.core.image_env import ImageEnv
 from rlkit.core import logger
 from rlkit.envs.vae_wrapper import temporary_mode
 
@@ -186,7 +186,7 @@ def generate_vae_dataset(variant):
     non_presampled_goal_img_is_garbage = variant.get(
         'non_presampled_goal_img_is_garbage', None)
     tag = variant.get('tag', '')
-    from multiworld.core.image_env import ImageEnv, unormalize_image
+    from softgym.core.image_env import ImageEnv, unormalize_image
     import rlkit.torch.pytorch_util as ptu
     info = {}
     if dataset_path is not None:
@@ -306,7 +306,7 @@ def generate_vae_dataset(variant):
 
 
 def get_envs(variant, env = None): # YF
-    from multiworld.core.image_env import ImageEnv
+    from softgym.core.image_env import ImageEnv
     from rlkit.envs.vae_wrapper import VAEWrappedEnv
     from rlkit.util.io import load_local_or_remote_file
 

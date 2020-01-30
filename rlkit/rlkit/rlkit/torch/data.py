@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import Dataset, Sampler
 
 # TODO: move this to more reasonable place
-from rlkit.data_management.obs_dict_replay_buffer import normalize_image
+from softgym.core.image_env import normalize_image
 
 
 class ImageDataset(Dataset):

@@ -22,6 +22,7 @@ from utils import sample_control_RiceGrip, calc_shape_states_RiceGrip
 from utils import calc_box_init_FluidShake, calc_shape_states_FluidShake
 from softgym.registered_env import env_arg_dict as env_arg_dicts
 from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
+import copy
 
 SOFTGYM_ENVS = SOFTGYM_CUSTOM_ENVS.keys()
 
@@ -143,9 +144,13 @@ def gen_PyFleX(info):
 
     import pyflex
     if env not in SOFTGYM_ENVS: 
-        pyflex.init(True, True)
+        pyflex.init(False, True, 720, 720)
     else: ### TODO: generate env with env_id and env_kwargs
-        softgym_env = SOFTGYM_CUSTOM_ENVS[env](**env_arg_dicts[env])
+        tmp_args = copy.deepcopy(env_arg_dicts[env])
+        # tmp_args['headless'] = False
+        tmp_args['render_mode'] = 'particle'
+        tmp_args['camera_name'] = 'cam_2d'
+        softgym_env = SOFTGYM_CUSTOM_ENVS[env](**tmp_args)
 
     for i in range(n_rollout):
         print("{} / {}".format(i, n_rollout))
@@ -249,6 +254,7 @@ def gen_PyFleX(info):
             for j in range(time_step):
                 positions[j, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
                 action = softgym_env.action_space.sample()
+                # action = np.clip(action, a_min=-0.015, a_max=0.015)
                 softgym_env.step(action)
                 shape_states = pyflex.get_shape_states().reshape(-1, shape_state_dim)
 

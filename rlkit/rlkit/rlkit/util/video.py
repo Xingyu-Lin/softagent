@@ -9,6 +9,7 @@ import torchvision
 import torch
 from softgym.utils.visualization import save_numpy_as_gif
 from rlkit.envs.vae_wrapper import VAEWrappedEnv
+from softgym.core.image_env import unormalize_image
 
 
 def dump_video(
@@ -150,8 +151,12 @@ def get_image(goal, obs, recon_obs, imsize=84, pad_length=1, pad_color=255):
 
     # plt.show()
 
+    goal = unormalize_image(goal)
+    obs = unormalize_image(goal)
+    recon_obs = unormalize_image(goal)
+
     img = np.concatenate((goal, obs, recon_obs))
-    img = np.uint8(255 * img)
+    # img = np.uint8(255 * img)
     if pad_length > 0:
         img = add_border(img, pad_length, pad_color)
     return img

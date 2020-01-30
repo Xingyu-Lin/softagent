@@ -53,7 +53,7 @@ def generate_vae_dataset_from_params(
         vae_dataset_specific_env_kwargs=None,
         save_file_prefix=None,
 ):
-    from multiworld.core.image_env import ImageEnv, unormalize_image
+    from softgym.core.image_env import ImageEnv, unormalize_image
     import time
 
     assert oracle_dataset == True

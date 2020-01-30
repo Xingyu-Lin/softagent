@@ -24,6 +24,9 @@ from models import DPINet
 from utils import calc_box_init_FluidShake
 
 from data import SOFTGYM_ENVS
+from softgym.registered_env import env_arg_dict as env_arg_dicts
+from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
+import copy
 
 
 parser = argparse.ArgumentParser()
@@ -198,7 +201,7 @@ elif args.env == 'PassWater':
     args.relation_dim = 1
 
     args.n_instance = 1
-    args.time_step = 301
+    args.time_step = 75
     args.time_step_clip = 0
     args.n_stages = 2
 
@@ -392,6 +395,7 @@ for idx in range(len(infos)):
             s_gt[step, :, 10:] = data[2]
 
         positions = positions + velocities_nxt * args.dt
+        print("ground truth positions[0]: ", positions[0])
 
     # model rollout
     data_path = os.path.join(args.dataf, 'valid', str(infos[idx]), '0.h5')
@@ -502,9 +506,17 @@ for idx in range(len(infos)):
             center = boxes[box_idx][1]
             quat = boxes[box_idx][2]
             pyflex.add_box(halfEdge, center, quat)
+    
     elif args.env == 'PassWater':
-        # TODO: build the env using env_id and env_kwargs, also. set scene using current config idx
-        pass
+        tmp_args = copy.deepcopy(env_arg_dicts[args.env])
+        tmp_args['headless'] = False
+        tmp_args['render_mode'] = 'particle'
+        tmp_args['camera_name'] = 'cam_2d'
+        softgym_env = SOFTGYM_CUSTOM_ENVS[args.env](**tmp_args)
+        softgym_env.reset(config_idx)
+        pyflex.pop_box(1)
+        print("recorded n_particles {} env actual n_particles {}".format(n_particles, pyflex.get_n_particles()))
+
     elif args.env == 'ClothFlatten':
         import gym, softgym
         softgym.register_flex_envs()
@@ -513,19 +525,27 @@ for idx in range(len(infos)):
 
     for step in range(args.time_step - 1):
         print("ground truth render step: ", step)
-        if args.env == 'RiceGrip' or args.env == 'ClothFlatten':
-            pyflex.set_shape_states(s_gt[step])
-        elif args.env == 'FluidShake' or args.env == 'PassWater': # remove the front wall of the glass for rendering
-            pyflex.set_shape_states(s_gt[step, :-1])
-
-        mass = np.zeros((n_particles, 1))
+       
+        mass = np.ones((n_particles, 1))
         if args.env == 'RiceGrip':
             p = np.concatenate([p_gt[step, :n_particles, -3:], mass], 1)
         else:
             p = np.concatenate([p_gt[step, :n_particles], mass], 1)
 
-        pyflex.set_positions(p)
+        print(np.mean(p, axis=0))
+        pyflex.set_positions(p.copy())
+        # pyflex.step()
+        # p_after = pyflex.get_positions().reshape(-1, 4)
+        # if not np.all(p_after == p):
+        #     print("after step, particle positions do change!")
+        #     exit()
+        if args.env == 'RiceGrip' or args.env == 'ClothFlatten':
+            pyflex.set_shape_states(s_gt[step])
+        elif args.env == 'FluidShake' or args.env == 'PassWater': # remove the front wall of the glass for rendering
+            pyflex.set_shape_states(s_gt[step])
+
         pyflex.render(capture=1, path=os.path.join(des_dir, 'gt_%d.tga' % step))
+        time.sleep(0.1)
 
     ##### render for the predictions
     print("prediction rendering!")
@@ -533,7 +553,8 @@ for idx in range(len(infos)):
     if args.env not in SOFTGYM_ENVS:
         pyflex.set_scene(env_idx, scene_params, 0)
     else:
-        env.reset()
+        softgym_env.reset(config_idx)
+        pyflex.pop_box(1)
 
     if args.env == 'RiceGrip':
         pyflex.add_box(halfEdge, center, quat)
@@ -559,6 +580,7 @@ for idx in range(len(infos)):
 
         pyflex.set_positions(p)
         pyflex.render(capture=1, path=os.path.join(des_dir, 'pred_%d.tga' % step))
+        time.sleep(0.1)
 
 pyflex.clean()
 

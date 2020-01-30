@@ -1,5 +1,5 @@
 import time
-from multiworld.core.image_env import ImageEnv
+from softgym.core.image_env import ImageEnv
 from rlkit.core import logger
 from rlkit.envs.vae_wrapper import temporary_mode
 
@@ -23,10 +23,8 @@ import __main__ as main
 import torch
 from softgym.envs.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
 from softgym.envs.pass_water_multitask import PassWater1DGoalConditionedEnv
-SOFTGYM_CUSTOM_ENVS = {
-    'PourWater': PourWaterPosControlGoalConditionedEnv,
-    'PassWater': PassWater1DGoalConditionedEnv
-}
+from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
+from softgym.utils.normalized_env import normalize
 
 def skewfit_full_experiment(variant, log_dir, exp_prefix):
 
@@ -257,7 +255,7 @@ def generate_vae_dataset(variant):
     non_presampled_goal_img_is_garbage = variant.get(
         'non_presampled_goal_img_is_garbage', None)
     tag = variant.get('tag', '')
-    from multiworld.core.image_env import ImageEnv, unormalize_image
+    from softgym.core.image_env import ImageEnv, unormalize_image
     import rlkit.torch.pytorch_util as ptu
     info = {}
     if dataset_path is not None:
@@ -294,6 +292,7 @@ def generate_vae_dataset(variant):
                     print("building custom environments!")
                     print(env_kwargs)
                     env = SOFTGYM_CUSTOM_ENVS[env_id](**env_kwargs)
+                    env = normalize(env)
                 else:
                     env = gym.make(env_id)
                 # exit()
@@ -385,7 +384,7 @@ def generate_vae_dataset(variant):
 
 
 def get_envs(variant, env = None): # YF
-    from multiworld.core.image_env import ImageEnv
+    from softgym.core.image_env import ImageEnv
     from rlkit.envs.vae_wrapper import VAEWrappedEnv
     from rlkit.util.io import load_local_or_remote_file
 

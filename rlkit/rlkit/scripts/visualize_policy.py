@@ -16,10 +16,9 @@ import cv2
 import matplotlib as mpl
 # mpl.use('Agg')
 import matplotlib.pyplot as plt
+import os
 filename = str(uuid.uuid4())
-
-from softgym.envs.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
-SOFTGYM_CUSTOM_ENVS = {'PourWater': PourWaterPosControlGoalConditionedEnv}
+from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
 
 def batch_chw_to_hwc(images):
     rets = []
@@ -87,9 +86,10 @@ def simulate_policy(args, dir):
     max_path_length = variants['skewfit_variant']['max_path_length']
     env_name = variants['env_id']
 
-    # use_indicator_reward = variants['skewfit_variant']['replay_buffer_kwargs']['use_indicator_reward']
-    use_indicator_reward = False
-    algo_name = 'indicator' if use_indicator_reward else 'skewfit'
+    print(env_name)
+    print()
+
+    algo_name = "RIG"
     video_name = env_name + '_' + algo_name + '_' + str(seed) + '.gif'
     latent_plot_name = env_name + '_' + algo_name + '_' + str(seed) + '.png'
 
@@ -103,7 +103,7 @@ def simulate_policy(args, dir):
 
     vae = env.vae
     import softgym, gym
-    from multiworld.core.image_env import ImageEnv
+    from softgym.core.image_env import ImageEnv
     from rlkit.envs.vae_wrapper import VAEWrappedEnv
     softgym.register_flex_envs()
     # env = gym.make(env_name)
@@ -205,9 +205,18 @@ def simulate_policy(args, dir):
                          save_name=dir + latent_plot_name)
 
 def simulate_policy_recursive(args, dir):
-    policy_files = glob.glob(dir + '/**/params.pkl', recursive=True)
-    for policy_file in policy_files:
-        simulate_policy(args, osp.dirname(policy_file))
+    dirs = os.walk(dir)
+    subdirs = [x[0] for x in dirs]
+    print(subdirs)
+
+    # policy_files = glob.glob(dir + '/**/**/**/params.pkl', recursive=True)
+    # print(policy_files)
+    # exit()
+    for policy_file in subdirs:
+        if '--s' in policy_file:
+            # print(osp.dirname(policy_file))
+            print(policy_file)
+            simulate_policy(args, policy_file + '/')
 
 
 if __name__ == "__main__":
@@ -225,7 +234,7 @@ if __name__ == "__main__":
 
     # print(args)
     # exit()
-    if not args.non_recursive:
-        simulate_policy_recursive(args, args.dir)
-    else:
-        simulate_policy(args, args.dir)
+    # if not args.non_recursive:
+    # simulate_policy_recursive(args, args.dir)
+    # else:
+    simulate_policy(args, args.dir)
