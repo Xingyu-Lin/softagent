@@ -15,8 +15,10 @@ import datetime
 import dateutil.tz
 from tempfile import NamedTemporaryFile
 
-from chester import config
+from chester import config, config_ec2
+
 from chester.slurm import to_slurm_command
+from chester.utils_s3 import launch_ec2, s3_sync_code
 
 
 def query_yes_no(question, default="yes"):
@@ -331,7 +333,7 @@ def run_experiment_lite(
             del task["variant"]
         task["env"] = task.get("env", dict()) or dict()
 
-    if mode not in ["local", "local_singularity"] and not remote_confirmed and not dry:
+    if mode not in ["local", "local_singularity", "ec2"] and not remote_confirmed and not dry:
         remote_confirmed = query_yes_no(
             "Running in (non-dry) mode %s. Confirm?" % mode)
         if not remote_confirmed:
@@ -433,5 +435,28 @@ def run_experiment_lite(
                 os.system("ssh " + mode + " \'sbatch " + remote_script_name + "\'")  # Launch
             # Cleanup
             os.remove(script_name)
-    else:
-        raise NotImplementedError
+    elif mode == 'ec2':
+        query_yes_no('Confirm: Launching jobs to ec2')
+        # if docker_image is None:
+        #     docker_image = config.DOCKER_IMAGE
+        s3_code_path = s3_sync_code(config_ec2, dry=dry)
+        for task in batch_tasks:
+            task["remote_log_dir"] = osp.join(config_ec2.AWS_S3_PATH, exp_prefix.replace("_", "-"), task["exp_name"])
+            task["pre_commands"] = [". ./prepare.sh", 'time ./compile.sh']
+        launch_ec2(batch_tasks,
+                   exp_prefix=exp_prefix,
+                   docker_image=None,  # Currently not using docker
+                   python_command=python_command,
+                   script=script,
+                   aws_config=None,
+                   dry=dry,
+                   terminate_machine=True,
+                   use_gpu=use_gpu,
+                   code_full_path=s3_code_path,
+                   sync_s3_pkl=True,
+                   sync_s3_html=True,
+                   sync_s3_png=True,
+                   sync_s3_log=True,
+                   sync_log_on_termination=True,
+                   periodic_sync=True,
+                   periodic_sync_interval=15)

@@ -1,13 +1,19 @@
 import os.path as osp
 import os
 
-USE_GPU = False
+PROJECT_PATH = osp.abspath(osp.join(osp.dirname(__file__), '..'))
+
+AWS_NETWORK_INTERFACES = []
+
+AWS_BUCKET_REGION_NAME = 'us-east-2'
+
+MUJOCO_KEY_PATH = osp.expanduser("~/.mujoco")
+
+USE_GPU = True
 
 USE_TF = True
 
 AWS_REGION_NAME = "us-east-2"
-
-AWS_NETWORK_INTERFACES = []
 
 if USE_GPU:
     DOCKER_IMAGE = "dementrock/rllab3-shared-gpu"
@@ -16,21 +22,27 @@ else:
 
 DOCKER_LOG_DIR = "/tmp/expt"
 
+CODE_DIR = "/root/code/"
+
 AWS_S3_PATH = "s3://chester-softgym/rllab/experiments"
+
+EBS_OPTIMIZED = True
+
+AWS_EXTRA_CONFIGS = dict()
 
 AWS_CODE_SYNC_S3_PATH = "s3://chester-softgym/rllab/code"
 
 ALL_REGION_AWS_IMAGE_IDS = {
-    "ap-northeast-1": "ami-002f0167",
-    "ap-northeast-2": "ami-590bd937",
-    "ap-south-1": "ami-77314318",
-    "ap-southeast-1": "ami-1610a975",
-    "ap-southeast-2": "ami-9dd4ddfe",
-    "eu-central-1": "ami-63af720c",
-    "eu-west-1": "ami-41484f27",
-    "sa-east-1": "ami-b7234edb",
+    # "ap-northeast-1": "ami-002f0167",
+    # "ap-northeast-2": "ami-590bd937",
+    # "ap-south-1": "ami-77314318",
+    # "ap-southeast-1": "ami-1610a975",
+    # "ap-southeast-2": "ami-9dd4ddfe",
+    # "eu-central-1": "ami-63af720c",
+    # "eu-west-1": "ami-41484f27",
+    # "sa-east-1": "ami-b7234edb",
     "us-east-1": "ami-83f26195",
-    "us-east-2": "ami-66614603",
+    "us-east-2": "ami-0e63a1a8842443350",
     "us-west-1": "ami-576f4b37",
     "us-west-2": "ami-b8b62bd8"
 }
@@ -38,7 +50,7 @@ ALL_REGION_AWS_IMAGE_IDS = {
 AWS_IMAGE_ID = ALL_REGION_AWS_IMAGE_IDS[AWS_REGION_NAME]
 
 if USE_GPU:
-    AWS_INSTANCE_TYPE = "g2.2xlarge"
+    AWS_INSTANCE_TYPE = "p2.xlarge"
 else:
     AWS_INSTANCE_TYPE = "c4.4xlarge"
 
@@ -53,7 +65,7 @@ AWS_KEY_NAME = ALL_REGION_AWS_KEY_NAMES[AWS_REGION_NAME]
 
 AWS_SPOT = True
 
-AWS_SPOT_PRICE = '0.5'
+AWS_SPOT_PRICE = '1.0'
 
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY", None)
 
@@ -82,14 +94,13 @@ AWS_SECURITY_GROUP_IDS = ALL_REGION_AWS_SECURITY_GROUP_IDS[AWS_REGION_NAME]
 
 FAST_CODE_SYNC_IGNORES = [
     ".git",
+    "data",
     "data/local",
     "data/archive",
     "data/debug",
     "data/s3",
     "data/video",
-    "src",
     ".idea",
-    ".pods",
     "tests",
     "examples",
     "docs",
@@ -107,3 +118,4 @@ FAST_CODE_SYNC_IGNORES = [
 
 FAST_CODE_SYNC = True
 
+LABEL = ""

@@ -12,7 +12,7 @@ REMOTE_DIR = {
     'seuss': '/home/xlin3/Projects/softagent',
     'psc': '/home/xlin3/Projects/softagent',
     'nsh': '/home/xingyu/Projects/softagent',
-    'yertle':'/home/xingyu/Projects/softagent'
+    'yertle': '/home/xingyu/Projects/softagent'
 }
 
 REMOTE_MOUNT_OPTION = {
@@ -26,6 +26,7 @@ REMOTE_LOG_DIR = {
     # 'psc': os.path.join(REMOTE_DIR['psc'], "data")
     'psc': os.path.join('/mnt', "data"),
 }
+
 # PSC: https://www.psc.edu/bridges/user-guide/running-jobs
 # partition include [RM, RM-shared, LM, GPU]
 # TODO change cpu-per-task based on the actual cpus needed (on psc)
@@ -39,7 +40,7 @@ REMOTE_HEADER = dict(seuss="""
 #SBATCH --ntasks-per-node=8
 #SBATCH --time=480:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=90G
+#SBATCH --mem=60G
 """.strip(), psc="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1

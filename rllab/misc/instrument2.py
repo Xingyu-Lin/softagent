@@ -349,23 +349,23 @@ remote_confirmed = False
 
 
 def run_experiment_lite(
-        stub_method_call=None,
-        batch_tasks=None,
-        exp_prefix="experiment",
-        exp_name=None,
-        log_dir=None,
-        script="scripts/run_experiment_lite.py",
-        mode="local",
-        dry=False,
-        docker_image=None,
-        aws_config=None,
-        env=None,
-        variant=None,
-        use_gpu=False,
-        sync_s3_pkl=False,
-        confirm_remote=True,
-        terminate_machine=True,
-        **kwargs):
+  stub_method_call=None,
+  batch_tasks=None,
+  exp_prefix="experiment",
+  exp_name=None,
+  log_dir=None,
+  script="scripts/run_experiment_lite.py",
+  mode="local",
+  dry=False,
+  docker_image=None,
+  aws_config=None,
+  env=None,
+  variant=None,
+  use_gpu=False,
+  sync_s3_pkl=False,
+  confirm_remote=True,
+  terminate_machine=True,
+  **kwargs):
     """
     Serialize the stubbed method call and run the experiment using the specified mode.
     :param stub_method_call: A stubbed method call.
@@ -678,8 +678,8 @@ def upload_file_to_s3(script_content):
 
 
 def to_lab_kube_pod(
-        params, docker_image, code_full_path,
-        script='scripts/run_experiment.py', is_gpu=False
+  params, docker_image, code_full_path,
+  script='scripts/run_experiment.py', is_gpu=False
 ):
     """
     :param params: The parameters for the experiment. If logging directory parameters are provided, we will create

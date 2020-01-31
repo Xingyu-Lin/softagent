@@ -1,5 +1,7 @@
 from cem.cem import CEMPolicy
 from experiments.planet.train import update_env_kwargs
+from experiments.cem.record_cem import cem_make_gif
+from planet.utils import transform_info
 from envs.env import Env
 from chester import logger
 import torch
@@ -9,6 +11,8 @@ import os.path as osp
 import copy
 import multiprocessing as mp
 import json
+import numpy as np
+
 
 def run_task(arg_vv, log_dir, exp_name):
     mp.set_start_method('spawn')
@@ -28,6 +32,7 @@ def run_task(arg_vv, log_dir, exp_name):
         else:
             device = torch.device('cuda:0')
         torch.cuda.manual_seed(vv['seed'])
+
     # Dump parameters
     with open(osp.join(logger.get_dir(), 'variant.json'), 'w') as f:
         json.dump(vv, f, indent=2, sort_keys=True)
@@ -43,28 +48,46 @@ def run_task(arg_vv, log_dir, exp_name):
                   'env_kwargs': vv['env_kwargs']}
     env = env_class(**env_kwargs)
 
+    env_kwargs_render = copy.deepcopy(env_kwargs)
+    env_kwargs_render['env_kwargs']['render'] = True
+    env_render = env_class(**env_kwargs_render)
+
     policy = CEMPolicy(env, env_class, env_kwargs, vv['use_mpc'], plan_horizon=env.horizon, max_iters=vv['max_iters'],
                        population_size=vv['population_size'], num_elites=vv['num_elites'])
 
     # Run policy
-    initial_states, action_trajs, configs = [], [], []
+    initial_states, action_trajs, configs, all_infos = [], [], [], []
     for i in range(vv['test_episodes']):
+        logger.log('episode ' + str(i))
         obs = env.reset()
         initial_state = env.get_state()
         action_traj = []
+        infos = []
         for _ in range(env.horizon):
             action = policy.get_action(obs)
             action_traj.append(copy.copy(action))
-            obs, reward, _, _ = env.step(action)
+            obs, reward, _, info = env.step(action)
+            infos.append(info)
+        all_infos.append(infos)
         initial_states.append(initial_state.copy())
         action_trajs.append(action_traj.copy())
         configs.append(env.get_current_config().copy())
 
+    # Dump info
+    transformed_info = transform_info(all_infos)
+    for info_name in transformed_info:
+        logger.record_tabular('info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
+        logger.record_tabular('info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
+        logger.record_tabular('info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))
+    logger.dump_tabular()
+    # Dump trajectories
     traj_dict = {
         'initial_states': initial_states,
         'action_trajs': action_trajs,
         'configs': configs
     }
-
     with open(osp.join(log_dir, 'cem_traj.pkl'), 'wb') as f:
         pickle.dump(traj_dict, f)
+
+    # Dump video
+    cem_make_gif(env_render, initial_states, action_trajs, configs, logger.get_dir(), vv['env_name'] + '.gif')

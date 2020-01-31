@@ -46,7 +46,7 @@ def write_video(frames, title, path=''):
 
 def transform_info(all_infos):
     """ Input: All info is a nested list with the index of [episode][time]{info_key:info_value}
-        Output: transformed_infos is a diction with the index of [info_key][episode][time]
+        Output: transformed_infos is a dictionary with the index of [info_key][episode][time]
     """
     if len(all_infos) == 0:
         return []
