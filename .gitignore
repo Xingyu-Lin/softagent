@@ -123,3 +123,10 @@ dmypy.json
 
 # Results
 results/
+
+# DPI data
+DPI-Net/dump_*/
+DPI-Net/dump_*/
+
+test_*/
+imgs/

@@ -46,8 +46,9 @@ def dump_video(
         l = []
         for d in path['full_observations']:
             if is_vae_env:
-                recon = np.clip(env._reconstruct_img(d['image_observation']), 0,
-                                1)
+                # recon = np.clip(env._reconstruct_img(d['image_observation']), 0,
+                #                 1)
+                recon = env._reconstruct_img(d['image_observation'])
             else:
                 recon = d['image_observation']
 
@@ -152,8 +153,8 @@ def get_image(goal, obs, recon_obs, imsize=84, pad_length=1, pad_color=255):
     # plt.show()
 
     goal = unormalize_image(goal)
-    obs = unormalize_image(goal)
-    recon_obs = unormalize_image(goal)
+    obs = unormalize_image(obs)
+    recon_obs = unormalize_image(recon_obs)
 
     img = np.concatenate((goal, obs, recon_obs))
     # img = np.uint8(255 * img)

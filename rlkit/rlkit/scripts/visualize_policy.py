@@ -87,102 +87,26 @@ def simulate_policy(args, dir):
     env_name = variants['env_id']
 
     print(env_name)
-    print()
 
     algo_name = "RIG"
     video_name = env_name + '_' + algo_name + '_' + str(seed) + '.gif'
     latent_plot_name = env_name + '_' + algo_name + '_' + str(seed) + '.png'
 
     data = torch.load(osp.join(dir, 'params.pkl'))
-    policy = data['evaluation/policy']
+    policy = data['trainer/policy'] # stochastic policy
+    policy_determinisitic = data['evaluation/policy'] # deterministic policy
     env = data['evaluation/env']
+    max_path_length = env.horizon
     if not args.no_gpu:
-        print("no gpu!")
         set_gpu_mode(True, 0)
-        policy.stochastic_policy.cuda()
+        policy_determinisitic.stochastic_policy.cuda()
+        policy.cuda()
 
-    vae = env.vae
-    import softgym, gym
-    from softgym.core.image_env import ImageEnv
-    from rlkit.envs.vae_wrapper import VAEWrappedEnv
-    softgym.register_flex_envs()
-    # env = gym.make(env_name)
-    env_kwargs = variants['env_arg_dict']
-    # env_kwargs['headless'] = False # for debug usage
-    env = SOFTGYM_CUSTOM_ENVS[env_name](**env_kwargs)
-
-    imsize = variants.get('imsize', 48)
-    init_camera = variants.get('init_camera', None)
-    non_presampled_goal_img_is_garbage = variants['train_vae_variant']['generate_vae_dataset_kwargs'] .get(
-        'non_presampled_goal_img_is_garbage', None)
-    non_presampled_goal_img_is_garbage = False
-    # print("non-presampled-goal-img-is-garbage: ", non_presampled_goal_img_is_garbage)
-    # exit()
-    image_env = ImageEnv(
-                    env,
-                    imsize=imsize,
-                    init_camera=init_camera,
-                    transpose=True,
-                    normalize=True,
-                    non_presampled_goal_img_is_garbage=False,
-                )
-
-    env_variant = variants['skewfit_variant']
-    render = env_variant.get('render', False)
-    reward_params = env_variant.get("reward_params", dict())
-    vae_env = VAEWrappedEnv(
-                image_env,
-                vae,
-                imsize=image_env.imsize,
-                decode_goals=render,
-                render_goals=render,
-                render_rollouts=render,
-                reward_params=reward_params,
-                **env_variant.get('vae_wrapped_env_kwargs', {})
-            )
-
-    env = vae_env
+   
+    imsize = env.imsize
     env.goal_sampling_mode = 'reset_of_env'
     env.decode_goals = False
     env.reset()
-    # img_env = env.wrapped_env
-    # raw_env = env.wrapped_env.wrapped_env
-    # import cv2
-    # from matplotlib import pyplot as plt
-    # img_goal = img_env._img_goal
-    # print(img_goal.shape)
-    # plt.imshow(img_goal.reshape((imsize, imsize, 3)))
-    # plt.show()
-    # cv2.imshow("img goal", img_goal.reshape((imsize, imsize, 3)))
-    # cv2.waitKey(0)
-    # exit()
-
-    # print(env.goal_sampling_mode)
-    # # print(env.decode_goals)
-    # # env = env._wrapped_env
-
-    # # Debug reset images
-    # goal_imgs = []
-    # reconstruct_imgs = []
-    # for i in range(30):
-    #     obs = env.reset()
-    #     print("after reset", i)
-    #     goal_img = obs['image_desired_goal']
-    #     reconstruct_img = goal_img
-    #     # reconstruct_img = np.clip(env._reconstruct_img(goal_img), 0,1)
-    #     goal_img = get_image(goal_img)
-    #     reconstruct_img = get_image(reconstruct_img)
-    #     goal_imgs.append(copy.copy(goal_img))
-    #     reconstruct_imgs.append(copy.copy(reconstruct_img))
-    # save_goal_img = np.hstack(goal_imgs)
-    # save_recon_img = np.hstack(reconstruct_imgs)
-    # save_img = np.vstack([save_goal_img, save_recon_img])
-    # cv2.imwrite('./imgs/goal_images.png', save_img)
-    # # exit()
-    # # print(env)
-    # # print(env._goal_sampling_mode)
-    # # exit()
-
     print("Policy loaded")
 
     def rollout(*args, **kwargs):
@@ -194,7 +118,9 @@ def simulate_policy(args, dir):
     if args.video:
         print('dump video')
         cur_dir = osp.dirname(osp.abspath(__file__))
-        dump_video(env, policy, dir + video_name, rollout_function=rollout, imsize=imsize,
+        dump_video(env, policy, dir + "stochastic_" + video_name, rollout_function=rollout, imsize=imsize,
+                   horizon=max_path_length, rows=1, columns=10)
+        dump_video(env, policy_determinisitic, dir + "determinisitc_" +  video_name, rollout_function=rollout, imsize=imsize,
                    horizon=max_path_length, rows=1, columns=10)
 
     if args.latent_distance:
@@ -202,7 +128,10 @@ def simulate_policy(args, dir):
         cur_dir = osp.dirname(osp.abspath(__file__))
         plot_latent_dist(env, policy, rollout,
                          horizon=max_path_length,
-                         save_name=dir + latent_plot_name)
+                         save_name=dir + "stochastic_" + latent_plot_name)
+        plot_latent_dist(env, policy_determinisitic, rollout,
+                         horizon=max_path_length,
+                         save_name=dir + "determinisitc_" + latent_plot_name)
 
 def simulate_policy_recursive(args, dir):
     dirs = os.walk(dir)
@@ -234,7 +163,11 @@ if __name__ == "__main__":
 
     # print(args)
     # exit()
-    # if not args.non_recursive:
-    # simulate_policy_recursive(args, args.dir)
-    # else:
-    simulate_policy(args, args.dir)
+    import pyflex
+    headless, render, camera_width, camera_height = True, True, 720, 720
+    pyflex.init(headless, render, camera_width, camera_height)
+
+    if not args.non_recursive:
+        simulate_policy_recursive(args, args.dir)
+    else:
+        simulate_policy(args, args.dir)

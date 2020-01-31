@@ -11,7 +11,38 @@ from rlkit.envs.vae_wrapper import VAEWrappedEnv
 from rlkit.util.video import dump_video, dump_video_non_goal
 from os import path as osp
 import numpy as np
+from matplotlib import pyplot as plt
 
+def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./plot.png'):
+    '''
+    doc
+    '''
+    all_latent_achieved_goal = []
+    all_lateng_goal = []
+    for _ in range(N):
+        path = rollout_function(
+            env,
+            policy,
+            max_path_length=horizon,
+            render=False,
+        )
+
+        latent_achieved_goal = np.array([d['latent_achieved_goal'] for d in path['full_observations']])
+        latent_goal = np.array([d['latent_desired_goal'] for d in path['full_observations']])
+        all_latent_achieved_goal.append(latent_achieved_goal)
+        all_lateng_goal.append(latent_goal)
+    all_latent_achieved_goal = np.array(all_latent_achieved_goal)
+    all_lateng_goal = np.array(all_lateng_goal)
+    dist = np.linalg.norm(all_latent_achieved_goal - all_lateng_goal, axis=-1)
+    mean_dist = np.mean(dist, axis=0)
+    std_dist = np.std(dist, axis=0)
+
+    markers, caps, bars = plt.errorbar(list(range(horizon)), mean_dist, std_dist) #, colors[i], label = labels[i])
+    [bar.set_alpha(0.5) for bar in bars]
+    [cap.set_alpha(0.5) for cap in caps]
+    plt.xlabel('Episode time')
+    plt.ylabel('VAE distance to goal')
+    plt.savefig(save_name)
 
 def video_multitask_rollout(*args, **kwargs):
     return multitask_rollout(*args, **kwargs,
@@ -111,6 +142,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
 
             dump_path = logger.get_snapshot_dir()
             policy = self.trainer.policy
+            
             if isinstance(env, VAEWrappedEnv):  # indicates skewfit and multitask env
                 rollout_func = video_multitask_rollout
             else:
@@ -119,10 +151,24 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
             if hasattr(self.eval_env, 'decode_goals'):
                 dump_video(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
                            horizon=self.max_path_length, rows=2, columns=4)
+                video_name_2 = "{}_deterministic.gif".format(epoch)
+                dump_video(env, self.eval_data_collector._policy, osp.join(dump_path, video_name_2), rollout_function=rollout_func, imsize=imsize,
+                           horizon=self.max_path_length, rows=2, columns=4)
+
+                latent_distance_name1 = '{}_latent_distance'.format(epoch)
+                latent_distance_name2 = '{}_deterministic_latent_distance'.format(epoch)
+                plot_latent_dist(env, policy, save_name=osp.join(dump_path, latent_distance_name1), rollout_function=rollout_func, 
+                           horizon=self.max_path_length)
+                plot_latent_dist(env, self.eval_data_collector._policy, save_name=osp.join(dump_path, latent_distance_name2), rollout_function=rollout_func, 
+                           horizon=self.max_path_length)
+
                 self.eval_env.decode_goals = old_decode_goals
             else:
-                dump_video_non_goal(env, policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
+                dump_video_non_goal(env, self.expl_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
                                     horizon=self.max_path_length, rows=2, columns=4)
+                video_name_2 = "{}_deterministic.gif".format(epoch)
+                dump_video_non_goal(env, self.eval_data_collector._policy, osp.join(dump_path, video_name_2), rollout_function=rollout_func, imsize=imsize,
+                           horizon=self.max_path_length, rows=2, columns=4)
 
         non_discounted_returns = []
         policy = self.trainer.policy

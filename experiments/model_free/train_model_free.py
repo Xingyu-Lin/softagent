@@ -35,7 +35,7 @@ def run_task(arg_vv, log_dir, exp_name):
     else:
         device = torch.device('cpu')
 
-    env_symbolic = vv['env_kwargs']['observation_mode'] != 'cam_rgb'
+    env_symbolic = vv['env_kwargs']['observation_mode'] != 'cam_rgb' # symbolic means not using image obs
     env = WrapperRlkit(Env(vv['env_name'], env_symbolic, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'],
                            env_kwargs=vv['env_kwargs']))
     obs_dim = env.observation_space.low.size
