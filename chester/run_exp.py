@@ -331,7 +331,7 @@ def run_experiment_lite(
             del task["variant"]
         task["env"] = task.get("env", dict()) or dict()
 
-    if mode not in ["local", "local_singularity"] and not remote_confirmed and not dry:
+    if mode not in ["local", "local_singularity", "ec2"] and not remote_confirmed and not dry:
         remote_confirmed = query_yes_no(
             "Running in (non-dry) mode %s. Confirm?" % mode)
         if not remote_confirmed:

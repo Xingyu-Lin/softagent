@@ -58,6 +58,7 @@ def run_task(arg_vv, log_dir, exp_name):
     # Run policy
     initial_states, action_trajs, configs, all_infos = [], [], [], []
     for i in range(vv['test_episodes']):
+        logger.log('episode ' + str(i))
         obs = env.reset()
         initial_state = env.get_state()
         action_traj = []

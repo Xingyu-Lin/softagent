@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0129_cem'
+    exp_prefix = '0130_cem'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
     vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
@@ -23,7 +23,7 @@ def main(mode, debug, dry):
     vg.add('max_episode_length', [200])
 
     if not debug:
-        vg.add('max_iters', [20])
+        vg.add('max_iters', [10])
         vg.add('population_size', [1000])
         vg.add('num_elites', [100])
         vg.add('test_episodes', [10])
