@@ -11,16 +11,16 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0130_td3_key_point'
+    exp_prefix = '0131_model_free_cam_rgb'
     vg = VariantGenerator()
-    vg.add('env_name', ['PourWater']) #, 'PassWater', 'ClothDrop', 'ClothFlatten', 'ClothFold'])
+    vg.add('env_name', ['PourWater', 'PassWater', 'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['key_point'])
-    vg.add('algorithm', ['TD3'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
+    vg.add('algorithm', ['TD3', 'SAC'])
     vg.add('version', ['normal'])
     vg.add('layer_size', [256])
-    vg.add('replay_buffer_size', [int(1E6)]) # might be too small. for key point, we could store more, like 1e6.
-    vg.add('embedding_size', [1024]) # might need to change this, maybe too large for model-free size
+    vg.add('replay_buffer_size', [lambda env_kwargs_observation_mode: int(1E6) if env_kwargs_observation_mode == 'cam_rgb' else int(8E4)])
+    vg.add('embedding_size', [256])
     vg.add('image_dim', [128])
     vg.add('trainer_kwargs', [dict(discount=0.99,
                                    soft_target_tau=5e-3,
@@ -31,11 +31,11 @@ def main(mode, debug, dry):
                                    use_automatic_entropy_tuning=True,
                                    )])
     vg.add('max_episode_length', [200])
-    vg.add('seed', [100, 200])
+    vg.add('seed', [100, 200, 300, 400, 500])
 
     if not debug:
-        vg.add('algorithm_kwargs', [dict(num_epochs=3000,
-                                         num_eval_steps_per_epoch=5000,
+        vg.add('algorithm_kwargs', [dict(num_epochs=1000,
+                                         num_eval_steps_per_epoch=500,
                                          num_trains_per_train_loop=1000,
                                          num_expl_steps_per_train_loop=1000,
                                          min_num_steps_before_training=1000,
