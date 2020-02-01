@@ -34,7 +34,7 @@ def main(mode, debug, dry):
     vg.add('seed', [100, 200, 300, 400, 500])
 
     if not debug:
-        vg.add('algorithm_kwargs', [dict(num_epochs=1000,
+        vg.add('algorithm_kwargs', [dict(num_epochs=500,
                                          num_eval_steps_per_epoch=500,
                                          num_trains_per_train_loop=1000,
                                          num_expl_steps_per_train_loop=1000,
@@ -43,7 +43,7 @@ def main(mode, debug, dry):
                                          batch_size=256,
                                          dump_policy_video_interval=20)])
     else:
-        vg.add('algorithm_kwargs', [dict(num_epochs=3000,
+        vg.add('algorithm_kwargs', [dict(num_epochs=500,
                                          num_eval_steps_per_epoch=120,
                                          num_trains_per_train_loop=2,
                                          num_expl_steps_per_train_loop=120,
