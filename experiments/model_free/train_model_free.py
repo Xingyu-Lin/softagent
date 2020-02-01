@@ -100,8 +100,8 @@ def run_task(arg_vv, log_dir, exp_name):
             policy=policy,
         )
 
-        eval_path_collector = MdpPathCollector(env, policy, )
-        expl_path_collector = MdpPathCollector(env, exploration_policy, )
+        eval_path_collector = MdpPathCollector(env, policy, eval_flag=True)
+        expl_path_collector = MdpPathCollector(env, exploration_policy, eval_flag=False)
 
         replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
 

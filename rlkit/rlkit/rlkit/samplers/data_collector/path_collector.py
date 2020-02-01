@@ -13,6 +13,7 @@ class MdpPathCollector(PathCollector):
             max_num_epoch_paths_saved=None,
             render=False,
             render_kwargs=None,
+            eval_flag=False,
     ):
         if render_kwargs is None:
             render_kwargs = {}
@@ -25,6 +26,7 @@ class MdpPathCollector(PathCollector):
 
         self._num_steps_total = 0
         self._num_paths_total = 0
+        self._eval_flag = eval_flag
 
     def collect_new_paths(
             self,
@@ -34,6 +36,9 @@ class MdpPathCollector(PathCollector):
     ):
         paths = []
         num_steps_collected = 0
+
+        old_eval_flag = self._env.eval_flag
+        self._env.eval_flag = self._eval_flag
         while num_steps_collected < num_steps:
             max_path_length_this_loop = min(  # Do not go over num_steps
                 max_path_length,
@@ -44,6 +49,7 @@ class MdpPathCollector(PathCollector):
                 self._policy,
                 max_path_length=max_path_length_this_loop,
             )
+
             path_len = len(path['actions'])
             if (
                     path_len != max_path_length
@@ -53,6 +59,8 @@ class MdpPathCollector(PathCollector):
                 break
             num_steps_collected += path_len
             paths.append(path)
+
+        self._env.eval_flag = old_eval_flag
         self._num_paths_total += len(paths)
         self._num_steps_total += num_steps_collected
         self._epoch_paths.extend(paths)
@@ -94,6 +102,7 @@ class GoalConditionedPathCollector(PathCollector):
             render_kwargs=None,
             observation_key='observation',
             desired_goal_key='desired_goal',
+            eval_flag=False,
     ):
         if render_kwargs is None:
             render_kwargs = {}
@@ -105,6 +114,7 @@ class GoalConditionedPathCollector(PathCollector):
         self._epoch_paths = deque(maxlen=self._max_num_epoch_paths_saved)
         self._observation_key = observation_key
         self._desired_goal_key = desired_goal_key
+        self._eval_flag = eval_flag
 
         self._num_steps_total = 0
         self._num_paths_total = 0
@@ -117,6 +127,9 @@ class GoalConditionedPathCollector(PathCollector):
     ):
         paths = []
         num_steps_collected = 0
+
+        old_flag = self._env.eval_flag
+        self._env.eval_flag = self._eval_flag
         while num_steps_collected < num_steps:
             max_path_length_this_loop = min(  # Do not go over num_steps
                 max_path_length,
@@ -141,6 +154,8 @@ class GoalConditionedPathCollector(PathCollector):
                 break
             num_steps_collected += path_len
             paths.append(path)
+        
+        self._env.eval_flag = old_flag
         self._num_paths_total += len(paths)
         self._num_steps_total += num_steps_collected
         self._epoch_paths.extend(paths)

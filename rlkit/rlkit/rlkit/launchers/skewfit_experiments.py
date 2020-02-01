@@ -633,6 +633,7 @@ def skewfit_experiment(variant, env = None): # YF
         env,
         MakeDeterministic(policy),
         max_path_length,
+        eval_flag=True,
         observation_key=observation_key,
         desired_goal_key=desired_goal_key,
     )
@@ -643,6 +644,7 @@ def skewfit_experiment(variant, env = None): # YF
         max_path_length,
         observation_key=observation_key,
         desired_goal_key=desired_goal_key,
+        eval_flag=False,
     )
 
 
