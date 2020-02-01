@@ -306,19 +306,21 @@ class PlaNetAgent(object):
             logger.dump_tabular()
 
     def set_model_train(self):
-        """ Set model to train mode """
+        """ Set model and env to train mode """
         self.transition_model.train()
         self.observation_model.train()
         self.reward_model.train()
         if self.value_model is not None:
             self.value_model.train()
         self.encoder.train()
+        self.env.eval_flag = False
 
     def set_model_eval(self):
-        """ Set model to evaluation mode"""
+        """ Set model and env to evaluation mode"""
         self.transition_model.eval()
         self.observation_model.eval()
         self.reward_model.eval()
         if self.value_model is not None:
             self.value_model.eval()
         self.encoder.eval()
+        self.env.eval_flag = True
