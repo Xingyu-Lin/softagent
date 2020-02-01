@@ -213,6 +213,15 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         export PATH=/home/ubuntu/bin:/home/ubuntu/.local/bin:$PATH
     """)
     sio.write("""
+        export PATH=/home/ubuntu/miniconda3/bin:/usr/local/cuda/bin:$PATH
+    """)
+    sio.write("""
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/.mujoco/mujoco200/bin
+    """)
+    sio.write("""
+        echo $PATH
+    """)
+    sio.write("""
         export AWS_DEFAULT_REGION={aws_region}
     """.format(aws_region=config.AWS_BUCKET_REGION_NAME))  # add AWS_BUCKET_REGION_NAME=us-east-1 in your config.py
     sio.write("""
@@ -294,8 +303,12 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
                     done & echo log sync initiated
                 """.format(log_dir=log_dir, remote_log_dir=remote_log_dir))
         sio.write("""{command}""".format(command=to_local_command(params, python_command=python_command, script=script, use_gpu=use_gpu)))
-        sio.write("""aws s3 cp --recursive {log_dir} {remote_log_dir} """.format(log_dir=log_dir, remote_log_dir=remote_log_dir))
-        sio.write("""aws s3 cp /home/ubuntu/user_data.log {remote_log_dir}/stdout.log""".format(remote_log_dir=remote_log_dir))
+        sio.write("""
+        aws s3 cp --recursive {log_dir} {remote_log_dir}
+         """.format(log_dir=log_dir, remote_log_dir=remote_log_dir))
+        sio.write("""
+        aws s3 cp /home/ubuntu/user_data.log {remote_log_dir}/stdout.log
+        """.format(remote_log_dir=remote_log_dir))
 
     if terminate_machine:
         sio.write("""
@@ -323,7 +336,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             aws_secret_access_key=config.AWS_ACCESS_SECRET,
         )
 
-    if len(full_script) > 10000 or len(base64.b64encode(full_script.encode()).decode("utf-8")) > 10000:
+    print("len_full_script", len(full_script))
+    if len(full_script) > 16384 or len(base64.b64encode(full_script.encode()).decode("utf-8")) > 16384:
         # Script too long; need to upload script to s3 first.
         # We're being conservative here since the actual limit is 16384 bytes
         s3_path = upload_file_to_s3(full_script)
