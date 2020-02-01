@@ -304,6 +304,9 @@ def run_experiment_lite(
     global exp_count
     global remote_confirmed
 
+    if mode == 'ec2':
+        query_yes_no('Confirm: Launching jobs to ec2')
+
     for task in batch_tasks:
         call = task.pop("stub_method_call")
         if use_cloudpickle:
@@ -436,7 +439,6 @@ def run_experiment_lite(
             # Cleanup
             os.remove(script_name)
     elif mode == 'ec2':
-        query_yes_no('Confirm: Launching jobs to ec2')
         # if docker_image is None:
         #     docker_image = config.DOCKER_IMAGE
         s3_code_path = s3_sync_code(config_ec2, dry=dry)

@@ -43,6 +43,7 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
     plt.xlabel('Episode time')
     plt.ylabel('VAE distance to goal')
     plt.savefig(save_name)
+    plt.clf()
 
 def video_multitask_rollout(*args, **kwargs):
     return multitask_rollout(*args, **kwargs,
