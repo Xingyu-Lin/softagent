@@ -102,11 +102,11 @@ class PlaNetAgent(object):
             action.cpu() if isinstance(env, EnvBatcher) else action[0].cpu())  # Perform environment step (action repeats handled internally)
         return belief, posterior_state, action, next_observation, reward, done, info
 
-    def train(self, train_episode, experience_replay_path=None):
+    def train(self, train_epoch, experience_replay_path=None):
         logger.info('Warming up ...')
         self._init_replay_buffer(experience_replay_path)
         logger.info('Start training ...')
-        for episode in tqdm(range(self.train_episodes, train_episode), total=train_episode, initial=self.train_episodes):
+        for epoch in tqdm(range(train_epoch)):
             # Model fitting
             losses = []
             for _ in tqdm(range(self.vv['collect_interval'])):
@@ -233,19 +233,19 @@ class PlaNetAgent(object):
             logger.record_tabular('num_steps', self.train_steps)
 
             # Test model
-            if episode % self.vv['test_interval'] == 0:
+            if epoch % self.vv['test_interval'] == 0:
                 self.evaluate_model(eval_on_held_out=True)
                 self.evaluate_model(eval_on_held_out=False)
 
             # Checkpoint models
-            if episode % self.vv['checkpoint_interval'] == 0:
+            if epoch % self.vv['checkpoint_interval'] == 0:
                 torch.save(
                     {'transition_model': self.transition_model.state_dict(),
                      'observation_model': self.observation_model.state_dict(),
                      'reward_model': self.reward_model.state_dict(),
                      'value_model': self.value_model.state_dict() if self.value_model is not None else None,
                      'encoder': self.encoder.state_dict(),
-                     'optimiser': self.optimiser.state_dict()}, os.path.join(logger.get_dir(), 'models_%d.pth' % episode))
+                     'optimiser': self.optimiser.state_dict()}, os.path.join(logger.get_dir(), 'models_%d.pth' % epoch))
                 if self.vv['checkpoint_experience']:
                     torch.save(self.D,
                                os.path.join(logger.get_dir(), 'experience.pth'))  # Warning: will fail with MemoryError with large memory sizes

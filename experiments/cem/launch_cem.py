@@ -13,7 +13,7 @@ def main(mode, debug, dry):
     exp_prefix = '0130_cem'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
+    vg.add('env_name', ['PourWater', 'ClothDrop', 'PassWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
