@@ -461,6 +461,8 @@ def run_experiment_lite(
                    sync_s3_log=True,
                    sync_s3_gif=True,
                    sync_s3_mp4=True,
+                   sync_s3_pth=True,
+                   sync_s3_txt=True,
                    sync_log_on_termination=True,
                    periodic_sync=True,
                    periodic_sync_interval=15)
