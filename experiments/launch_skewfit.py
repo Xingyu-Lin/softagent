@@ -65,7 +65,7 @@ def main(mode, debug, dry):
             algo_kwargs=dict(
                 batch_size=1024,
                 num_epochs=1000,
-                num_eval_steps_per_epoch=500,
+                num_eval_steps_per_epoch=900,
                 num_expl_steps_per_train_loop=500, # how many env transitions to add to replay buffer before each new train loop.
                 num_trains_per_train_loop=1000, # epoch -> train loop -> num_trains_per_train_loop
                 min_num_steps_before_training=10000,
@@ -159,53 +159,49 @@ def main(mode, debug, dry):
     )
 
 
-    exp_prefix = '0129-all-env-except-cloth-fold-RIG-128'
-    if not debug:
-        vg = VariantGenerator()
-        assert skewfit_args['imsize'] == 128
-        print("imsize is: ", skewfit_args['imsize'])
+    exp_prefix = 'RIG-128-0201-all'
+    vg = VariantGenerator()
+    assert skewfit_args['imsize'] == 128
+    print("imsize is: ", skewfit_args['imsize'])
 
-        import copy
-        skewfit_argss = []
+    import copy
+    skewfit_argss = []
 
-        for env_id in ['ClothFoldGoal']:
-            print("-" * 50, env_id, '-' * 50)
-            env_arg_dict = env_arg_dicts[env_id]
-            for representation_size in [32]:
-                for power in [0]:
-                    s_args = copy.deepcopy(skewfit_args)
-                    s_args['env_id'] = env_id
-                    s_args['env_arg_dict'] = env_arg_dict
-                    s_args['train_vae_variant']['representation_size'] = representation_size
-                    s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
-                    s_args['skewfit_variant']['max_path_length'] = env_arg_dict['horizon']
-                    s_args['train_vae_variant']['algo_kwargs']['skew_config']['power'] = power
-                    print("representation size {} power {}".format(representation_size, power))
-                    skewfit_argss.append(s_args)
+    if debug:
+        env_list = ['RopeManipulate']
+    else:
+        env_list = ['RopeManipulate', "PourWaterGoal", "PassWaterGoal", "ClothDropGoal", "ClothManipulate", "ClothFoldGoal"]
+    for env_id in env_list:
+        print("-" * 50, env_id, '-' * 50)
+        env_arg_dict = env_arg_dicts[env_id]
+        for representation_size in [32]:
+            for power in [0]:
+                s_args = copy.deepcopy(skewfit_args)
+                s_args['env_id'] = env_id
+                s_args['env_arg_dict'] = env_arg_dict
+                s_args['train_vae_variant']['representation_size'] = representation_size
+                s_args['skewfit_variant']['replay_buffer_kwargs']['power'] = power
+                s_args['skewfit_variant']['max_path_length'] = env_arg_dict['horizon']
+                s_args['train_vae_variant']['algo_kwargs']['skew_config']['power'] = power
+                if debug:
+                    print("=" * 50, "debug", "=" * 50)
+                    s_args['skewfit_variant']['algo_kwargs']['batch_size'] = 10
+                    s_args['skewfit_variant']['algo_kwargs']['num_trains_per_train_loop'] = 1
+                    s_args['skewfit_variant']['algo_kwargs']['min_num_steps_before_training'] = 10
+                    s_args['skewfit_variant']['algo_kwargs']['dump_policy_video_interval'] = 1
+                    s_args['skewfit_variant']['replay_buffer_kwargs']['max_size'] = int(1000)
+                    s_args['train_vae_variant']['generate_vae_dataset_kwargs']['N'] = 5
 
-        vg.add('skewfit_kwargs', skewfit_argss)
-        vg.add('seed', [100, 200])
+                print("representation size {} power {}".format(representation_size, power))
+                skewfit_argss.append(s_args)
 
-    else: # not for training, but just ensures there is no bug in the code
-        exp_prefix = "debug1"
-        vg = VariantGenerator()
-        mode = 'local'
-        skewfit_args["env_id"] = "ClothFoldGoal"
-        skewfit_args['env_arg_dict'] = env_arg_dicts['ClothFoldGoal']
-        skewfit_args['imsize'] = 128    
-        skewfit_args['train_vae_variant']['vae_kwargs']['architecture'] = imsize128_default_architecture
-        skewfit_args['train_vae_variant']['representation_size'] = 32
-        skewfit_args['skewfit_variant']['algo_kwargs']['batch_size'] = 10
-        skewfit_args['skewfit_variant']['algo_kwargs']['num_trains_per_train_loop'] = 1
-        skewfit_args['skewfit_variant']['algo_kwargs']['min_num_steps_before_training'] = 10
-        skewfit_args['skewfit_variant']['algo_kwargs']['dump_policy_video_interval'] = 1
-        skewfit_args['skewfit_variant']['replay_buffer_kwargs']['max_size'] = int(1000)
-        skewfit_args['train_vae_variant']['generate_vae_dataset_kwargs']['N'] = 5 
-        skewfit_args['skewfit_variant']['max_path_length'] =skewfit_args['env_arg_dict']['horizon']
-
-        vg.add('skewfit_kwargs', [skewfit_args])
+    vg.add('skewfit_kwargs', skewfit_argss)
+    if debug:
         vg.add('seed', [100])
+    else:
+        vg.add('seed', [100, 200, 300, 400, 500])
 
+    print("num of envs: ", len(skewfit_argss))
     print('Number of configurations: ', len(vg.variants()))
 
     sub_process_popens = []

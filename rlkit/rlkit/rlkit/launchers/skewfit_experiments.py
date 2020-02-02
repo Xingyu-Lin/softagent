@@ -80,6 +80,7 @@ def skewfit_full_experiment(variant, log_dir, exp_prefix):
     full_experiment_variant_preprocess(variant)
     print("full_experiment_variant_preprocess Done. Begin train_vae_and_update_variant.")
     env = train_vae_and_update_variant(variant) # YF
+    env.seed(seed)
     print("skewfit train_vae_and_update_variant done. Begin skewfit experiments!")
     skewfit_experiment(variant, env) # YF
 
@@ -633,7 +634,16 @@ def skewfit_experiment(variant, env = None): # YF
         env,
         MakeDeterministic(policy),
         max_path_length,
-        eval_flag=True,
+        eval_flag=True, # whether the underlying env would use train init states or eval init states
+        observation_key=observation_key,
+        desired_goal_key=desired_goal_key,
+    )
+    expl_deterministic_path_collector = VAEWrappedEnvPathCollector(
+        variant['evaluation_goal_sampling_mode'],
+        env,
+        MakeDeterministic(policy),
+        max_path_length,
+        eval_flag=False,
         observation_key=observation_key,
         desired_goal_key=desired_goal_key,
     )
@@ -654,6 +664,7 @@ def skewfit_experiment(variant, env = None): # YF
         evaluation_env=env,
         exploration_data_collector=expl_path_collector,
         evaluation_data_collector=eval_path_collector,
+        explore_deterministic_data_collector=expl_deterministic_path_collector,
         replay_buffer=replay_buffer,
         vae=vae,
         vae_trainer=vae_trainer, # this trains the vae

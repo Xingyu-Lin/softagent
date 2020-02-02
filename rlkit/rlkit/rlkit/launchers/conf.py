@@ -40,7 +40,7 @@ HOME = os.getenv('HOME') if os.getenv('HOME') is not None else os.getenv("USERPR
 
 DIR_AND_MOUNT_POINT_MAPPINGS = [
     dict(
-        local_dir=join(HOME, '.mujoco/'),
+        local_dir='/root/.mujoco', #join(HOME, '.mujoco/'),
         mount_point='/root/.mujoco',
     ),
 ]

@@ -59,8 +59,9 @@ def run_task(arg_vv, log_dir, exp_name):
             policy = ConvPolicy(vv['embedding_size'], vv['image_dim'], [M, M], action_dim, TanhGaussianPolicy)
 
         eval_policy = MakeDeterministic(policy)
-        eval_path_collector = MdpPathCollector(env, eval_policy, )
-        expl_path_collector = MdpPathCollector(env, policy, )
+        eval_path_collector = MdpPathCollector(env, eval_policy, eval_flag=True)
+        expl_deterministic_path_collector = MdpPathCollector(env, eval_policy, eval_flag=False)
+        expl_path_collector = MdpPathCollector(env, policy, eval_flag=False)
 
         replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
 
@@ -101,6 +102,7 @@ def run_task(arg_vv, log_dir, exp_name):
         )
 
         eval_path_collector = MdpPathCollector(env, policy, eval_flag=True)
+        expl_deterministic_path_collector = MdpPathCollector(env, policy, eval_flag=False)
         expl_path_collector = MdpPathCollector(env, exploration_policy, eval_flag=False)
 
         replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
@@ -129,6 +131,7 @@ def run_task(arg_vv, log_dir, exp_name):
         evaluation_env=env,
         exploration_data_collector=expl_path_collector,
         evaluation_data_collector=eval_path_collector,
+        explore_deterministic_data_collector=expl_deterministic_path_collector,
         replay_buffer=replay_buffer,
         **vv['algorithm_kwargs']
     )
