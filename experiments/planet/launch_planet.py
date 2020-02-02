@@ -13,10 +13,7 @@ def main(mode, debug, dry):
     exp_prefix = '0125_planet'
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
-    if debug:
-        vg.add('env_name', ['RopeManipulate'])
-    else:
-        vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
+    vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_delta_reward', [True, False])
@@ -24,10 +21,7 @@ def main(mode, debug, dry):
     vg.add('train_episode', [2000])
     vg.add('planning_horizon', [24])
     vg.add('use_value_function', [False])
-    if debug:
-        vg.add('seed', [100])
-    else:
-        vg.add('seed', [100, 200, 300, 400, 500])
+    vg.add('seed', [100, 200])
 
     if not debug:
         vg.add('collect_interval', [100])

@@ -31,11 +31,11 @@ def main(mode, debug, dry):
                                    use_automatic_entropy_tuning=True,
                                    )])
     vg.add('max_episode_length', [200])
-    vg.add('seed', [100])
+    vg.add('seed', [100, 200, 300])
 
     if not debug:
         vg.add('algorithm_kwargs', [dict(num_epochs=500,
-                                         num_eval_steps_per_epoch=500,
+                                         num_eval_steps_per_epoch=900,
                                          num_trains_per_train_loop=1000,
                                          num_expl_steps_per_train_loop=1000,
                                          min_num_steps_before_training=1000,

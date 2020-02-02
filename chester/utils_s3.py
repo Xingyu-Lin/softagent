@@ -176,6 +176,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
                sync_s3_png=False,
                sync_s3_log=False,
                sync_s3_html=False,
+               sync_s3_mp4=False,
+               sync_s3_gif=False,
                sync_log_on_termination=True,
                periodic_sync=True, periodic_sync_interval=15):
     if len(params_list) == 0:
@@ -279,12 +281,15 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             include_pkl = " --include '*.pkl' " if sync_s3_pkl else " "
             include_log = " --include '*.log' " if sync_s3_log else " "
             include_html = " --include '*.html' " if sync_s3_html else " "
+            include_mp4 = " --include '*.mp4' " if sync_s3_mp4 else " "
+            include_gif = " --include '*.gif' " if sync_s3_gif else " "
             sio.write("""
                 while /bin/true; do
-                    aws s3 sync --exclude '*' {include_png} {include_pkl} {include_log} {include_html} --include '*.csv' --include '*.json' {log_dir} {remote_log_dir}
+                    aws s3 sync --exclude '*' {include_png} {include_pkl} {include_log} {include_html} {include_mp4} {include_gif} --include '*.csv' --include '*.json' {log_dir} {remote_log_dir}
                     sleep {periodic_sync_interval}
                 done & echo sync initiated""".format(include_png=include_png, include_pkl=include_pkl,
                                                      include_log=include_log, include_html=include_html,
+                                                     include_mp4=include_mp4, include_gif=include_gif,
                                                      log_dir=log_dir, remote_log_dir=remote_log_dir,
                                                      periodic_sync_interval=periodic_sync_interval))
             if sync_log_on_termination:
