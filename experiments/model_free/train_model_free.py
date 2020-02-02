@@ -21,7 +21,7 @@ def run_task(arg_vv, log_dir, exp_name):
     vv = update_env_kwargs(vv)
 
     # Configure logger
-    setup_logger(exp_prefix=exp_name, base_log_dir=log_dir, variant=vv, exp_id=0, seed=vv['seed'], snapshot_mode='last', snapshot_gap=10)
+    setup_logger(exp_prefix=exp_name, base_log_dir=log_dir, variant=vv, exp_id=0, seed=vv['seed'], snapshot_mode='gap_and_last', snapshot_gap=20)
 
     # Configure torch
     if torch.cuda.is_available():
@@ -100,8 +100,8 @@ def run_task(arg_vv, log_dir, exp_name):
             policy=policy,
         )
 
-        eval_path_collector = MdpPathCollector(env, policy, )
-        expl_path_collector = MdpPathCollector(env, exploration_policy, )
+        eval_path_collector = MdpPathCollector(env, policy, eval_flag=True)
+        expl_path_collector = MdpPathCollector(env, exploration_policy, eval_flag=False)
 
         replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
 

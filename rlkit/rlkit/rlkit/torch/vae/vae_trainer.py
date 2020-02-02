@@ -5,7 +5,7 @@ import torch
 from torch import optim
 from torch.distributions import Normal
 from torch.utils.data import DataLoader
-# from torchvision.utils import save_image
+from torchvision.utils import make_grid
 from softgym.core.image_env import normalize_image
 from rlkit.core import logger
 from rlkit.core.eval_util import create_stats_ordered_dict
@@ -34,7 +34,6 @@ def save_image(tensor, filename, nrow=8, padding=2,
     ndarr = grid.permute(1, 2, 0).cpu().numpy()
     ndarr = np.clip(np.floor((ndarr + 0.5) * 2 ** bit_depth) * 2 ** (8 - bit_depth), 0, 2 ** 8 - 1).astype(
         np.uint8)
-    # ndarr = grid.mul_(255).add_(0.5).clamp_(0, 255).permute(1, 2, 0).to('cpu', torch.uint8).numpy()
     im = Image.fromarray(ndarr)
     im.save(filename)
 
