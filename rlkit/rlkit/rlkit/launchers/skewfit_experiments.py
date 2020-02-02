@@ -47,8 +47,8 @@ def skewfit_full_experiment(variant, log_dir, exp_prefix):
         variant=variant,
         exp_id=0,
         seed=seed,
-        snapshot_mode='last',
-        snapshot_gap=1,
+        snapshot_mode='gap_and_last',
+        snapshot_gap=20,
         base_log_dir=base_log_dir,
         script_name=script_name,
     )
