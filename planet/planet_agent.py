@@ -86,7 +86,7 @@ class PlaNetAgent(object):
                     observation = next_observation
                     t += 1
                 self.D.append_episode(observations, actions, rewards, dones)
-                self.train_steps += t * self.vv['action_repeat']
+                self.train_steps += t
             self.train_episodes += self.vv['seed_episodes']
 
     def update_belief_and_act(self, env, belief, posterior_state, action, observation, explore=False):
@@ -205,7 +205,7 @@ class PlaNetAgent(object):
                     belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
                                                       torch.zeros(1, self.vv['state_size'], device=self.device), \
                                                       torch.zeros(1, self.env.action_size, device=self.device)
-                    pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
+                    pbar = tqdm(range(self.env.horizon))
                     for t in pbar:
                         belief, posterior_state, action, next_observation, reward, done, info = \
                             self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device), explore=True)
@@ -234,62 +234,8 @@ class PlaNetAgent(object):
 
             # Test model
             if episode % self.vv['test_interval'] == 0:
-                self.set_model_eval()
-                # Initialise parallelised test environments
-                with torch.no_grad():
-                    all_total_rewards = []
-                    all_infos = []
-                    all_frames, all_frames_reconstr = [], []
-                    for _ in range(self.vv['test_episodes']):
-                        frames, frames_reconstr, infos = [], [], []
-                        observation, total_reward, observation_reconstr = self.env.reset(), 0, []
-                        belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
-                                                          torch.zeros(1, self.vv['state_size'], device=self.device), \
-                                                          torch.zeros(1, self.env.action_size, device=self.device)
-                        pbar = tqdm(range(self.vv['max_episode_length'] // self.vv['action_repeat']))
-                        for t in pbar:
-                            belief, posterior_state, action, next_observation, reward, done, info = \
-                                self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device),
-                                                           explore=True)
-                            total_reward += reward
-                            infos.append(info)
-                            if not self.vv['symbolic_env']:  # Collect real vs. predicted frames for video
-                                frames.append(observation)
-                                frames_reconstr.append(self.observation_model(belief, posterior_state).cpu())
-                            observation = next_observation
-                            if done:
-                                pbar.close()
-                                break
-                        all_frames.append(frames)
-                        all_frames_reconstr.append(frames_reconstr)
-                        all_total_rewards.append(total_reward)
-                        all_infos.append(infos)
-
-                    all_frames = all_frames[:8]  # Only take the first 8 episodes to visualize
-                    all_frames_reconstr = all_frames_reconstr[:8]
-                    video_frames = []
-                    for i in range(len(all_frames[0])):
-                        frame = torch.cat([x[i] for x in all_frames])
-                        frame_reconstr = torch.cat([x[i] for x in all_frames_reconstr])
-                        video_frames.append(make_grid(torch.cat([frame, frame_reconstr], dim=3) + 0.5, nrow=4).numpy())
-
-                # Update and plot reward metrics (and write video if applicable) and save metrics
-                self.test_episodes += self.vv['test_episodes']
-
-                logger.record_tabular('test_episodes', self.test_episodes)
-                logger.record_tabular('test_rewards', np.mean(all_total_rewards))
-                transformed_info = transform_info(all_infos)
-                for info_name in transformed_info:
-                    print('info_name:', info_name)
-                    logger.record_tabular('info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
-                    logger.record_tabular('info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
-                    logger.record_tabular('info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))
-                if not self.vv['symbolic_env']:
-                    episode_str = str(self.train_episodes).zfill(len(str(train_episode)))
-                    write_video(video_frames, 'test_episode_%s' % episode_str, logger.get_dir())  # Lossy compression
-                    save_image(torch.as_tensor(video_frames[-1]),
-                               os.path.join(logger.get_dir(), 'test_episode_%s.png' % episode_str))
-                self.set_model_train()
+                self.evaluate_model(eval_on_held_out=True)
+                self.evaluate_model(eval_on_held_out=False)
 
             # Checkpoint models
             if episode % self.vv['checkpoint_interval'] == 0:
@@ -305,6 +251,77 @@ class PlaNetAgent(object):
                                os.path.join(logger.get_dir(), 'experience.pth'))  # Warning: will fail with MemoryError with large memory sizes
             logger.dump_tabular()
 
+    def evaluate_model(self, eval_on_held_out):
+        """
+        :param eval_on_train: If test on training variations of the environments or the test variations of the environment
+        :return:
+        """
+        if eval_on_held_out:
+            prefix = 'train_'
+        else:
+            prefix = 'eval_'
+
+        self.set_model_eval()
+        if eval_on_held_out:
+            self.env.eval_flag = True
+        # Initialise parallelised test environments
+        with torch.no_grad():
+            all_total_rewards = []
+            all_infos = []
+            all_frames, all_frames_reconstr = [], []
+            for _ in range(self.vv['test_episodes']):
+                frames, frames_reconstr, infos = [], [], []
+                observation, total_reward, observation_reconstr = self.env.reset(), 0, []
+                belief, posterior_state, action = torch.zeros(1, self.vv['belief_size'], device=self.device), \
+                                                  torch.zeros(1, self.vv['state_size'], device=self.device), \
+                                                  torch.zeros(1, self.env.action_size, device=self.device)
+                pbar = tqdm(range(self.env.horizon))
+                for t in pbar:
+                    belief, posterior_state, action, next_observation, reward, done, info = \
+                        self.update_belief_and_act(self.env, belief, posterior_state, action, observation.to(device=self.device),
+                                                   explore=True)
+                    total_reward += reward
+                    infos.append(info)
+                    if not self.vv['symbolic_env']:  # Collect real vs. predicted frames for video
+                        frames.append(observation)
+                        frames_reconstr.append(self.observation_model(belief, posterior_state).cpu())
+                    observation = next_observation
+                    if done:
+                        pbar.close()
+                        break
+                all_frames.append(frames)
+                all_frames_reconstr.append(frames_reconstr)
+                all_total_rewards.append(total_reward)
+                all_infos.append(infos)
+
+            all_frames = all_frames[:8]  # Only take the first 8 episodes to visualize
+            all_frames_reconstr = all_frames_reconstr[:8]
+            video_frames = []
+            for i in range(len(all_frames[0])):
+                frame = torch.cat([x[i] for x in all_frames])
+                frame_reconstr = torch.cat([x[i] for x in all_frames_reconstr])
+                video_frames.append(make_grid(torch.cat([frame, frame_reconstr], dim=3) + 0.5, nrow=4).numpy())
+
+        # Update and plot reward metrics (and write video if applicable) and save metrics
+        self.test_episodes += self.vv['test_episodes']
+
+        logger.record_tabular(prefix + 'test_episodes', self.test_episodes)
+        logger.record_tabular(prefix + 'test_rewards', np.mean(all_total_rewards))
+        transformed_info = transform_info(all_infos)
+        for info_name in transformed_info:
+            print('info_name:', info_name)
+            logger.record_tabular(prefix + 'info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
+            logger.record_tabular(prefix + 'info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
+            logger.record_tabular(prefix + 'info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))
+        if not self.vv['symbolic_env']:
+            episode_str = str(self.train_episodes).zfill(len(str(self.train_episodes)))
+            write_video(video_frames, prefix + 'test_episode_%s' % episode_str, logger.get_dir())  # Lossy compression
+            save_image(torch.as_tensor(video_frames[-1]),
+                       os.path.join(logger.get_dir(), prefix + 'test_episode_%s.png' % episode_str))
+        self.set_model_train()
+        if eval_on_held_out:
+            self.env.eval_flag = False
+
     def set_model_train(self):
         """ Set model and env to train mode """
         self.transition_model.train()
@@ -313,7 +330,6 @@ class PlaNetAgent(object):
         if self.value_model is not None:
             self.value_model.train()
         self.encoder.train()
-        self.env.eval_flag = False
 
     def set_model_eval(self):
         """ Set model and env to evaluation mode"""
@@ -323,4 +339,3 @@ class PlaNetAgent(object):
         if self.value_model is not None:
             self.value_model.eval()
         self.encoder.eval()
-        self.env.eval_flag = True

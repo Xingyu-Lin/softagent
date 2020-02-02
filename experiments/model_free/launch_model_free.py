@@ -31,7 +31,7 @@ def main(mode, debug, dry):
                                    use_automatic_entropy_tuning=True,
                                    )])
     vg.add('max_episode_length', [200])
-    vg.add('seed', [100, 200, 300, 400, 500])
+    vg.add('seed', [100])
 
     if not debug:
         vg.add('algorithm_kwargs', [dict(num_epochs=500,

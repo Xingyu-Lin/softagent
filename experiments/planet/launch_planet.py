@@ -26,8 +26,8 @@ def main(mode, debug, dry):
     if not debug:
         vg.add('collect_interval', [100])
         vg.add('test_interval', [10])
-        vg.add('test_episodes', [30])
-        vg.add('episodes_per_loop', [10])
+        vg.add('test_episodes', lambda env_name: [900 // env_arg_dict[env_name]['horizon']])
+        vg.add('episodes_per_loop', lambda env_name: [900 // env_arg_dict[env_name]['horizon']])
         # Add possible vgs for non-debug purpose
         pass
     else:

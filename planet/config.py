@@ -49,7 +49,6 @@ DEFAULT_PARAMS = {
     'symbolic_env': False,  # Whether the environment returns symbolic observation
     'bit_depth': 5,  # Image bit depth (quantisation)
     'action_repeat': 1,
-    'max_episode_length': 75,
 
     # Testing parameters
     'test_interval': 10,
