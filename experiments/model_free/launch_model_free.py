@@ -11,7 +11,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0131_model_free_cam_rgb'
+    exp_prefix = '0201_model_free_cam_rgb'
     vg = VariantGenerator()
     vg.add('env_name', ['PourWater', 'PassWater', 'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
@@ -19,7 +19,7 @@ def main(mode, debug, dry):
     vg.add('algorithm', ['TD3', 'SAC'])
     vg.add('version', ['normal'])
     vg.add('layer_size', [256])
-    vg.add('replay_buffer_size', [lambda env_kwargs_observation_mode: int(1E6) if env_kwargs_observation_mode == 'cam_rgb' else int(8E4)])
+    vg.add('replay_buffer_size', lambda env_kwargs_observation_mode: [int(8E4) if env_kwargs_observation_mode == 'cam_rgb' else int(1E6)])
     vg.add('embedding_size', [256])
     vg.add('image_dim', [128])
     vg.add('trainer_kwargs', [dict(discount=0.99,
