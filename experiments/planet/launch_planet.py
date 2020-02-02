@@ -18,7 +18,7 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_delta_reward', [True, False])
 
-    vg.add('train_episode', [2000])
+    vg.add('train_epoch', [2000])
     vg.add('planning_horizon', [24])
     vg.add('use_value_function', [False])
     vg.add('seed', [100, 200])
