@@ -27,6 +27,7 @@ def dump_video(
   subdirname="rollouts",
   imsize=84,
   num_channels=3,
+  heuristic_func=None,
 ):
     frames = []
     H = 3 * imsize
@@ -35,12 +36,15 @@ def dump_video(
     for i in range(N):
         # print(i)
         start = time.time()
-        path = rollout_function(
-            env,
-            policy,
-            max_path_length=horizon,
-            render=False,
-        )
+        if heuristic_func is None:
+            path = rollout_function(
+                env,
+                policy,
+                max_path_length=horizon,
+                render=False,
+            )
+        else:
+            path = heuristic_func(env)
         # print("after rollout")
         is_vae_env = isinstance(env, VAEWrappedEnv)
         l = []
