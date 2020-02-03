@@ -30,6 +30,9 @@ def get_generic_path_information(paths, stat_prefix=''):
     statistics.update(create_stats_ordered_dict(
         'Actions', actions, stat_prefix=stat_prefix
     ))
+    statistics.update(create_stats_ordered_dict(
+        'Abs Actions', np.abs(actions), stat_prefix=stat_prefix
+    ))
     statistics['Num Paths'] = len(paths)
     statistics[stat_prefix + 'Average Returns'] = get_average_returns(paths)
 

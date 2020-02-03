@@ -22,17 +22,18 @@ def main(mode, debug, dry):
     vg.add('replay_buffer_size', lambda env_kwargs_observation_mode: [int(8E4) if env_kwargs_observation_mode == 'cam_rgb' else int(1E6)])
     vg.add('embedding_size', [256])
     vg.add('image_dim', [128])
-    vg.add('trainer_kwargs', [dict(discount=0.99,
-                                   soft_target_tau=5e-3,
-                                   target_update_period=1,
-                                   policy_lr=3E-4,
-                                   qf_lr=3E-4,
-                                   reward_scale=1,
-                                   use_automatic_entropy_tuning=True,
-                                   )])
+    vg.add('trainer_kwargs', lambda algorithm: [dict(discount=0.99,
+                                                     soft_target_tau=5e-3,
+                                                     target_update_period=1,
+                                                     policy_lr=3E-4,
+                                                     qf_lr=3E-4,
+                                                     reward_scale=1,
+                                                     use_automatic_entropy_tuning=True,
+                                                     ) if algorithm == 'SAC' else dict(discount=0.99,
+                                                                                       policy_learning_rate=3e-5,
+                                                                                       qf_learning_rate=3e-5, )])
     vg.add('max_episode_length', [200])
     vg.add('seed', [100, 200, 300])
-
     if not debug:
         vg.add('algorithm_kwargs', [dict(num_epochs=500,
                                          num_eval_steps_per_epoch=900,
@@ -57,7 +58,7 @@ def main(mode, debug, dry):
 
     sub_process_popens = []
     for idx, vv in enumerate(vg.variants()):
-        while len(sub_process_popens) >= 2:
+        while len(sub_process_popens) >= 1:
             sub_process_popens = [x for x in sub_process_popens if x.poll() is None]
             time.sleep(10)
         if mode == 'seuss':

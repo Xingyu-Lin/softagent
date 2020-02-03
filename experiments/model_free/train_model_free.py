@@ -64,7 +64,6 @@ def run_task(arg_vv, log_dir, exp_name):
         expl_path_collector = MdpPathCollector(env, policy, eval_flag=False)
 
         replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
-
         trainer = SACTrainer(
             env=env,
             policy=policy,
@@ -106,14 +105,6 @@ def run_task(arg_vv, log_dir, exp_name):
         expl_path_collector = MdpPathCollector(env, exploration_policy, eval_flag=False)
 
         replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
-
-        # Remove SAC specific trainer kwargs
-        del vv['trainer_kwargs']['soft_target_tau']
-        del vv['trainer_kwargs']['target_update_period']
-        del vv['trainer_kwargs']['policy_lr']
-        del vv['trainer_kwargs']['qf_lr']
-        del vv['trainer_kwargs']['reward_scale']
-        del vv['trainer_kwargs']['use_automatic_entropy_tuning']
 
         trainer = TD3Trainer(
             policy=policy,
