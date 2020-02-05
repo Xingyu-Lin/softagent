@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0130_cem'
+    exp_prefix = '0204_cem'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
     vg.add('env_name', ['PourWater', 'ClothDrop', 'PassWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
@@ -19,14 +19,14 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_render', [False])
     vg.add('env_kwargs_observation_mode', ['key_point'])
 
-    vg.add('seed', [100])
+    vg.add('seed', [100, 200])
     vg.add('max_episode_length', [200])
 
     if not debug:
         vg.add('max_iters', [10])
         vg.add('population_size', [1000])
         vg.add('num_elites', [100])
-        vg.add('test_episodes', [10])
+        vg.add('test_episodes', [5])
         vg.add('use_mpc', [False])
         # Add possible vgs for non-debug purpose
         pass
