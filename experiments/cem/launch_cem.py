@@ -10,10 +10,13 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0130_cem'
+    exp_prefix = 'CEM-0203'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['PourWater', 'ClothDrop', 'PassWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
+    if not debug:
+        vg.add('env_name', ['PourWater', 'ClothDrop', 'PassWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
+    else:
+        vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
@@ -28,6 +31,7 @@ def main(mode, debug, dry):
         vg.add('num_elites', [100])
         vg.add('test_episodes', [10])
         vg.add('use_mpc', [False])
+        vg.add('plan_horizon', [50])
         # Add possible vgs for non-debug purpose
         pass
     else:
@@ -36,6 +40,7 @@ def main(mode, debug, dry):
         vg.add('num_elites', [1])
         vg.add('test_episodes', [2])
         vg.add('use_mpc', [False])
+        vg.add('plan_horizon', [10])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))
