@@ -285,8 +285,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             include_html = " --include '*.html' " if sync_s3_html else " "
             include_mp4 = " --include '*.mp4' " if sync_s3_mp4 else " "
             include_gif = " --include '*.gif' " if sync_s3_gif else " "
-            include_pth = " --include '*.mp4' " if sync_s3_pth else " "
-            include_txt = " --include '*.gif' " if sync_s3_txt else " "
+            include_pth = " --include '*.pth' " if sync_s3_pth else " "
+            include_txt = " --include '*.txt' " if sync_s3_txt else " "
             sio.write("""
                 while /bin/true; do
                     aws s3 sync --exclude '*' {include_png} {include_pkl} {include_log} {include_html} {include_mp4} {include_gif} {include_pth} {include_txt} --include '*.csv' --include '*.json' {log_dir} {remote_log_dir}
