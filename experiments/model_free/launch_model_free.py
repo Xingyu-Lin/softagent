@@ -13,7 +13,7 @@ from softgym.registered_env import env_arg_dict
 def main(mode, debug, dry):
     exp_prefix = '0205_sac_cloth_flatten_updated_cam_rgb'
     vg = VariantGenerator()
-    vg.add('env_name', ['Cloth'])
+    vg.add('env_name', ['ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['cam_rgb'])
     vg.add('algorithm', ['SAC'])

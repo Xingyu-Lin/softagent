@@ -10,10 +10,10 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0204_cem'
+    exp_prefix = '0205_cem_cloth_flatten'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['PourWater', 'ClothDrop', 'PassWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold'])
+    vg.add('env_name', ['ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
