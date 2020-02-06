@@ -52,7 +52,7 @@ def run_task(arg_vv, log_dir, exp_name):
     env_kwargs_render['env_kwargs']['render'] = True
     env_render = env_class(**env_kwargs_render)
 
-    policy = CEMPolicy(env, env_class, env_kwargs, vv['use_mpc'], plan_horizon=env.horizon, max_iters=vv['max_iters'],
+    policy = CEMPolicy(env, env_class, env_kwargs, vv['use_mpc'], plan_horizon=vv['plan_horizon'], max_iters=vv['max_iters'],
                        population_size=vv['population_size'], num_elites=vv['num_elites'])
 
     # Run policy

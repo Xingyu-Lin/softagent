@@ -28,6 +28,7 @@ def main(mode, debug, dry):
         vg.add('num_elites', [100])
         vg.add('test_episodes', [5])
         vg.add('use_mpc', [False])
+        vg.add('plan_horizon', [50])
         # Add possible vgs for non-debug purpose
         pass
     else:
@@ -36,6 +37,7 @@ def main(mode, debug, dry):
         vg.add('num_elites', [1])
         vg.add('test_episodes', [2])
         vg.add('use_mpc', [False])
+        vg.add('plan_horizon', [10])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))

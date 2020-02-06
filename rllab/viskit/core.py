@@ -251,6 +251,17 @@ class Selector(object):
 
 # Taken from plot.ly
 color_defaults = [
+    '#000000', # black
+    '#e69f00', # Orange
+    '#0071b2', # Blue
+    '#cc79a7', # Reddish purple
+    '#009e73', # Bluish green
+    '#d55e00', # vermillion
+    
+    # '#f0e442', # yellow 
+    '#56b3e9', # sky blue
+    
+
     '#1f77b4',  # muted blue
     '#ff7f0e',  # safety orange
     '#2ca02c',  # cooked asparagus green
