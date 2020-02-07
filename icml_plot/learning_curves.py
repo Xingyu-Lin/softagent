@@ -52,7 +52,8 @@ def custom_series_splitter(x):
             return params['algorithm'] + '_' + params['env_kwargs.observation_mode']
 
 
-dict_leg2col = {'planet_cam_rgb': 0, 'TD3_key_point': 1,  'SAC_key_point': 2, 'SAC_cam_rgb': 3, "RIG": 4, 'TD3_cam_rgb': 2,}
+dict_leg2col = {'planet_cam_rgb': 5, 'TD3_key_point': 1,  'SAC_key_point': 2, 'SAC_cam_rgb': 3, "RIG": 4, 
+    "Heuristic": 0, 'TD3_cam_rgb': 2,}
 save_path = './data/icml/'
 
 def get_shaded_curve_filter(selector, key, shade_type='variance', interval=10, average=True, horizon=None):
@@ -192,9 +193,10 @@ def plot_all():
 
                 color = core.color_defaults[dict_leg2col[legend]]
 
-                y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key, shade_type='median', )
+                shape = 'median'
+                y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key, shade_type=shape, )
                 if len(y) <= 1:  # Hack
-                    y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key_rlkit, shade_type='median' ,
+                    y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key_rlkit, shade_type=shape ,
                         horizon=env_horizon)
 
 
@@ -208,7 +210,14 @@ def plot_all():
                 if "Rope" in tmp_env_name:
                     y, y_lower, y_upper = -y, -y_lower, -y_upper
 
-                plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=2.0))
+                if "Drop" in tmp_env_name:
+                    ax.set_ylim(bottom = -20, top=-10)
+
+                if "Fold" in tmp_env_name:
+                    ax.set_ylim(bottom = -120, top=-25)
+
+                lw = 3.5
+                plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=lw))
                 ax.fill_between(x, y_lower, y_upper, interpolate=True, facecolor=color, linewidth=0.0,
                                 alpha=0.2)
 
@@ -218,7 +227,10 @@ def plot_all():
                     max_x_list = x
 
             # plot performance of heuristic policy
-            ax.hlines(expert_mean, xmin=0, xmax=max_x, color='red', linewidth=2.0, label='heuristic policy')
+            # ax.hlines(expert_mean, xmin=0, xmax=max_x, color='red', linewidth=3.0, label='Heuristic')
+            max_x = int(max_x)
+            color = core.color_defaults[dict_leg2col["Heuristic"]]
+            ax.plot(range(max_x), np.ones(max_x) * expert_mean, color=color, linewidth=lw, label='Heuristic')
             # expert_low = [expert_mean - expert_std for i in range(len(max_x_list))]
             # expert_high = [expert_mean + expert_std for i in range(len(max_x_list))]
             # ax.fill_between(max_x_list, expert_low, expert_high, interpolate=True, facecolor='red', linewidth=0.0,
@@ -245,7 +257,7 @@ def plot_all():
         # extrally store a legend
         # loc = 'best'
         # # ax = plt.subplot('231')
-        # leg = ax.legend(loc=loc, prop={'size': 16}, ncol=6, labels=group_legends, bbox_to_anchor=(5.02, 1.45))
+        # leg = ax.legend(loc=loc, prop={'size': 16}, ncol=6, labels=group_legends + ["Heuristic"], bbox_to_anchor=(5.02, 1.45))
         # leg.get_frame().set_linewidth(0.0)
         # for legobj in leg.legendHandles:
         #     legobj.set_linewidth(7.0)
