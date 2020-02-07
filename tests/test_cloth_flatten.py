@@ -20,7 +20,6 @@ def test_picker(num_picker=3, save_dir='./videos', script='manual'):
         deterministic=False,
         delta_reward=False,
         render_mode='cloth')
-
     imgs = []
     for _ in range(2):
         env.reset()

@@ -10,23 +10,23 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0205_cem_cloth_flatten'
+    exp_prefix = '0205_cem_cloth_fold'
     vg = VariantGenerator()
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothFlatten'])
+    vg.add('env_name', ['ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
     vg.add('env_kwargs_observation_mode', ['key_point'])
 
-    vg.add('seed', [100, 200])
+    vg.add('seed', [100, 200, 300, 400, 500, 600, 700, 900, 900, 1000])
     vg.add('max_episode_length', [200])
 
     if not debug:
         vg.add('max_iters', [10])
         vg.add('population_size', [1000])
         vg.add('num_elites', [100])
-        vg.add('test_episodes', [5])
+        vg.add('test_episodes', [1])
         vg.add('use_mpc', [False])
         vg.add('plan_horizon', [50])
         # Add possible vgs for non-debug purpose
