@@ -3,7 +3,6 @@ from chester.plotting.cplot import *
 from matplotlib.ticker import FormatStrFormatter
 import os.path as osp
 
-
 # colors = ["crimson", "purple", "gold"]
 # f = lambda m,c: plt.plot([],[],marker=m, color=c, ls="none")[0]
 # handles = [f("s", colors[i]) for i in range(3)]
@@ -20,13 +19,14 @@ expert_policy_mean = {
 }
 
 expert_policy_std = {
-    "ClothFold": 16.81, 
+    "ClothFold": 16.81,
     "PourWater": 3.2476477013360325,
     "ClothDrop": 3.453695976313334,
     "PassWater": 25.340062501810817,
     "RopeFlatten": 53.90255121006629,
     "ClothFlatten": 63.73237114254054
 }
+
 
 def export_legend(legend, filename="legend.png"):
     fig = legend.figure
@@ -44,17 +44,17 @@ def custom_series_splitter(x):
     if ('env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True):
         return 'filtered'
     else:
-        if 'RIG' in params['exp_name']: 
-            return "RIG" 
-        elif (params['algorithm']=='TD3' and params['env_kwargs.observation_mode']=='cam_rgb'):
+        if 'RIG' in params['exp_name']:
+            return "RIG"
+        elif (params['algorithm'] == 'TD3' and params['env_kwargs.observation_mode'] == 'cam_rgb'):
             return 'filtered'
         else:
             return params['algorithm'] + '_' + params['env_kwargs.observation_mode']
 
 
-dict_leg2col = {'planet_cam_rgb': 5, 'TD3_key_point': 1,  'SAC_key_point': 2, 'SAC_cam_rgb': 3, "RIG": 4, 
-    "Heuristic": 0, 'TD3_cam_rgb': 2,}
+dict_leg2col = {'planet_cam_rgb': 0, 'TD3_key_point': 1, 'SAC_key_point': 2, 'SAC_cam_rgb': 3, "RIG": 4, 'TD3_cam_rgb': 2, }
 save_path = './data/icml/'
+
 
 def get_shaded_curve_filter(selector, key, shade_type='variance', interval=10, average=True, horizon=None):
     """
@@ -72,20 +72,20 @@ def get_shaded_curve_filter(selector, key, shade_type='variance', interval=10, a
     num = int(len(progresses[0]) // interval)
     # print("len progresses {} interval {} num {}".format(len(progresses[0]), interval, num))
     ret = np.zeros((len(progresses), num))
-    progresses = np.asarray(progresses) * horizon if horizon is not None else np.asarray(progresses) 
+    progresses = np.asarray(progresses) * horizon if horizon is not None else np.asarray(progresses)
     # exit()
     for i in range(num):
         if average:
-            low = max(0, int(i*interval - interval / 2))
+            low = max(0, int(i * interval - interval / 2))
             high = min(progresses.shape[1], int(i * interval + 0.5 * interval))
             # print(np.nanmean(progresses[:, low: high], axis = 1).shape)
-            ret[:, i] = np.nanmean(progresses[:, low: high], axis = 1)
+            ret[:, i] = np.nanmean(progresses[:, low: high], axis=1)
             # exit()
         else:
             ret[:, i] = progresses[:, i * interval]
 
     if not average:
-        return list(np.nanmean(ret, axis = 0)), None, None
+        return list(np.nanmean(ret, axis=0)), None, None
 
     if shade_type == 'variance':
         means = np.nanmean(ret, axis=0)
@@ -108,6 +108,7 @@ def get_shaded_curve_filter(selector, key, shade_type='variance', interval=10, a
 
     return y, y_lower, y_upper
 
+
 def filter_interval(y, interval=10000, average=True):
     interval = int(interval)
     num = len(y) // interval
@@ -117,12 +118,13 @@ def filter_interval(y, interval=10000, average=True):
     y = np.asarray(y)
     for i in range(num):
         if average:
-            ret[i] = np.mean(y[max(0, i*interval - int(interval / 2)): min(i * interval + int(interval / 2), len(y))])
+            ret[i] = np.mean(y[max(0, i * interval - int(interval / 2)): min(i * interval + int(interval / 2), len(y))])
         else:
             ret[i] = y[i * interval]
 
     std = np.std(ret)
     return ret, ret - std, ret + std
+
 
 def filter_legend(group_selectors, group_legends, filtered_legends):
     combined_list = [(selector, legend) for (selector, legend) in zip(group_selectors, group_legends) if
@@ -136,21 +138,23 @@ def filter_nan(xs, *args):
     new_lists = [np.array(one_list)[non_nan_idx] for one_list in args]
     return np.array(xs)[non_nan_idx], new_lists
 
+
 # hardcode env horizons
 env_horizons = [75, 100, 75, 100, 15, 100]
 
+
 def plot_all():
-    data_path = [ './data/yufei_s3_data/PlaNet-0202', 
-    './data/yufei_s3_data/RIG-128-0202-all',
-                './data/yufei_s3_data/model-free-key-point-0202', 
-        './data/yufei_s3_data/model-free-key-point-0203-last-2-seeds', 
-        '/tmp/0201_model_free_cam_rgb/0201_model_free_cam_rgb',
-        './data/yufei_s3_data/model-free-key-point-0204-ClothFold',
-        './data/yufei_s3_data/RIG-128-0204-ClothFold',
-        './data/yufei_s3_data/PlaNet-0204-ClothFold',
-        './data/yufei_s3_data/model-free-key-point-0205-ClothFlatten',
-        './data/yufei_s3_data/PlaNet-0205-ClothFlatten',
-        ]
+    data_path = ['./data/yufei_s3_data/PlaNet-0202',
+                 './data/yufei_s3_data/RIG-128-0202-all',
+                 './data/yufei_s3_data/model-free-key-point-0202',
+                 './data/yufei_s3_data/model-free-key-point-0203-last-2-seeds',
+                 '/tmp/0201_model_free_cam_rgb/0201_model_free_cam_rgb',
+                 './data/yufei_s3_data/model-free-key-point-0204-ClothFold',
+                 './data/yufei_s3_data/RIG-128-0204-ClothFold',
+                 './data/yufei_s3_data/PlaNet-0204-ClothFold',
+                 './data/yufei_s3_data/model-free-key-point-0205-ClothFlatten',
+                 './data/yufei_s3_data/PlaNet-0205-ClothFlatten',
+                 ]
 
     plot_keys = ['eval_info_sum_performance']
     plot_keys_rlkit = ['evaluation/env_infos/performance Mean']
@@ -180,10 +184,10 @@ def plot_all():
             for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
                 if len(selector.where(key, tmp_env_name).extract()) == 0:
                     continue
-                if 'RIG' in selector._exps_data[-1]['flat_params']['exp_name']: #
+                if 'RIG' in selector._exps_data[-1]['flat_params']['exp_name']:  #
                     tmp_env_name = plot_goal_envs[plot_idx]
                     key = 'skewfit_kwargs.env_id'
-                    
+
                 # print("key is: ", key)
                 # print("tmp_env_name is: ", tmp_env_name)
                 if 'env_kwargs' in selector.where(key, tmp_env_name).extract()[0].params:
@@ -196,16 +200,15 @@ def plot_all():
                 shape = 'median'
                 y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key, shade_type=shape, )
                 if len(y) <= 1:  # Hack
-                    y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key_rlkit, shade_type=shape ,
-                        horizon=env_horizon)
-
+                    y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key_rlkit, shade_type='median',
+                                                                  horizon=env_horizon)
 
                 x, _, _ = get_shaded_curve_filter(selector.where(key, tmp_env_name), 'num_episodes', average=False)
                 if len(x) <= 1:  # Hack
                     x, _, _ = get_shaded_curve_filter(selector.where(key, tmp_env_name), 'exploration/num steps total', average=False)
                 else:
                     x = [ele * env_horizon for ele in x]
-                
+
                 y, [y_lower, y_upper, x] = filter_nan(y, y_lower, y_upper, x)
                 if "Rope" in tmp_env_name:
                     y, y_lower, y_upper = -y, -y_lower, -y_upper
@@ -244,15 +247,15 @@ def plot_all():
             if plot_idx + 1 > 3:
                 ax.set_xlabel('Timesteps')
 
-            if plot_idx == 0 or plot_idx == 3: # only plot y-label for the left-most sub figures 
+            if plot_idx == 0 or plot_idx == 3:  # only plot y-label for the left-most sub figures
                 ax.set_ylabel(plot_ylabel)
             ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
             axes = plt.gca()
 
             axes.set_xlim(left=0)
             plt.title(env_titles[plot_idx])
-           
-            save_name = filter_save_name('learning_curves'+'_' + plot_key)
+
+            save_name = filter_save_name('learning_curves' + '_' + plot_key)
 
         # extrally store a legend
         # loc = 'best'
