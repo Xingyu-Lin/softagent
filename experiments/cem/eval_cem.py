@@ -73,13 +73,20 @@ def run_task(arg_vv, log_dir, exp_name):
         action_trajs.append(action_traj.copy())
         configs.append(env.get_current_config().copy())
 
+        # Log for each episode
+        transformed_info = transform_info([infos])
+        for info_name in transformed_info:
+            logger.record_tabular('info_' + 'final_' + info_name, transformed_info[info_name][0, -1])
+            logger.record_tabular('info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][0, :]))
+            logger.record_tabular('info_' + 'sum_' + info_name, np.sum(transformed_info[info_name][0, :], axis=-1))
+        logger.dump_tabular()
+
     # Dump info
-    transformed_info = transform_info(all_infos)
-    for info_name in transformed_info:
-        logger.record_tabular('info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
-        logger.record_tabular('info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
-        logger.record_tabular('info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))
-    logger.dump_tabular()
+    # transformed_info = transform_info(all_infos)
+    # for info_name in transformed_info:
+    #     logger.record_tabular('info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
+    #     logger.record_tabular('info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
+    #     logger.record_tabular('info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))
     # Dump trajectories
     traj_dict = {
         'initial_states': initial_states,
