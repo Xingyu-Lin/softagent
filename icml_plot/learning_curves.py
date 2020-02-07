@@ -10,6 +10,24 @@ import os.path as osp
 # labels = colors
 # legend = plt.legend(handles, labels, loc=3, framealpha=1, frameon=False)
 
+expert_policy_mean = {
+    "ClothFold": -64.50,
+    "PourWater": 55.59863877422661,
+    "ClothDrop": -15.127672304436565,
+    "PassWater": -28.915380035466747,
+    "RopeFlatten": 310.184619798474,
+    "ClothFlatten": 150.50905745183715
+}
+
+expert_policy_std = {
+    "ClothFold": 16.81, 
+    "PourWater": 3.2476477013360325,
+    "ClothDrop": 3.453695976313334,
+    "PassWater": 25.340062501810817,
+    "RopeFlatten": 53.90255121006629,
+    "ClothFlatten": 63.73237114254054
+}
+
 def export_legend(legend, filename="legend.png"):
     fig = legend.figure
     fig.canvas.draw()
@@ -118,23 +136,23 @@ def filter_nan(xs, *args):
     return np.array(xs)[non_nan_idx], new_lists
 
 # hardcode env horizons
-env_horizons = [75, 100, 75, 100, 100, 15]
+env_horizons = [75, 100, 75, 100, 15, 100]
 
 def plot_all():
-    # data_path = ['./data/seuss/0125_planet', './data/seuss/0126_td3_key_point', './data/seuss/0127_td3_cam_rgb']
-    # data_path = ['./data/seuss/0125_planet', './data/seuss/0126_td3_key_point']
     data_path = [ './data/yufei_s3_data/PlaNet-0202', 
     './data/yufei_s3_data/RIG-128-0202-all',
                 './data/yufei_s3_data/model-free-key-point-0202', 
-        './data/yufei_s3_data/model-free-key-points-0203-last-2-seeds', 
-        '/tmp/0201_model_free_cam_rgb/0201_model_free_cam_rgb'
+        './data/yufei_s3_data/model-free-key-point-0203-last-2-seeds', 
+        '/tmp/0201_model_free_cam_rgb/0201_model_free_cam_rgb',
+        './data/yufei_s3_data/model-free-key-point-0204-ClothFold',
+        './data/yufei_s3_data/RIG-128-0204-ClothFold',
+        './data/yufei_s3_data/PlaNet-0204-ClothFold',
+        './data/yufei_s3_data/model-free-key-point-0205-ClothFlatten',
+        './data/yufei_s3_data/PlaNet-0205-ClothFlatten',
         ]
-    # data_path = ['./data/yufei_s3_data/a']
-    # data_path = ['./data/yufei_s3_data/RIG-128-0202-all']
 
     plot_keys = ['eval_info_sum_performance']
     plot_keys_rlkit = ['evaluation/env_infos/performance Mean']
-    # plot_keys_rlkit = ['evaluation/Average Returns']
     plot_ylabels = ['Return']
     plot_envs = ['PassWater', 'PourWater', 'RopeFlatten', 'ClothFlatten', 'ClothDrop', 'ClothFold']
     plot_goal_envs = ['PassWaterGoal', 'PourWaterGoal', 'RopeManipulate', 'ClothManipulate', 'ClothDropGoal', 'ClothFoldGoal']
@@ -143,6 +161,8 @@ def plot_all():
     exps_data, plottable_keys, distinct_params = reload_data(data_path)
     group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
     group_selectors, group_legends = filter_legend(group_selectors, group_legends, ['filtered'])
+    # print("group_legends: ", group_legends)
+    # exit()
     for (plot_key, plot_key_rlkit, plot_ylabel) in zip(plot_keys, plot_keys_rlkit, plot_ylabels):
         fig = plt.figure(figsize=(24, 10))
         plotted_lines = []
@@ -150,7 +170,12 @@ def plot_all():
             tmp_env_name = env_name
             ax = plt.subplot('23' + str(plot_idx + 1))
 
+            expert_mean = expert_policy_mean[env_name]
+            expert_std = expert_policy_std[env_name]
+
             key = 'env_name'
+            max_x = 0
+            max_x_list = []
             for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
                 if len(selector.where(key, tmp_env_name).extract()) == 0:
                     continue
@@ -163,11 +188,9 @@ def plot_all():
                 if 'env_kwargs' in selector.where(key, tmp_env_name).extract()[0].params:
                     env_horizon = selector.where(key, tmp_env_name).extract()[0].params["env_kwargs"]["horizon"]
                 else:
-                    pass
+                    env_horizon = env_horizons[plot_idx]
 
                 color = core.color_defaults[dict_leg2col[legend]]
-
-                plot_interval = 10000
 
                 y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, tmp_env_name), plot_key, shade_type='median', )
                 if len(y) <= 1:  # Hack
@@ -180,9 +203,6 @@ def plot_all():
                     x, _, _ = get_shaded_curve_filter(selector.where(key, tmp_env_name), 'exploration/num steps total', average=False)
                 else:
                     x = [ele * env_horizon for ele in x]
-
-                # print(x)
-                # print(y)
                 
                 y, [y_lower, y_upper, x] = filter_nan(y, y_lower, y_upper, x)
                 if "Rope" in tmp_env_name:
@@ -191,6 +211,18 @@ def plot_all():
                 plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=2.0))
                 ax.fill_between(x, y_lower, y_upper, interpolate=True, facecolor=color, linewidth=0.0,
                                 alpha=0.2)
+
+                # record the longest x
+                if x[-1] > max_x:
+                    max_x = x[-1]
+                    max_x_list = x
+
+            # plot performance of heuristic policy
+            ax.hlines(expert_mean, xmin=0, xmax=max_x, color='red', linewidth=2.0, label='heuristic policy')
+            # expert_low = [expert_mean - expert_std for i in range(len(max_x_list))]
+            # expert_high = [expert_mean + expert_std for i in range(len(max_x_list))]
+            # ax.fill_between(max_x_list, expert_low, expert_high, interpolate=True, facecolor='red', linewidth=0.0,
+            #     alpha=0.1)
 
             def y_fmt(x, y):
                 return str((np.round(x / 1000000.0, 1))) + 'M'
@@ -207,25 +239,10 @@ def plot_all():
 
             axes.set_xlim(left=0)
             plt.title(env_titles[plot_idx])
-
-            # if plot_idx == 0:
-            #     loc = 'best'
-            #     leg = ax.legend(loc=loc, prop={'size': 16}, ncol=1, labels=group_legends)
-            #     for legobj in leg.legendHandles:
-            #         legobj.set_linewidth(3.0)
-            
-            # if plot_idx == len(plot_envs) - 1:
-            #     leg = ax.legend(loc=loc, prop={'size': 16}, ncol=6, labels=group_legends, bbox_to_anchor=(2.1, 2.05))
-            #     leg.get_frame().set_linewidth(0.0)
-            #     for legobj in leg.legendHandles:
-            #         legobj.set_linewidth(3.0)
-            #     fig = leg.figure
-            #     fig.canvas.draw()
-            #     bbox = leg.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-
            
             save_name = filter_save_name('learning_curves'+'_' + plot_key)
 
+        # extrally store a legend
         # loc = 'best'
         # # ax = plt.subplot('231')
         # leg = ax.legend(loc=loc, prop={'size': 16}, ncol=6, labels=group_legends, bbox_to_anchor=(5.02, 1.45))
@@ -233,19 +250,6 @@ def plot_all():
         # for legobj in leg.legendHandles:
         #     legobj.set_linewidth(7.0)
         # export_legend(leg)
-
-        # legs = fig.legend(plotted_lines,     # The line objects
-        # # prop={'size': 16},
-        #     labels=group_legends,   # The labels for each line
-        #     loc="lower left",   # Position of legend
-        #     ncol=len(group_legends),
-        #     bbox_to_anchor=(0.02, 0.95),            
-        # )
-        # legs.get_frame().set_linewidth(0.0)
-
-
-        # for legobj in legs.legendHandles:
-        #     legobj.set_linewidth(5.0)
 
         plt.tight_layout()
         plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
