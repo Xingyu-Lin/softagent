@@ -14,11 +14,12 @@ def aws_sync(bucket_name, s3_log_dir, target_dir, args):
         inclus.append('"params.pkl"')
         exlus.remove('"*.pkl"')
 
-    for exc in exlus:
-        cmd += ' --exclude ' + exc
-    
-    for inc in inclus:
-        cmd += ' --include ' + inc
+    if not args.include_all:
+        for exc in exlus:
+            cmd += ' --exclude ' + exc
+        
+        for inc in inclus:
+            cmd += ' --include ' + inc
     
     print(cmd)
     # exit()
@@ -32,6 +33,7 @@ def main():
     parser.add_argument('--param', type=int, default=0, help='Exclude')
     parser.add_argument('--gif', type=int, default=0, help='Exclude')
     parser.add_argument('--png', type=int, default=0, help='Exclude')
+    parser.add_argument('--include_all', type=int, default=0, help='pull all data')
 
     args = parser.parse_args()
     s3_log_dir = "rllab/experiments/" + args.log_dir
