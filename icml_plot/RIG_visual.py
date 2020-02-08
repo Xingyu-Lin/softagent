@@ -27,6 +27,11 @@ font = {'size'   : 12}
 
 matplotlib.rc('font', **font)
 
+def get_particle_max_y():
+    import pyflex
+    pos = pyflex.get_positions().reshape((-1, 4))
+    return np.max(pos[:, 1])
+
 def batch_chw_to_hwc(images):
     rets = []
     for i in range(len(images)):
@@ -86,6 +91,43 @@ def heuristic_pour_water(env, ret_reward=False):
     else:
         return path, np.asarray(rewards)
 
+def heuristic_pass_water(env, ret_reward=False):
+    env.reset()
+    print("config id is: ", env.current_config_id)
+    
+    path = {'full_observations': []}
+    rewards = []
+
+    particle_y = get_particle_max_y()
+
+    # if np.abs(env.height - particle_y) > 0.2: # small water
+    #     print("small")
+    # elif np.abs(env.height - particle_y) <= 0.2 and np.abs(env.height - particle_y) > 0.1: # medium water:
+    #     print("medium")
+    # else:
+    #     print("large")
+
+    action_repeat = env.action_repeat
+    horizon = env.horizon
+    for i in range(horizon):
+        if np.abs(env.height - particle_y) > 0.2: # small water
+            action = np.array([0.13]) / action_repeat * 100
+        elif np.abs(env.height - particle_y) <= 0.2 and np.abs(env.height - particle_y) > 0.1: # medium water:
+            action = np.array([0.08]) / action_repeat * 100
+        else:
+            action = np.array([0.025]) / action_repeat * 100
+
+        if np.abs(env.glass_x - env.terminal_x) < 0.1:
+            action = np.array([0]) 
+    
+        obs, reward, _, info = env.step(action)
+        rewards.append(info['performance'])
+        path['full_observations'].append(obs)
+
+    if not ret_reward:
+        return path
+    else:
+        return path, np.asarray(rewards)
 
 def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./plot.png', heuristic_func=None):
     all_latent_achieved_goal = []
@@ -133,7 +175,7 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
     
     else:
         color = core.color_defaults[2]
-        line1 = ax.plot(list(range(horizon)), mean_dist, color=color, label='latent dist. \n to goal', linewidth=3) 
+        line1 = ax.plot(list(range(horizon)), -mean_dist, color=color, label='latent dist. \n to goal', linewidth=3) 
 
         twinax = ax.twinx()
         # print(rewards)
@@ -142,10 +184,12 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
 
         max_distance_idx = np.argmax(mean_dist)
 
-        twinax.vlines(x=5, ymin=0, ymax=1, linestyle='dashed', linewidth=0.4)
+        indices = [5, 55, 80] # pour water
+        indices = [5, 10, 70] # pass water
+        twinax.vlines(x=indices[0], ymin=0, ymax=1, linestyle='dashed', linewidth=0.6)
         twinax.vlines(x=max_distance_idx, ymin=0, ymax=1, linestyle='dashed', linewidth=0.4)
-        twinax.vlines(x=45, ymin=0, ymax=1, linestyle='dashed', linewidth=0.4)
-        twinax.vlines(x=80, ymin=0, ymax=1, linestyle='dashed', linewidth=0.4)
+        twinax.vlines(x=indices[1], ymin=0, ymax=1, linestyle='dashed', linewidth=0.6)
+        twinax.vlines(x=indices[2], ymin=0, ymax=1, linestyle='dashed', linewidth=0.6)
 
         # twinax.annotate(s='f1', xy=(5, 1.2))
         # twinax.annotate(s='f2', xy=(max_distance_idx + 0.1, 0.95))
@@ -154,12 +198,13 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
         ax3 = twinax.twiny()
         ax3.set_xlim(ax.get_xlim())
         move = 0
-        ax3.set_xticks([5 + move, max_distance_idx+ move, 45+ move, 80+ move])
+
+        ax3.set_xticks([indices[0] + move, max_distance_idx+ move, indices[1] + move, indices[2]+ move])
         ax3.set_xticklabels(['frame1', 'frame2', 'frame3', 'frame4'], rotation=15, ha='left')
 
 
         ax.set_xlabel('Time Step')
-        ax.set_ylabel('Latent Distacne to Goal')
+        ax.set_ylabel('Negative Latent Dist. to Goal')
         twinax.set_ylabel("GT Reward")
        
         lns = line1 + line2
@@ -184,13 +229,13 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
         for _ in range(4):
             imgs.append(torch.from_numpy(img))
 
-        for idx in [5, max_distance_idx, 45, 80]:
+        for idx in [indices[0], max_distance_idx, indices[1], indices[2]]:
             img = cv2.imread('./imgs/rollouts/0/{}_obs.png'.format(idx))
             img = img.astype(np.float64)
             img = img.transpose(2, 0, 1)
             imgs.append(torch.from_numpy(img))
         
-        for idx in [5, max_distance_idx, 45, 80]:
+        for idx in [indices[0], max_distance_idx, indices[1], indices[2]]:
             img = cv2.imread('./imgs/rollouts/0/{}_recons.png'.format(idx))
             img = img.astype(np.float64)
             img = img.transpose(2, 0, 1)
@@ -257,7 +302,7 @@ def simulate_policy(args, dir, heuristic):
         dump_video(env, policy_determinisitic, './videos/' + h + exp_name + "_determinisitc_" +  video_name, 
                     rollout_function=rollout, imsize=imsize, dirname_to_save_images='./imgs',
                    horizon=max_path_length, rows=1, columns=1 if not heuristic else 1,
-                   heuristic_func=heuristic_pour_water if heuristic else None)
+                   heuristic_func=heuristic_pass_water if heuristic else None)
 
     if args.latent_distance:
         print("plot_latent_dist")
@@ -268,7 +313,7 @@ def simulate_policy(args, dir, heuristic):
         plot_latent_dist(env, policy_determinisitic, rollout,
                          horizon=max_path_length, N=1 if heuristic else 10,
                          save_name='./imgs/' + exp_name + h + "_determinisitc_" + latent_plot_name, 
-                         heuristic_func=heuristic_pour_water if heuristic else None)
+                         heuristic_func=heuristic_pass_water if heuristic else None)
 
 def simulate_policy_recursive(args, dir, heuristic):
     dirs = os.walk(dir)

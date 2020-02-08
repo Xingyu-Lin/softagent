@@ -64,9 +64,9 @@ def main(mode, debug, dry):
             max_path_length=75,
             algo_kwargs=dict(
                 batch_size=1024,
-                num_epochs=1000,
+                num_epochs=500,
                 num_eval_steps_per_epoch=900,
-                num_expl_steps_per_train_loop=500, # how many env transitions to add to replay buffer before each new train loop.
+                num_expl_steps_per_train_loop=1000, # how many env transitions to add to replay buffer before each new train loop.
                 num_trains_per_train_loop=1000, # epoch -> train loop -> num_trains_per_train_loop
                 min_num_steps_before_training=10000,
                 vae_training_schedule=vae_schedules.custom_schedule_2,
@@ -159,7 +159,7 @@ def main(mode, debug, dry):
     )
 
 
-    exp_prefix = 'RIG-128-0201-all'
+    exp_prefix = 'RIG-128-0204-ClothFold'
     vg = VariantGenerator()
     assert skewfit_args['imsize'] == 128
     print("imsize is: ", skewfit_args['imsize'])
@@ -170,7 +170,7 @@ def main(mode, debug, dry):
     if debug:
         env_list = ['RopeManipulate']
     else:
-        env_list = ['RopeManipulate', "PourWaterGoal", "PassWaterGoal", "ClothDropGoal", "ClothManipulate", "ClothFoldGoal"]
+        env_list = ['ClothFoldGoal'] #'RopeManipulate', "PourWaterGoal", "PassWaterGoal", "ClothDropGoal", "ClothManipulate", "ClothFoldGoal"]
     for env_id in env_list:
         print("-" * 50, env_id, '-' * 50)
         env_arg_dict = env_arg_dicts[env_id]

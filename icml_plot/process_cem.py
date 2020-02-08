@@ -26,15 +26,34 @@ plot_envs = ['PassWater', 'PourWater', 'RopeFlatten', 'ClothFlatten', 'ClothDrop
 exps_data, plottable_keys, distinct_params = reload_data(data_path)
 group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
 
-cem_results = {}
+cem_results_mean = {}
+cem_results_std = {}
 
+print(group_legends)
+# exit()
 key = "env_name"
 for tmp_env_name in plot_envs:
+    print(tmp_env_name)
+    if tmp_env_name == "ClothFold":
+        continue
     for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
-        y, y_lower, y_upper = get_shaded_curve(selector.where(key, tmp_env_name), plot_keys[0], shade_type='median', )
-        print("{} {}".format(tmp_env_name, y))
-        print(np.mean(y))
-        y = np.mean(y)
-        cem_results[tmp_env_name] = y
+        progresses = selector.where(key, tmp_env_name)
+        exps = progresses.extract()
+        print(len(exps))
+        progresses = [exp.progress.get(plot_keys[0], np.array([np.nan])) for exp in progresses.extract()]
+        max_size = max(len(x) for x in progresses)
+        progresses = [np.concatenate([ps, np.ones(max_size - len(ps)) * np.nan]) for ps in progresses]
+        progresses = np.asarray(progresses)
+        print("{} {}".format(tmp_env_name, progresses))
+        mean = np.mean(progresses)
+        std = np.std(progresses)
+        
+        # print(np.mean(y))
+        # y = np.mean(y)
+        cem_results_mean[tmp_env_name] = mean
+        cem_results_std[tmp_env_name] = std
 
-print(cem_results)
+    print("=" * 50)
+
+print(cem_results_mean)
+print(cem_results_std)

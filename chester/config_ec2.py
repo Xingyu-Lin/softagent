@@ -95,6 +95,8 @@ AWS_SECURITY_GROUP_IDS = ALL_REGION_AWS_SECURITY_GROUP_IDS[AWS_REGION_NAME]
 FAST_CODE_SYNC_IGNORES = [
     ".git",
     "data/seuss",
+    "data/yufei_s3_data",
+    "data/icml"
     "data/local",
     "data/archive",
     "data/debug",
@@ -114,7 +116,10 @@ FAST_CODE_SYNC_IGNORES = [
     "scratch-notebooks",
     "conopt_root",
     "private/key_pairs",
-    "DPI-Net"
+    "DPI-Net",
+    "imgs/",
+    "imgs",
+    "videos"
 ]
 
 FAST_CODE_SYNC = True

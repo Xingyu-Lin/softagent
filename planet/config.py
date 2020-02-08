@@ -22,7 +22,7 @@ DEFAULT_PARAMS = {
     'learning_rate': 1e-3,
     'adam_epsilon': 1e-4,
     'experience_replay': None,  # Path to the saved experiences,
-    'experience_size': 1000000,  # Original implementation has an unlimited buffer size, but 1 million is the max experience collected anyway
+    'experience_size': 80000,  # Original implementation has an unlimited buffer size, but 1 million is the max experience collected anyway
     'seed_episodes': 5,
     'action_noise': 0.3,
 

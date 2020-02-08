@@ -27,6 +27,9 @@ expert_policy_std = {
     "ClothFlatten": 63.73237114254054
 }
 
+RIG_fold_epoch_median =  [136.05282512954537, 114.24484040189607, 122.45100888645725, 148.31479379907105, 111.6825752511653, 130.43628585954556, 111.14634396673293, 114.12847153545995, 141.39887000497384, 119.44937511859125, 117.11791536075664, 128.97492191648053, 104.06639409162923]
+RIG_fold_epoch_lower =  [124.06683471324945, 112.78077397479451, 119.28894079604495, 134.83064717436523, 108.17928487690244, 129.5258304051843, 110.68422970554931, 113.39886249156423, 114.43859792595299, 117.72401864323471, 114.89675582091418, 128.30487727976484, 101.61799290375731]
+RIG_fold_epoch_upper =  [148.48379799922128, 116.32339466402811, 125.28292749806158, 154.97999398544886, 164.74327856672616, 134.8218171579951, 120.1386075610645, 139.39160222721756, 142.0123297613904, 124.20580895949601, 132.54358399332386, 131.27656762626066, 116.26701665821425]
 
 def export_legend(legend, filename="legend.png"):
     fig = legend.figure
@@ -35,24 +38,28 @@ def export_legend(legend, filename="legend.png"):
     fig.savefig(filename, dpi="figure", bbox_inches=bbox)
 
 
+algo_mapping = {
+    'planet_cam_rgb': 'planet',
+    'TD3_key_point': 'TD3_feature',
+    'SAC_key_point': 'SAC_feature',
+    'SAC_cam_rgb': 'SAC_RGB',
+    'RIG': 'RIG'
+}
 def custom_series_splitter(x):
     params = x['flat_params']
-    # print("-" * 50)
-    # print(params)
-    # print("-" * 50)
-    # exit()
-    if ('env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True):
+    if ('env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True) \
+      or ('algorithm' in params and 'CEM' in params['algorithm']):
         return 'filtered'
     else:
         if 'RIG' in params['exp_name']:
-            return "RIG"
+            ret = "RIG"
         elif (params['algorithm'] == 'TD3' and params['env_kwargs.observation_mode'] == 'cam_rgb'):
             return 'filtered'
         else:
-            return params['algorithm'] + '_' + params['env_kwargs.observation_mode']
+            ret = params['algorithm'] + '_' + params['env_kwargs.observation_mode']
+        return algo_mapping[ret]
+dict_leg2col = {'planet': 5, 'TD3_feature': 1, 'SAC_feature': 2, 'SAC_RGB': 3, "RIG": 4, "UpperBound": 0, "Heuristic": 6}
 
-
-dict_leg2col = {'planet_cam_rgb': 0, 'TD3_key_point': 1, 'SAC_key_point': 2, 'SAC_cam_rgb': 3, "RIG": 4, 'TD3_cam_rgb': 2, }
 save_path = './data/icml/'
 
 
@@ -166,6 +173,7 @@ def plot_all():
     exps_data, plottable_keys, distinct_params = reload_data(data_path)
     group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
     group_selectors, group_legends = filter_legend(group_selectors, group_legends, ['filtered'])
+
     # print("group_legends: ", group_legends)
     # exit()
     for (plot_key, plot_key_rlkit, plot_ylabel) in zip(plot_keys, plot_keys_rlkit, plot_ylabels):
@@ -184,10 +192,13 @@ def plot_all():
             for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
                 if len(selector.where(key, tmp_env_name).extract()) == 0:
                     continue
-                if 'RIG' in selector._exps_data[-1]['flat_params']['exp_name']:  #
+
+                RIG = False
+                if 'RIG' in selector._exps_data[-1]['flat_params']['exp_name']: #
                     tmp_env_name = plot_goal_envs[plot_idx]
                     key = 'skewfit_kwargs.env_id'
-
+                    RIG = True
+                    
                 # print("key is: ", key)
                 # print("tmp_env_name is: ", tmp_env_name)
                 if 'env_kwargs' in selector.where(key, tmp_env_name).extract()[0].params:
@@ -218,6 +229,18 @@ def plot_all():
 
                 if "Fold" in tmp_env_name:
                     ax.set_ylim(bottom = -120, top=-25)
+                
+                if "Water" in tmp_env_name or "Rope" in tmp_env_name or "Fold" in tmp_env_name:
+                    ax.set_xlim(right=2000000)
+
+                if 'Drop' in tmp_env_name or tmp_env_name == 'ClothManipulate' or tmp_env_name == 'ClothFlatten':
+                    ax.set_xlim(right=1000000)
+
+                if tmp_env_name == 'ClothManipulate' and RIG:
+                    y = RIG_fold_epoch_median
+                    y_lower = RIG_fold_epoch_lower
+                    y_upper = RIG_fold_epoch_upper
+                    x = [i * 20 * 1000 for i in range(len(y))]
 
                 lw = 3.5
                 plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=lw))

@@ -10,18 +10,18 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = 'PlaNet-0202'
+    exp_prefix = 'PlaNet-0205-ClothFlatten'
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
     if debug:
         vg.add('env_name', ['RopeFlatten'])
     else:
-        vg.add('env_name', ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
+        vg.add('env_name', ['ClothFlatten']) #['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_delta_reward', [False])
 
-    vg.add('train_episode', [600])
+    vg.add('train_epoch', [600])
     vg.add('planning_horizon', [24])
     vg.add('use_value_function', [False])
     if debug:

@@ -23,12 +23,26 @@ expert_policy_std = {
 }
 
 cem_mean = {
-
+    "PassWater": -297.86,
+    "PourWater": 0,
+    "RopeFlatten": 174.89,
+    "ClothFlatten": 135.21,
+    "ClothDrop": -37.48,
+    "ClothFold": 0,
 }
 
 cem_std = {
-
+   "PassWater": 59.46,
+    "PourWater": 0,
+    "RopeFlatten": 76.41,
+    "ClothFlatten": 33.82,
+    "ClothDrop": 6.71,
+    "ClothFold": 0,
 }
+
+RIG_fold_epoch_median =  [136.05282512954537, 114.24484040189607, 122.45100888645725, 148.31479379907105, 111.6825752511653, 130.43628585954556, 111.14634396673293, 114.12847153545995, 141.39887000497384, 119.44937511859125, 117.11791536075664, 128.97492191648053, 104.06639409162923]
+RIG_fold_epoch_lower =  [124.06683471324945, 112.78077397479451, 119.28894079604495, 134.83064717436523, 108.17928487690244, 129.5258304051843, 110.68422970554931, 113.39886249156423, 114.43859792595299, 117.72401864323471, 114.89675582091418, 128.30487727976484, 101.61799290375731]
+RIG_fold_epoch_upper =  [148.48379799922128, 116.32339466402811, 125.28292749806158, 154.97999398544886, 164.74327856672616, 134.8218171579951, 120.1386075610645, 139.39160222721756, 142.0123297613904, 124.20580895949601, 132.54358399332386, 131.27656762626066, 116.26701665821425]
 
 def export_legend(legend, filename="legend.png"):
     fig = legend.figure
@@ -112,10 +126,12 @@ def get_shaded_curve(selector, key, shade_type='variance', horizon = None):
 # hardcode env horizons
 env_horizons = [75, 100, 75, 100, 15, 100]
 
-algo_performances_mean = {}
-algo_performances_std = {}
 
-def plot_all():
+
+def plot_all(plot_key, plot_key_rlkit):
+    algo_performances_mean = {}
+    algo_performances_std = {}
+
     data_path = [ './data/yufei_s3_data/PlaNet-0202', 
     './data/yufei_s3_data/RIG-128-0202-all',
                 './data/yufei_s3_data/model-free-key-point-0202', 
@@ -128,8 +144,8 @@ def plot_all():
         './data/yufei_s3_data/PlaNet-0205-ClothFlatten',
         ]
 
-    plot_keys = ['eval_info_sum_performance']
-    plot_keys_rlkit = ['evaluation/env_infos/performance Mean']
+    plot_keys = [plot_key]
+    plot_keys_rlkit = [plot_key_rlkit]
     plot_ylabels = ['Return']
     plot_envs = ['PassWater', 'PourWater', 'RopeFlatten', 'ClothFlatten', 'ClothDrop', 'ClothFold']
     plot_goal_envs = ['PassWaterGoal', 'PourWaterGoal', 'RopeManipulate', 'ClothManipulate', 'ClothDropGoal', 'ClothFoldGoal']
@@ -155,9 +171,12 @@ def plot_all():
             for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
                 if len(selector.where(key, tmp_env_name).extract()) == 0:
                     continue
+
+                RIG = False
                 if 'RIG' in selector._exps_data[-1]['flat_params']['exp_name']: #
                     tmp_env_name = plot_goal_envs[plot_idx]
                     key = 'skewfit_kwargs.env_id'
+                    RIG = True
                     
                 if 'env_kwargs' in selector.where(key, tmp_env_name).extract()[0].params:
                     env_horizon = selector.where(key, tmp_env_name).extract()[0].params["env_kwargs"]["horizon"]
@@ -170,6 +189,12 @@ def plot_all():
                         shade_type='median', horizon=env_horizon)
 
 
+                if tmp_env_name == 'ClothManipulate' and RIG:
+                    y = RIG_fold_epoch_median
+                    y_lower = RIG_fold_epoch_lower
+                    y_upper = RIG_fold_epoch_upper
+                    x = [i * 20 * 1000 for i in range(len(y))]
+
                 x, _, _ = get_shaded_curve(selector.where(key, tmp_env_name), 'num_episodes')
                 if len(x) <= 1:  # Hack
                     x, _, _ = get_shaded_curve(selector.where(key, tmp_env_name), 'exploration/num steps total')
@@ -180,33 +205,58 @@ def plot_all():
                 if "Rope" in tmp_env_name:
                     y, y_lower, y_upper = -y, -y_lower, -y_upper
 
+                if 'Drop' in tmp_env_name or tmp_env_name == 'ClothManipulate' or tmp_env_name == 'ClothFlatten':
+                    y = y[:1000]
+
                 mean, std = get_last_avg(y)
                 algo_performances_mean[env_name][legend] = mean
                 algo_performances_std[env_name][legend] = std
 
-def make_table(dict_mean, dict_std):
+    return algo_performances_mean, algo_performances_std
+
+def make_table(eval_mean, eval_std, train_mean, train_std):
     envs = ["PassWater", "PourWater", "ClothFlatten", "ClothFold", "ClothDrop", "RopeFlatten"]
     algos = ["TD3_key_point", "SAC_key_point", "SAC_cam_rgb", "planet_cam_rgb", "RIG", "CEM", "Heuristic"]
     env_prints = ["PassWater", "PourWater", "SpreadCloth", "FoldCloth", "DropCloth", "StraightenRope"]
+
+    means = [train_mean, eval_mean]
+    stds = [train_std, eval_std]
+    words = ['-T', '-E']
+
     for idx in range(len(envs)):
         env = envs[idx]
-        print(env_prints[idx], end = " ")
-        for algo in algos:
-            if algo == 'SAC_cam_rgb' or algo == 'RIG' or algo == 'CEM' or algo == 'Heuristic':
-                print(r"&&", end = ' ')
-            else:
-                print(r"&", end = ' ')
-            print(round(dict_mean[env].get(algo, 0), 1), end = ' ')
-            print(r"$\pm$ {}".format(round(dict_std[env].get(algo, 0), 1)), end = ' ')
-        print(r"\\")
+        
+        for i in range(2):
+            print(env_prints[idx] + "{}".format(words[i]), end = " ")
+            dict_mean = means[i]
+            dict_std = stds[i]
+            for algo in algos:
+                if algo == 'SAC_cam_rgb' or algo == 'RIG' or algo == 'CEM' or algo == 'Heuristic':
+                    print(r"&&", end = ' ')
+                else:
+                    print(r"&", end = ' ')
+                
+                if i == 0 and (algo == 'CEM' or algo == 'Heuristic'):
+                    print('-', end = ' ')
+                    continue
+
+                number = dict_mean[env].get(algo, '-')
+                number = round(number, 1) if type(number) != str else number
+                print(number, end = ' ')
+                
+                number = dict_std[env].get(algo, '-')
+                number = round(number, 1) if type(number) != str else number
+                print(r"$\pm$ {}".format(number), end = ' ')
+            print(r"\\")
 
 if __name__ == '__main__':
-    plot_all()
+    eval_mean, eval_std = plot_all('eval_info_sum_performance', 'evaluation/env_infos/performance Mean')
+    train_mean, train_std = plot_all('train_info_sum_performance', 'exploration_deterministic/env_infos/performance Mean')
     envs = ["PassWater", "PourWater", "ClothFlatten", "ClothFold", "ClothDrop", "RopeFlatten"]
     for env in envs:
-        algo_performances_mean[env]["Heuristic"] = expert_policy_mean[env]
-        algo_performances_std[env]["Heuristic"] = expert_policy_std[env]
-    # algo_performances_mean['Heuristic']
-    make_table(algo_performances_mean, algo_performances_std)
-    # print(algo_performances_mean)
-    # print(algo_performances_std)
+        eval_mean[env]["Heuristic"] = expert_policy_mean[env]
+        eval_std[env]["Heuristic"] = expert_policy_std[env]
+        eval_mean[env]["CEM"] = cem_mean[env]
+        eval_std[env]["CEM"] = cem_std[env]
+
+    make_table(eval_mean, eval_std, train_mean, train_std)

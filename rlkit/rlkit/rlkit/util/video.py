@@ -3,7 +3,7 @@ import os.path as osp
 import time
 
 import numpy as np
-import scipy.misc
+import scipy.misc, cv2
 import skvideo.io
 import torchvision
 import torch
@@ -72,14 +72,23 @@ def dump_video(
         if dirname_to_save_images:
             rollout_dir = osp.join(dirname_to_save_images, subdirname, str(i))
             os.makedirs(rollout_dir, exist_ok=True)
-            rollout_frames = frames[-101:]
-            goal_img = np.flip(rollout_frames[0][:imsize, :imsize, :], 0)
-            scipy.misc.imsave(rollout_dir + "/goal.png", goal_img)
-            goal_img = np.flip(rollout_frames[1][:imsize, :imsize, :], 0)
-            scipy.misc.imsave(rollout_dir + "/z_goal.png", goal_img)
-            for j in range(0, 101, 1):
-                img = np.flip(rollout_frames[j][imsize:, :imsize, :], 0)
-                scipy.misc.imsave(rollout_dir + "/" + str(j) + ".png", img)
+            rollout_frames = frames[-env.horizon:]
+            # goal_img = np.flip(rollout_frames[0][:imsize, :imsize, :], 0)
+            goal_img = rollout_frames[0][:imsize, :imsize, :]
+            cv2.imwrite(rollout_dir + "/goal.png", goal_img[:, :, ::-1])
+            # goal_img = np.flip(rollout_frames[1][:imsize, :imsize, :], 0)
+            goal_img = rollout_frames[0][2*imsize:, :imsize, :]
+            cv2.imwrite(rollout_dir + "/z_goal.png", goal_img[:, :, ::-1])
+            for j in range(0, env.horizon, 1):
+                # img = np.flip(rollout_frames[j][imsize:, :imsize, :], 0)
+
+                img = rollout_frames[j][imsize:2*imsize, :imsize, :]
+                cv2.imwrite(rollout_dir + "/" + str(j) + "_obs.png", img[:, :, ::-1])
+
+
+                img = rollout_frames[j][2 * imsize:, :imsize, :]
+                cv2.imwrite(rollout_dir + "/" + str(j) + "_recons.png", img[:, :, ::-1])
+
         if do_timer:
             print(i, time.time() - start)
 
