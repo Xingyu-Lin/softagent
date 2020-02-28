@@ -22,6 +22,7 @@ def show(img):
     plt.imshow(np.transpose(npimg, (1,2,0)), interpolation='nearest')
 
 def run_heuristic(args):
+    imsize = args.imsize
     mode = args.mode
     print(mode)
     if mode == 'visual' or mode == 'animation':
@@ -34,6 +35,11 @@ def run_heuristic(args):
     dic['observation_mode'] = args.obs_mode
     action_repeat = dic.get('action_repeat', 8)
     horizon = dic['horizon']
+    if not args.use_cached_states:
+        dic['save_cache_states'] = False
+        dic['use_cached_states'] = False
+        dic['num_variations'] = 20
+
     print("env name {} action repeat {} horizon {}".format(env_name, action_repeat, horizon))
 
     if mode == 'visual' or mode == 'animation':
@@ -49,11 +55,11 @@ def run_heuristic(args):
     elif mode == 'test':
         N = 100
     elif mode == 'animation':
-        N = 4
+        N = 8
 
     for idx in range(N):
         total_reward = 0
-        env.eval_flag = True
+        # env.eval_flag = True
         if mode == 'visual' or mode == 'animation':
             if mode == 'visual':
                 env.reset(config_id=5)
@@ -72,7 +78,7 @@ def run_heuristic(args):
         target_x = env.glass_distance - env.poured_glass_dis_x / 2 - env.height - 0.1
         for i in range(move_part):
             action = np.array([target_x / action_repeat / move_part , target_y / action_repeat / move_part, 0.])
-            obs, reward, done, info = env.step(action, record_continuous_video=True, img_size=256)
+            obs, reward, done, info = env.step(action, record_continuous_video=True, img_size=imsize)
             total_reward += reward
             if mode == 'visual' or mode == 'animation':
                 imgs.extend(info['flex_env_recorded_frames'])
@@ -82,7 +88,7 @@ def run_heuristic(args):
         total_rotate = 0.55 * np.pi
         for i in range(rotate_part):
             action = np.array([0.0005, 0.003, total_rotate / rotate_part / action_repeat])
-            obs, reward, done, info = env.step(action, record_continuous_video=True, img_size=256)
+            obs, reward, done, info = env.step(action, record_continuous_video=True, img_size=imsize)
             total_reward += reward
             if mode == 'visual'or mode == 'animation':
                 imgs.extend(info['flex_env_recorded_frames'])
@@ -90,7 +96,7 @@ def run_heuristic(args):
         stay_part = 60 if mode != 'visual' else 21
         for i in range(stay_part):
             action = np.zeros(3)
-            obs, reward, done, info = env.step(action, record_continuous_video=True, img_size=256)
+            obs, reward, done, info = env.step(action, record_continuous_video=True, img_size=imsize)
             total_reward += reward
             if mode == 'visual' or mode == 'animation':
                 imgs.extend(info['flex_env_recorded_frames'])

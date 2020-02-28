@@ -1,4 +1,7 @@
-# remove old clothfold results
+# Note: when running experiments for ICML, we had two initial incorrect runs with clothfold and 
+# cloth flatten, as there are some bugs in the env. So, this script is used to remove those buggy
+# results for plotting.
+# remove old clothfold results from AWS data
 for i in 26 27 28 29 30
 do
     rm -rf data/yufei_s3_data/PlaNet-0202/*00$i
@@ -15,7 +18,7 @@ do
     rm -rf data/yufei_s3_data/model-free-key-point-0203-last-2-seeds/*00$i
 done
 
-# remove old clothflatten results
+# remove old clothflatten results from AWS data
 for i in 19 20 21 22 23 24
 do 
     rm -rf data/yufei_s3_data/model-free-key-point-0202/*00$i
