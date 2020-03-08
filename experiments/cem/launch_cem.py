@@ -10,32 +10,38 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0205_cem_cloth_fold'
+    exp_prefix = '0308_cem'
     vg = VariantGenerator()
+    cem_plan_horizon = {
+        'PassWater': 7,
+        'PourWater': 40,
+        'ClothFold': 15,
+        'ClothFlatten': 15,
+        'ClothDrop': 15,
+        'RopeFlatten': 15
+    }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothFold'])
+    vg.add('env_name', ['ClothFold', 'ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
     vg.add('env_kwargs_observation_mode', ['key_point'])
 
-    vg.add('seed', [100, 200, 300, 400, 500, 600, 700, 900, 900, 1000])
+    vg.add('seed', [100])
     vg.add('max_episode_length', [200])
 
     if not debug:
         vg.add('max_iters', [10])
-        vg.add('population_size', [1000])
-        vg.add('num_elites', [100])
-        vg.add('test_episodes', [1])
+        vg.add('plan_horizon', lambda env_name: [cem_plan_horizon[env_name]])
+        vg.add('timestep_per_decision', [21000])
+        vg.add('test_episodes', [10])
         vg.add('use_mpc', [False])
-        vg.add('plan_horizon', [50])
         # Add possible vgs for non-debug purpose
         pass
     else:
         vg.add('max_iters', [1])
-        vg.add('population_size', [2])
-        vg.add('num_elites', [1])
         vg.add('test_episodes', [2])
+        vg.add('timestep_per_decision', [100])
         vg.add('use_mpc', [False])
         vg.add('plan_horizon', [10])
         exp_prefix += '_debug'

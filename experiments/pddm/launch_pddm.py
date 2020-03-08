@@ -46,7 +46,7 @@ def main(mode, debug, dry):
         vg.add('sample_size', [1000])
         vg.add('action_correlation', [False])
         vg.add('beta', [0.8])
-        vg.add('gamma', [1.0])  
+        vg.add('gamma', [1.0])
         vg.add('sigma', [0.9])
         vg.add('test_episodes', [2])
         vg.add('plan_horizon', [3])

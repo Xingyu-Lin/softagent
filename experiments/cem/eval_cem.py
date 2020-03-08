@@ -17,6 +17,8 @@ import numpy as np
 def run_task(arg_vv, log_dir, exp_name):
     mp.set_start_method('spawn')
     vv = arg_vv
+    vv['population_size'] = vv['timestep_per_decision'] // vv['max_iters']
+    vv['num_elites'] = vv['population_size'] // 10
     vv = update_env_kwargs(vv)
 
     # Configure logger
