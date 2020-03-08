@@ -6,11 +6,12 @@ import numpy as np
 def get_cost(args):
     init_state, action_trajs, env_class, env_kwargs = args
     env = env_class(**env_kwargs)
+    env.reset(config_id=init_state['config_id'])
 
     N = action_trajs.shape[0]
     costs = []
     for i in range(N):
-        env.reset()
+        env.set_state(init_state)
         ret = 0
         for action in action_trajs[i, :]:
             _, reward, _, _ = env.step(action)

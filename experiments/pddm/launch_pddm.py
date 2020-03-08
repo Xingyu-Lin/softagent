@@ -4,10 +4,9 @@ from chester.run_exp import run_experiment_lite, VariantGenerator
 from experiments.pddm.train import run_task
 from softgym.registered_env import env_arg_dict
 
-
 planning_horizons = {
     'PassWater': 7,
-    'PourWater': 20, 
+    'PourWater': 20,
     'ClothFold': 15,
     'ClothFlatten': 15,
     'ClothDrop': 15,
@@ -16,12 +15,13 @@ planning_horizons = {
 
 sample_sizes = {
     'PassWater': 700,
-    'PourWater': 1500, 
+    'PourWater': 1500,
     'ClothFold': 1500,
     'ClothFlatten': 1500,
     'ClothDrop': 1500,
     'RopeFlatten': 1500
 }
+
 
 @click.command()
 @click.argument('mode', type=str, default='local')
@@ -54,7 +54,7 @@ def main(mode, debug, dry):
         vg.add('sample_size', [1000])
         vg.add('action_correlation', [False])
         vg.add('beta', [0.8])
-        vg.add('gamma', [1.0])  
+        vg.add('gamma', [1.0])
         vg.add('sigma', [0.9])
         vg.add('test_episodes', [2])
         vg.add('plan_horizon', [3])
