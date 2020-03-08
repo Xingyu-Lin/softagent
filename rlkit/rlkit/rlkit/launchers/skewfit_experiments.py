@@ -29,6 +29,7 @@ from softgym.utils.normalized_env import normalize
 def skewfit_full_experiment(variant, log_dir, exp_prefix):
 
     exp_prefix = time.strftime("%m-%d") + "-" + exp_prefix
+    print("exp_prefix is: ", exp_prefix)
     seed = variant['seed']
     if torch.cuda.is_available():
         use_gpu = True
@@ -49,9 +50,11 @@ def skewfit_full_experiment(variant, log_dir, exp_prefix):
         seed=seed,
         snapshot_mode='gap_and_last',
         snapshot_gap=20,
-        base_log_dir=base_log_dir,
+        log_dir=base_log_dir,
         script_name=script_name,
     )
+    # exit()
+
 
     set_seed(seed)
     set_gpu_mode(use_gpu)

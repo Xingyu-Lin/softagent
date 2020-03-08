@@ -5,22 +5,14 @@ from experiments.pddm.train import run_task
 from softgym.registered_env import env_arg_dict
 
 
+per_step_total_num = 21000
 planning_horizons = {
     'PassWater': 7,
-    'PourWater': 20, 
+    'PourWater': 40, 
     'ClothFold': 15,
     'ClothFlatten': 15,
     'ClothDrop': 15,
     'RopeFlatten': 15
-}
-
-sample_sizes = {
-    'PassWater': 700,
-    'PourWater': 1500, 
-    'ClothFold': 1500,
-    'ClothFlatten': 1500,
-    'ClothDrop': 1500,
-    'RopeFlatten': 1500
 }
 
 @click.command()
@@ -28,11 +20,11 @@ sample_sizes = {
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0308-pddm-all'
+    exp_prefix = '0309-pddm-all-fix-per-step-num-longer-horizon'
     vg = VariantGenerator()
     vg.add('algorithm', ['PDDM'])
     if not debug:
-        vg.add('env_name', ['ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
+        vg.add('env_name', ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
     else:
         vg.add('env_name', ['PassWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
@@ -43,9 +35,9 @@ def main(mode, debug, dry):
     vg.add('max_episode_length', [200])
 
     if not debug:
-        vg.add('sample_size', lambda env_name: [sample_sizes[env_name]])
+        vg.add('sample_size', lambda env_name: [per_step_total_num // planning_horizons[env_name]])
         vg.add('beta', [0.8])
-        vg.add('action_correlation', [False])
+        vg.add('action_correlation', [True, False])
         vg.add('gamma', [1.0])
         vg.add('sigma', [0.9])
         vg.add('test_episodes', [10])

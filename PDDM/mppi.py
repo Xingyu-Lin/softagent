@@ -50,29 +50,25 @@ def get_return_env(args):
     env = env_class(**env_kwargs)
     env.reset(config_id=config_id)
     r = get_return(env, actions, init_state)
-    return r, os.getpid()
+    return r
 
-def get_return_mp(env_class, env_kwargs, actions, config_id, init_state, num_worker):
-    pool = Pool(processes=num_worker)
+def get_return_mp(env_class, env_kwargs, actions, config_id, init_state, num_worker, pool):
+    
     per_cpu_num = len(actions) // num_worker
     actions_per_cpu = []
     for i in range(num_worker):
         actions_per_cpu.append(actions[i*per_cpu_num:(i+1)*per_cpu_num])
     actions_per_cpu.append(actions[num_worker*per_cpu_num:])
 
-    rs = pool.map(get_return_env, [(env_class, env_kwargs, a, config_id, init_state) for a in actions_per_cpu])
-    rets = [r[0] for r in rs]
-    pids = [r[1] for r in rs]
+    rets = pool.map(get_return_env, [(env_class, env_kwargs, a, config_id, init_state) for a in actions_per_cpu])
     returns = []
     for r in rets:
         returns += r
-    for pid in pids:
-        os.system('kill -9 {}'.format(pid))
     return returns
 
 class MPPI(object):
 
-    def __init__(self, env, horizon, N, gamma, sigma, beta, action_correlation=True, env_class=None, env_kwargs=None):
+    def __init__(self, env, horizon, N, gamma, sigma, beta, action_correlation=True, env_class=None, env_kwargs=None, num_worker=4):
         """
         horizon: planning horizon
         N: # of sampled trajectories
@@ -99,6 +95,8 @@ class MPPI(object):
         self.action_correlation = action_correlation
         self.env_kwargs = env_kwargs
         self.env_class = env_class
+        self.pool = Pool(processes=num_worker)
+        self.num_worker = num_worker
 
 
     ###################################################################
@@ -175,7 +173,9 @@ class MPPI(object):
         #################################################
 
         # returns = get_return(self.env, all_samples, env_initial_state)
-        returns = get_return_mp(self.env_class, self.env_kwargs, all_samples, env_config_id, env_initial_state, 5)
+        beg = time.time()
+        returns = get_return_mp(self.env_class, self.env_kwargs, all_samples, env_config_id, env_initial_state, self.num_worker, self.pool)
+        print("time cost: ", time.time() - beg)
         selected_action = self.mppi_update(returns, all_samples)
         
         # recover to initial env state
