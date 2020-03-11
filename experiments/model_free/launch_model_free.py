@@ -5,13 +5,12 @@ from chester.run_exp import run_experiment_lite, VariantGenerator
 from experiments.model_free.train_model_free import run_task
 from softgym.registered_env import env_arg_dict
 
-
-
 replay_buffer_size = {
     'key_point': int(1E6),
     'point_cloud': int(2E5),
     'cam_rgb': int(8E4)
 }
+
 
 @click.command()
 @click.argument('mode', type=str, default='local')
@@ -23,7 +22,7 @@ def main(mode, debug, dry):
     if debug:
         vg.add('env_name', ['PourWater'])
     else:
-        vg.add('env_name', ['PourWater', 'PassWater',]) #'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten'])
+        vg.add('env_name', ['PourWater', 'PassWater', ])  # 'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['point_cloud'])
     if not debug:

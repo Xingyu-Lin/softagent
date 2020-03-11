@@ -21,7 +21,7 @@ def main(mode, debug, dry):
         'RopeFlatten': 15
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothFold', 'ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten'])
+    vg.add('env_name', ['PourWater', 'PassWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])

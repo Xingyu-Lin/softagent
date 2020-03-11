@@ -56,7 +56,6 @@ def run_task(arg_vv, log_dir, exp_name):
 
     policy = CEMPolicy(env, env_class, env_kwargs, vv['use_mpc'], plan_horizon=vv['plan_horizon'], max_iters=vv['max_iters'],
                        population_size=vv['population_size'], num_elites=vv['num_elites'])
-
     # Run policy
     initial_states, action_trajs, configs, all_infos = [], [], [], []
     for i in range(vv['test_episodes']):
