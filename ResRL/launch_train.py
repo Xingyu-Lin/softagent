@@ -16,9 +16,9 @@ def main(mode, debug, dry):
     }
     vg.add('env_name', ['Box1D'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
+    vg.add('env_kwargs_image_observation', [False])
     vg.add('env_kwargs_image_dim', [64])
-    vg.add('max_episode_length', [20])  # Upper bound on the horizon. Not used here
-    vg.add('image_dim', [64])
+    vg.add('max_episode_length', [200])  # Upper bound on the horizon. Not used here
     vg.add('seed', [100])
 
     if not debug:

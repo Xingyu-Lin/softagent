@@ -72,8 +72,11 @@ def run_task(arg_vv, log_dir, exp_name):
     # Dump parameters
     with open(osp.join(logger.get_dir(), 'variant.json'), 'w') as f:
         json.dump(vv, f, indent=2, sort_keys=True)
-    env = Env(vv['env_name'], False, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'], env_kwargs=vv['env_kwargs'])
-    eval_env = Env(vv['env_name'], False, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'], env_kwargs=vv['env_kwargs'])
+
+    image_dim = vv['env_kwargs']['image_dim']
+    symbolic = not vv['env_kwargs']['image_observation']
+    env = Env(vv['env_name'], symbolic, vv['seed'], vv['max_episode_length'], 1, 8, image_dim, env_kwargs=vv['env_kwargs'])
+    eval_env = Env(vv['env_name'], symbolic, vv['seed'], vv['max_episode_length'], 1, 8, image_dim, env_kwargs=vv['env_kwargs'])
 
     # env = Box1d(**vv['env_kwargs'])
 
@@ -85,8 +88,10 @@ def run_task(arg_vv, log_dir, exp_name):
     obs_dim = np.prod(env.observation_space.shape)
     action_dim = env.action_space.shape[0]
     max_action = float(env.action_space.high[0])
-    kwargs = dict(image_dim=env.image_dim,
+    kwargs = dict(image_observation=vv['env_kwargs']['image_observation'],
+                  image_dim=env.image_dim,
                   image_c=obs_dim // (env.image_dim * env.image_dim),
+                  state_dim=obs_dim,
                   action_dim=action_dim,
                   obs_embed_dim=vv['obs_embed_dim'],
                   action_embed_dim=vv['action_embed_dim'],
