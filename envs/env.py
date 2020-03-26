@@ -10,8 +10,9 @@ from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.envs.cloth_drop import ClothDropEnv
-
 from softgym.utils.normalized_env import normalize
+
+from ResRL.envs.box1d import Box1d
 
 softgym.register_flex_envs()
 
@@ -29,7 +30,9 @@ SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
                        'ClothFlatten': ClothFlattenEnv,
                        'ClothFold': ClothFoldEnv,
                        'ClothDrop': ClothDropEnv,
-                       'RopeFlatten': RopeFlattenEnv}
+                       'RopeFlatten': RopeFlattenEnv,
+                       # ResRL env
+                       'Box1D': Box1d}
 
 
 # Preprocesses an observation inplace (from float32 Tensor [0, 255] to [-0.5, 0.5])
@@ -89,6 +92,7 @@ class ControlSuiteEnv():
             reward += state.reward
             self.t += 1  # Increment internal timer
             done = state.last() or self.t == self.max_episode_length
+
             if done:
                 break
         if self.symbolic:
@@ -194,6 +198,8 @@ class SoftGymEnv(object):
         self.action_repeat = action_repeat
         self.bit_depth = bit_depth
         self.image_dim = image_dim
+        if not self.symbolic:
+            self.image_c = np.prod(self._env.observation_space.shape) // (image_dim * image_dim)
 
     def reset(self, **kwargs):
         self.t = 0  # Reset internal timer
@@ -212,6 +218,7 @@ class SoftGymEnv(object):
             reward += reward_k
             self.t += 1  # Increment internal timer
             done = done or self.t == self.max_episode_length
+            # print('t:', self.t, self.max_episode_length, done)
             if self.symbolic:
                 obs = torch.tensor(obs, dtype=torch.float32)
             else:
@@ -231,11 +238,11 @@ class SoftGymEnv(object):
         if self.symbolic:
             return self._env.observation_space
         else:
-            return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, 3), dtype=np.float32)
+            return Box(low=-np.inf, high=np.inf, shape=(self.image_dim, self.image_dim, self.image_c), dtype=np.float32)
 
     @property
     def observation_size(self):
-        return self._env.observation_space.shape[0] if self.symbolic else (3, self.image_dim, self.image_dim)
+        return self._env.observation_space.shape[0] if self.symbolic else (self.image_c, self.image_dim, self.image_dim)
 
     @property
     def action_size(self):

@@ -10,28 +10,31 @@ import cv2 as cv
 # |
 # O------> x
 class Box1d(gym.Env):
-    def __init__(self, horizon=20, canvas_size=500, image_size=100, box_size_range=(0.01, 0.3), **kwargs):
+    def __init__(self, horizon=20, canvas_size=500, image_dim=64, box_size_range=(0.01, 0.3), **kwargs):
         self.horizon = horizon
-        self.image_size = image_size
+        self.image_dim = image_dim
         self.canvas_size = canvas_size
         self.box_size_range = box_size_range
         self.box_pos_range = (0, 1)
         self.box_pos = self.box_goal_pos = self.box_size = self.time_step = None
 
-        self.observation_space = Box(low=-np.inf, high=np.inf, shape=(image_size, image_size, 2), dtype=np.float32)
+        self.observation_space = Box(low=-np.inf, high=np.inf, shape=(image_dim, image_dim, 2), dtype=np.float32)
         self.action_space = Box(low=-0.05, high=0.05, shape=(1,), dtype=np.float32)
 
     def reset(self):
-        print('reset')
+        # print('reset')
         self.time_step = 0
-        self.box_size = np.random.uniform(*self.box_size_range)
-        self.box_pos = np.random.uniform(*self.box_pos_range)
-        self.box_goal_pos = np.random.uniform(*self.box_pos_range)
+        # self.box_size = np.random.uniform(*self.box_size_range)
+        # self.box_pos = np.random.uniform(*self.box_pos_range)
+        # self.box_goal_pos = np.random.uniform(*self.box_pos_range)
+        self.box_size = 0.3
+        self.box_pos = 0.3
+        self.box_goal_pos = 0.5
         return self._get_current_obs()
 
     def step(self, action):
         self.box_pos += action
-        reward = abs(self.box_pos - self.box_goal_pos)
+        reward = -abs(self.box_pos - self.box_goal_pos)
         obs = self._get_current_obs()
         info = self._get_current_info()
         self.time_step += 1
@@ -39,9 +42,19 @@ class Box1d(gym.Env):
 
     def render(self, mode='human'):  # Render to screen
         obs = self._get_current_obs()
-        curr_img, goal_img = obs[:, :, 0].T, obs[:, :, 1].T
-        cv.imshow('Box1d', np.hstack([curr_img, goal_img]) * 255)
-        cv.waitKey(20)
+        # curr_img, goal_img = obs[:, :, 0].T, obs[:, :, 1].T
+        # curr_img, goal_img = cv.resize(obs[:, :, 0].T, (self.canvas_size, self.canvas_size), interpolation=cv.INTER_NEAREST), \
+        #                      cv.resize(obs[:, :, 1].T, (self.canvas_size, self.canvas_size), interpolation=cv.INTER_NEAREST)
+        # padding = np.ones([curr_img.shape[0], 5]) * 0.5
+        # img = np.hstack([curr_img, padding, goal_img])
+
+        curr_img = self._draw_box(self.box_pos, self.box_size)[:,:,0].T
+        goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:,:,0].T
+        padding = np.ones([curr_img.shape[0], 5]) * 0.5
+        img = np.hstack([curr_img, padding, goal_img])
+
+        cv.imshow('Box1d', np.vstack([img]))
+        cv.waitKey(10)
 
     def _to_canvas(self, x):
         return int(np.round(x * self.canvas_size))
@@ -55,12 +68,16 @@ class Box1d(gym.Env):
         maxx = min(self.canvas_size - 1, box_pos + box_size // 2)
         miny = max(0, self.canvas_size // 2 - box_size // 2)
         maxy = min(self.canvas_size - 1, self.canvas_size // 2 + box_size // 2)
+        if minx >= maxx or miny >= maxy:
+            return img
         img[minx:maxx, miny:maxy, 0] = 1
         return img
 
     def _get_current_obs(self):
         curr_img = self._draw_box(self.box_pos, self.box_size)
         goal_img = self._draw_box(self.box_goal_pos, self.box_size)
+        curr_img = cv.resize(curr_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
+        goal_img = cv.resize(goal_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
         obs = np.dstack([curr_img, goal_img])
         return obs
 
