@@ -9,16 +9,20 @@ from ResRL.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0325_resRL'
+    exp_prefix = '0327_resRL'
     vg = VariantGenerator()
     env_arg_dict = {
         "Box1D": {}
     }
     vg.add('env_name', ['Box1D'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_image_observation', [False])
-    vg.add('env_kwargs_image_dim', [64])
+    vg.add('env_kwargs_image_observation', [True, False])
+    vg.add('env_kwargs_image_dim', [128])
+    vg.add('visual_encoder_name', lambda env_kwargs_image_observation: [None] if not env_kwargs_image_observation else ['VisualEncoderFc1d',
+                                                                                                                        'VisualEncoderConv1d',
+                                                                                                                        'VisualEncoder'])
     vg.add('max_episode_length', [200])  # Upper bound on the horizon. Not used here
+    vg.add('max_timesteps', [1e4])
     vg.add('seed', [100])
 
     if not debug:

@@ -19,6 +19,7 @@ class TD3(object):
       action_dim,
       action_embed_dim,
       max_action,
+      visual_encoder_name,
       discount=0.99,
       tau=0.005,
       policy_noise=0.2,
@@ -28,8 +29,8 @@ class TD3(object):
     ):
         self.device = device
         if image_observation:
-            self.actor = ConvActor(obs_embed_dim, action_dim, image_dim, image_c, max_action).to(device)
-            self.critic = ConvCritic(obs_embed_dim, action_dim, image_dim, image_c, action_embed_dim).to(device)
+            self.actor = ConvActor(obs_embed_dim, action_dim, image_dim, image_c, max_action, visual_encoder_name).to(device)
+            self.critic = ConvCritic(obs_embed_dim, action_dim, image_dim, image_c, action_embed_dim, visual_encoder_name).to(device)
         else:
             self.actor = Actor(state_dim, action_dim, max_action).to(device)
             self.critic = Critic(state_dim, action_dim).to(device)

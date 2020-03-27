@@ -95,6 +95,7 @@ def run_task(arg_vv, log_dir, exp_name):
                   action_dim=action_dim,
                   obs_embed_dim=vv['obs_embed_dim'],
                   action_embed_dim=vv['action_embed_dim'],
+                  visual_encoder_name=vv['visual_encoder_name'],
                   max_action=max_action,
                   discount=vv['discount'],
                   tau=vv['tau'],

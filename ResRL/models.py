@@ -93,6 +93,63 @@ class VisualEncoder(nn.Module):
         return hidden
 
 
+class VisualEncoderConv1d(nn.Module):
+    __constants__ = ['embedding_size', 'image_dim']
+
+    def __init__(self, embedding_size, image_dim, image_c, activation_function='relu'):
+        super().__init__()
+        self.image_dim = image_dim
+        self.image_c = image_c
+        self.act_fn = getattr(F, activation_function)
+        self.embedding_size = embedding_size
+        if image_dim == 128:
+            self.conv0 = nn.Conv1d(image_c, 16, 4, stride=2)
+            self.conv1 = nn.Conv1d(16, 32, 4, stride=2)
+        elif image_dim == 64:
+            self.conv1 = nn.Conv1d(image_c, 32, 4, stride=2)
+        else:
+            raise NotImplementedError
+        self.conv2 = nn.Conv1d(32, 64, 4, stride=2)
+        self.conv3 = nn.Conv1d(64, 128, 4, stride=2)
+        self.conv4 = nn.Conv1d(128, 256, 4, stride=2)
+        self.fc = nn.Identity() if embedding_size == 512 else nn.Linear(512, embedding_size)
+
+    def forward(self, observation):
+        observation = observation.view(-1, self.image_c, self.image_dim, self.image_dim)
+        observation = observation[:, :, self.image_dim // 2, :]  # Only take the one row in the middle
+        if self.image_dim == 128:
+            hidden = self.act_fn(self.conv0(observation))
+            hidden = self.act_fn(self.conv1(hidden))
+        elif self.image_dim == 64:
+            hidden = self.act_fn(self.conv1(observation))
+        else:
+            raise NotImplementedError
+        hidden = self.act_fn(self.conv2(hidden))
+        hidden = self.act_fn(self.conv3(hidden))
+        hidden = self.act_fn(self.conv4(hidden))
+        hidden = hidden.view(-1, 512)
+        hidden = self.fc(hidden)  # Identity if embedding size is 1024 else linear projection
+        return hidden
+
+
+class VisualEncoderFc1d(nn.Module):
+    __constants__ = ['embedding_size', 'image_dim']
+
+    def __init__(self, embedding_size, image_dim, image_c, activation_function='relu'):
+        super().__init__()
+        self.image_dim = image_dim
+        self.image_c = image_c
+        self.act_fn = getattr(F, activation_function)
+        self.embedding_size = embedding_size
+        self.fc = nn.Linear(image_dim * image_c, embedding_size)
+
+    def forward(self, observation):
+        observation = observation.view(-1, self.image_c, self.image_dim, self.image_dim)
+        observation = observation[:, :, self.image_dim // 2, :].reshape(-1, self.image_c * self.image_dim)  # Only take the one row in the middle
+        hidden = self.act_fn(self.fc(observation))
+        return hidden
+
+
 class ActionEncoder(nn.Module):
     def __init__(self, embedding_size, action_dim, activation_function='relu'):
         super().__init__()
@@ -107,9 +164,10 @@ class ActionEncoder(nn.Module):
 
 
 class ConvActor(nn.Module):
-    def __init__(self, obs_embed_dim, action_dim, image_dim, image_c, max_action):
+    def __init__(self, obs_embed_dim, action_dim, image_dim, image_c, max_action, visual_encoder_name):
         super(ConvActor, self).__init__()
-        self.visual_encoder = VisualEncoder(obs_embed_dim, image_dim, image_c)
+        visual_encoder_class = visual_encoder_dict[visual_encoder_name]
+        self.visual_encoder = visual_encoder_class(obs_embed_dim, image_dim, image_c)
         self.l1 = nn.Linear(obs_embed_dim, 256)
         self.l2 = nn.Linear(256, 256)
         self.l3 = nn.Linear(256, action_dim)
@@ -124,12 +182,13 @@ class ConvActor(nn.Module):
 
 
 class ConvCritic(nn.Module):
-    def __init__(self, obs_embed_dim, action_dim, image_dim, image_c, action_embed_dim):
+    def __init__(self, obs_embed_dim, action_dim, image_dim, image_c, action_embed_dim, visual_encoder_name):
         super(ConvCritic, self).__init__()
-        self.visual_encoder1 = VisualEncoder(obs_embed_dim, image_dim, image_c)
+        visual_encoder_class = visual_encoder_dict[visual_encoder_name]
+        self.visual_encoder1 = visual_encoder_class(obs_embed_dim, image_dim, image_c)
         self.action_encoder1 = ActionEncoder(action_embed_dim, action_dim)
 
-        self.visual_encoder2 = VisualEncoder(obs_embed_dim, image_dim, image_c)
+        self.visual_encoder2 = visual_encoder_class(obs_embed_dim, image_dim, image_c)
         self.action_encoder2 = ActionEncoder(action_embed_dim, action_dim)
 
         # Q1 architecture
@@ -167,3 +226,10 @@ class ConvCritic(nn.Module):
         q1 = F.relu(self.l2(q1))
         q1 = self.l3(q1)
         return q1
+
+
+visual_encoder_dict = {
+    'VisualEncoder': VisualEncoder,  # Conv2d encoder
+    'VisualEncoderConv1d': VisualEncoderConv1d,
+    'VisualEncoderFc1d': VisualEncoderFc1d
+}
