@@ -116,7 +116,7 @@ class VisualEncoderConv1d(nn.Module):
 
     def forward(self, observation):
         observation = observation.view(-1, self.image_c, self.image_dim, self.image_dim)
-        observation = observation[:, :, self.image_dim // 2, :]  # Only take the one row in the middle
+        observation = observation[:, :, :, self.image_dim // 2]  # Only take the one row in the middle
         if self.image_dim == 128:
             hidden = self.act_fn(self.conv0(observation))
             hidden = self.act_fn(self.conv1(hidden))
@@ -145,7 +145,7 @@ class VisualEncoderFc1d(nn.Module):
 
     def forward(self, observation):
         observation = observation.view(-1, self.image_c, self.image_dim, self.image_dim)
-        observation = observation[:, :, self.image_dim // 2, :].reshape(-1, self.image_c * self.image_dim)  # Only take the one row in the middle
+        observation = observation[:, :, :, self.image_dim // 2].reshape(-1, self.image_c * self.image_dim)  # Only take the one row in the middle
         hidden = self.act_fn(self.fc(observation))
         return hidden
 

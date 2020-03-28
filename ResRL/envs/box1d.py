@@ -26,12 +26,12 @@ class Box1d(gym.Env):
 
     def reset(self):
         self.time_step = 0
-        # self.box_size = np.random.uniform(*self.box_size_range)
-        # self.box_pos = np.random.uniform(*self.box_pos_range)
-        # self.box_goal_pos = np.random.uniform(*self.box_pos_range)
-        self.box_size = 0.3
-        self.box_pos = 0.3
-        self.box_goal_pos = 0.5
+        self.box_size = np.random.uniform(*self.box_size_range)
+        self.box_pos = np.random.uniform(*self.box_pos_range)
+        self.box_goal_pos = np.random.uniform(*self.box_pos_range)
+        # self.box_size = 0.3
+        # self.box_pos = 0.3
+        # self.box_goal_pos = 0.5
         return self._get_current_obs()
 
     def step(self, action):
@@ -50,8 +50,8 @@ class Box1d(gym.Env):
         # padding = np.ones([curr_img.shape[0], 5]) * 0.5
         # img = np.hstack([curr_img, padding, goal_img])
 
-        curr_img = self._draw_box(self.box_pos, self.box_size)[:, :, 0].T
-        goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:, :, 0].T
+        curr_img = self._draw_box(self.box_pos, self.box_size)[:, :, 0].T / 255.
+        goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:, :, 0].T / 255.
         padding = np.ones([5, curr_img.shape[1]]) * 0.5
         img = np.vstack([curr_img, padding, goal_img])
 
@@ -72,7 +72,7 @@ class Box1d(gym.Env):
         maxy = min(self.canvas_size - 1, self.canvas_size // 2 + box_size // 2)
         if minx >= maxx or miny >= maxy:
             return img
-        img[minx:maxx, miny:maxy, 0] = 1
+        img[minx:maxx, miny:maxy, 0] = 255
         return img
 
     def _get_current_obs(self):
