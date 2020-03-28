@@ -95,7 +95,7 @@ class MPPI(object):
         self.action_correlation = action_correlation
         self.env_kwargs = env_kwargs
         self.env_class = env_class
-        self.pool = Pool(processes=num_worker)
+        # self.pool = Pool(processes=num_worker)
         self.num_worker = num_worker
 
 
@@ -172,10 +172,10 @@ class MPPI(object):
         ### Get result of executing those candidate action sequences
         #################################################
 
-        # returns = get_return(self.env, all_samples, env_initial_state)
-        beg = time.time()
-        returns = get_return_mp(self.env_class, self.env_kwargs, all_samples, env_config_id, env_initial_state, self.num_worker, self.pool)
-        print("time cost: ", time.time() - beg)
+        returns = get_return(self.env, all_samples, env_initial_state)
+        # beg = time.time()
+        # returns = get_return_mp(self.env_class, self.env_kwargs, all_samples, env_config_id, env_initial_state, self.num_worker, self.pool)
+        # print("time cost: ", time.time() - beg)
         selected_action = self.mppi_update(returns, all_samples)
         
         # recover to initial env state

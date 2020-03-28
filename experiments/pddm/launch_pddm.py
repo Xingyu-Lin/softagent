@@ -9,7 +9,7 @@ per_step_total_num = 21000
 planning_horizons = {
     'PassWater': 7,
     'PourWater': 40, 
-    'ClothFold': 15,
+    'ClothFold': 20,
     'ClothFlatten': 15,
     'ClothDrop': 15,
     'RopeFlatten': 15
@@ -20,11 +20,11 @@ planning_horizons = {
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0309-pddm-all-fix-per-step-num-longer-horizon'
+    exp_prefix = '0311-pddm-all'
     vg = VariantGenerator()
     vg.add('algorithm', ['PDDM'])
     if not debug:
-        vg.add('env_name', ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
+        vg.add('env_name', ['PourWater']) #['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
     else:
         vg.add('env_name', ['PassWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
@@ -37,13 +37,13 @@ def main(mode, debug, dry):
     if not debug:
         vg.add('sample_size', lambda env_name: [per_step_total_num // planning_horizons[env_name]])
         vg.add('beta', [0.8])
-        vg.add('action_correlation', [True, False])
+        vg.add('action_correlation', [False])
         vg.add('gamma', [1.0])
         vg.add('sigma', [0.9])
         vg.add('test_episodes', [10])
         vg.add('plan_horizon', lambda env_name: [planning_horizons[env_name]])
     else:
-        vg.add('sample_size', [1000])
+        vg.add('sample_size', [10])
         vg.add('action_correlation', [False])
         vg.add('beta', [0.8])
         vg.add('gamma', [1.0])
