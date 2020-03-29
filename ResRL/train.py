@@ -7,6 +7,7 @@ import numpy as np
 from ResRL import utils
 from ResRL.td3 import TD3
 from envs.env import Env
+from softgym.utils.visualization import save_numpy_as_gif, make_grid
 
 default_vv = {
     "start_timesteps": 1e2,  # Time steps initial random policy is used
@@ -21,24 +22,37 @@ default_vv = {
     "policy_freq": 2,  # Frequency of delayed policy updates
     "action_embed_dim": 64,
     "obs_embed_dim": 256,
-    "save_model": False,  # Save model and optimizer parameters
+    "save_model": True,  # Save model and optimizer parameters
+    "save_model_number": 20,
     "load_model": ""  # Model load file name, "" doesn't load, "default" uses file_name
 }
 
 
-def eval_policy(policy, eval_env, seed, eval_episodes=10):
+def eval_policy(policy, eval_env, seed, eval_episodes=10, visualization=False):
     eval_env.seed(seed + 100)
 
-    avg_reward = 0.
+    all_returns = []
+    vis_trajs = []
     for _ in range(eval_episodes):
-        state, done = eval_env.reset(), False
+        state, done, ret = eval_env.reset(), False, 0.
+        vis_traj = [eval_env.render(mode='rgb_array')] if visualization else None
         while not done:
             action = policy.select_action(np.array(state))
             state, reward, done, _ = eval_env.step(action)
-            avg_reward += reward[0]
+            ret += reward[0]
+            if visualization:
+                vis_traj.append(eval_env.render(mode='rgb_array'))
+        if visualization:
+            vis_trajs.append(vis_traj)
+        all_returns.append(ret)
 
-    avg_reward /= eval_episodes
-    return avg_reward
+    if not visualization:
+        return np.mean(all_returns)
+    else:
+        idxes = list(reversed(np.argsort(all_returns)))
+        all_returns = np.array([all_returns[idx] for idx in idxes])
+        vis_trajs = np.array([vis_trajs[idx] for idx in idxes])
+        return all_returns, vis_trajs
 
 
 def update_env_kwargs(vv):
@@ -77,8 +91,6 @@ def run_task(arg_vv, log_dir, exp_name):
     symbolic = not vv['env_kwargs']['image_observation']
     env = Env(vv['env_name'], symbolic, vv['seed'], vv['max_episode_length'], 1, 8, image_dim, env_kwargs=vv['env_kwargs'])
     eval_env = Env(vv['env_name'], symbolic, vv['seed'], vv['max_episode_length'], 1, 8, image_dim, env_kwargs=vv['env_kwargs'])
-
-    # env = Box1d(**vv['env_kwargs'])
 
     # Set seeds
     env.seed(vv['seed'])
@@ -122,7 +134,17 @@ def run_task(arg_vv, log_dir, exp_name):
     episode_timesteps = 0
     episode_num = 0
 
+    save_interval = int(vv['max_timesteps'] // vv['save_model_number'])
     for t in range(int(vv['max_timesteps'])):
+        if t % save_interval == 0:  # Save the model after t timesteps of training
+            save_name = osp.join(logger.get_dir(), 'model_{}.pth'.format(t))
+            logger.info('Saving policy to: ' + save_name)
+            policy.save(save_name)
+            _, vis_trajs = eval_policy(policy, eval_env, vv['seed'], visualization=True)
+            vis_trajs = np.array(vis_trajs).swapaxes(0, 1)
+
+            vis_imgs = np.array([make_grid(vis_trajs[i], nrow=2, padding=5) for i in range(vis_trajs.shape[0])])
+            save_numpy_as_gif(vis_imgs, osp.join(logger.get_dir(), '{}.gif'.format(t)), fps=30, scale=0.6)
         episode_timesteps += 1
 
         # Select action randomly or according to policy
@@ -136,8 +158,8 @@ def run_task(arg_vv, log_dir, exp_name):
 
         # Perform action
         next_obs, reward, done, _ = env.step(action)
-        print(action)
-        env.render()
+        # print(action)
+        # env.render()
         # done_bool = float(done) if episode_timesteps < env.horizon else 0
 
         # Store data in replay buffer.
@@ -160,7 +182,6 @@ def run_task(arg_vv, log_dir, exp_name):
             episode_num += 1
         # Evaluate episode
         if (t + 1) % vv['eval_freq'] == 0:
-            # if vv['save_model']: policy.save(f"./models/{file_name}")
             logger.record_tabular('timesteps', t + 1)
             logger.record_tabular('episode_num', episode_num)
             logger.record_tabular('eval_return', eval_policy(policy, eval_env, vv['seed']))

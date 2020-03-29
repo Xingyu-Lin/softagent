@@ -9,7 +9,7 @@ from ResRL.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0327_resRL_variation'
+    exp_prefix = '0328_resRL_variation'
     vg = VariantGenerator()
     env_arg_dict = {
         "Box1D": {}
@@ -22,8 +22,9 @@ def main(mode, debug, dry):
                                                                                                                         'VisualEncoderConv1d',
                                                                                                                         'VisualEncoder'])
     vg.add('max_episode_length', [200])  # Upper bound on the horizon. Not used here
-    vg.add('max_timesteps', [2e4])
-    vg.add('seed', [100])
+    # vg.add('max_timesteps', [2e5])
+    vg.add('max_timesteps', [1e4])
+    vg.add('seed', [100, 200, 300])
 
     if not debug:
         # Add possible vgs for non-debug purpose

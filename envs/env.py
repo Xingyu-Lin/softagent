@@ -227,8 +227,8 @@ class SoftGymEnv(object):
                 break
         return obs, reward, done, info
 
-    def render(self):
-        self._env.render()
+    def render(self, **kwargs):
+        return self._env.render(**kwargs)
 
     def close(self):
         self._env.close()

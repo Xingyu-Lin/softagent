@@ -49,14 +49,17 @@ class Box1d(gym.Env):
         #                      cv.resize(obs[:, :, 1].T, (self.canvas_size, self.canvas_size), interpolation=cv.INTER_NEAREST)
         # padding = np.ones([curr_img.shape[0], 5]) * 0.5
         # img = np.hstack([curr_img, padding, goal_img])
-
-        curr_img = self._draw_box(self.box_pos, self.box_size)[:, :, 0].T / 255.
-        goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:, :, 0].T / 255.
-        padding = np.ones([5, curr_img.shape[1]]) * 0.5
-        img = np.vstack([curr_img, padding, goal_img])
-
-        cv.imshow('Box1d', np.vstack([img]))
-        cv.waitKey(10)
+        if mode == 'human':
+            curr_img = self._draw_box(self.box_pos, self.box_size)[:, :, 0].T / 255.
+            goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:, :, 0].T / 255.
+            padding = np.ones([5, curr_img.shape[1]]) * 0.5
+            img = np.vstack([curr_img, padding, goal_img])
+            cv.imshow('Box1d', np.vstack([img]))
+            cv.waitKey(10)
+        else:
+            curr_img = self._draw_box(self.box_pos, self.box_size)[:, :, 0].T
+            goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:, :, 0].T
+            return np.vstack([obs[:, :, 0].T, obs[:, :, 1].T])
 
     def _to_canvas(self, x):
         return int(np.round(x * self.canvas_size))
