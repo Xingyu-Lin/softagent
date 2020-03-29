@@ -57,9 +57,15 @@ class Box1d(gym.Env):
             cv.imshow('Box1d', np.vstack([img]))
             cv.waitKey(10)
         else:
-            curr_img = self._draw_box(self.box_pos, self.box_size)[:, :, 0].T
-            goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:, :, 0].T
-            return np.vstack([obs[:, :, 0].T, obs[:, :, 1].T])
+            if self.image_observation:
+                return np.vstack([obs[:, :, 0].T, obs[:, :, 1].T])
+            else:
+                curr_img = self._draw_box(self.box_pos, self.box_size)[:, :, 0].T
+                goal_img = self._draw_box(self.box_goal_pos, self.box_size)[:, :, 0].T
+                curr_img = cv.resize(curr_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
+                goal_img = cv.resize(goal_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
+                return np.vstack([curr_img, goal_img])
+
 
     def _to_canvas(self, x):
         return int(np.round(x * self.canvas_size))
