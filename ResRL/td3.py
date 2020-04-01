@@ -3,11 +3,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from ResRL.models import *
+from ResRL.residual_models import *
 
 
 # Implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
 # Paper: https://arxiv.org/abs/1802.09477
-
 class TD3(object):
     def __init__(
       self,
@@ -29,15 +29,24 @@ class TD3(object):
     ):
         self.device = device
         if image_observation:
-            self.actor = ConvActor(obs_embed_dim, action_dim, image_dim, image_c, max_action, visual_encoder_name).to(device)
-            self.critic = ConvCritic(obs_embed_dim, action_dim, image_dim, image_c, action_embed_dim, visual_encoder_name).to(device)
+            if 'Residual' in visual_encoder_name:
+                self.actor = ResidualActor1D(image_dim, image_c, action_dim, max_action).to(device)
+                self.critic = ResidualCritic1D(image_dim, image_c, action_dim).to(device)
+            else:
+                self.actor = ConvActor(obs_embed_dim, action_dim, image_dim, image_c, max_action, visual_encoder_name).to(device)
+                self.critic = ConvCritic(obs_embed_dim, action_dim, image_dim, image_c, action_embed_dim, visual_encoder_name).to(device)
         else:
             self.actor = Actor(state_dim, action_dim, max_action).to(device)
             self.critic = Critic(state_dim, action_dim).to(device)
 
         self.actor_target = copy.deepcopy(self.actor)
+        if hasattr(self.actor_target, 'multihead_attn'):
+            self.actor_target.multihead_attn._qkv_same_embed_dim = self.actor.multihead_attn._qkv_same_embed_dim # Hacky fix for pytorch bug
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4, weight_decay=1e-4)
         self.critic_target = copy.deepcopy(self.critic)
+        if hasattr(self.critic_target, 'critic1'):
+            self.critic_target.critic1.multihead_attn._qkv_same_embed_dim = self.critic.critic1.multihead_attn._qkv_same_embed_dim
+            self.critic_target.critic2.multihead_attn._qkv_same_embed_dim = self.critic.critic2.multihead_attn._qkv_same_embed_dim
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4, weight_decay=1e-4)
 
         self.max_action = max_action

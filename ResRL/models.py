@@ -227,7 +227,6 @@ class ConvCritic(nn.Module):
         q1 = self.l3(q1)
         return q1
 
-
 visual_encoder_dict = {
     'VisualEncoder': VisualEncoder,  # Conv2d encoder
     'VisualEncoderConv1d': VisualEncoderConv1d,
