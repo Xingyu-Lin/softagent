@@ -13,21 +13,21 @@ class UNet(nn.Module):
         self.image_c = image_c
         self.act_fn = getattr(F, activation_function)
         if image_dim == 128:
-            self.conv0 = nn.Conv1d(image_c, 16, 4, stride=2)
-            self.conv1 = nn.Conv1d(16, 32, 4, stride=2)
+            self.conv0 = nn.Conv1d(image_c, 4, 4, stride=2, padding=1)
+            self.conv1 = nn.Conv1d(4, 8, 4, stride=2, padding=1)
         else:
             raise NotImplementedError
-        self.conv2 = nn.Conv1d(32, 64, 4, stride=2)
-        self.conv3 = nn.Conv1d(64, 128, 4, stride=2)
-        self.conv4 = nn.Conv1d(128, 256, 4, stride=2)
-        self.bottleneck = nn.Conv1d(256, 256, 3, stride=1, padding=1)
+        self.conv2 = nn.Conv1d(8, 16, 4, stride=2, padding=1)
+        self.conv3 = nn.Conv1d(16, 32, 4, stride=2, padding=1)
+        self.conv4 = nn.Conv1d(32, 64, 4, stride=2, padding=1)
+        self.bottleneck = nn.Conv1d(64, 64, 3, stride=1, padding=1)
 
-        self.upconv4 = nn.ConvTranspose1d(512, 128, 4, stride=2)
-        self.upconv3 = nn.ConvTranspose1d(256, 64, 4, stride=2)
+        self.upconv4 = nn.ConvTranspose1d(128, 32, 4, stride=2, padding=1)
+        self.upconv3 = nn.ConvTranspose1d(64, 16, 4, stride=2, padding=1)
         if self.image_dim == 128:
-            self.upconv2 = nn.ConvTranspose1d(128, 32, 4, stride=2)
-            self.upconv1 = nn.ConvTranspose1d(64, 16, 4, stride=2)
-            self.upconv0 = nn.ConvTranspose1d(16, 2, 4, stride=2)
+            self.upconv2 = nn.ConvTranspose1d(32, 8, 4, stride=2, padding=1)
+            self.upconv1 = nn.ConvTranspose1d(16, 4, 4, stride=2, padding=1)
+            self.upconv0 = nn.ConvTranspose1d(4, 2, 4, stride=2, padding=1)
         elif self.image_dim == 64:
             raise NotImplementedError
 
@@ -43,16 +43,11 @@ class UNet(nn.Module):
         conv_feature3 = self.act_fn(self.conv3(conv_feature2))
         conv_feature4 = self.act_fn(self.conv4(conv_feature3))
         bottleneck_feature = self.act_fn(self.bottleneck(conv_feature4))
-        # print('bottleneck feature:', bottleneck_feature.shape)
-        # print('conv_feature4:', conv_feature4.shape)
-        # exit()
-
         upconv_feature4 = self.upconv4(torch.cat([bottleneck_feature, conv_feature4], 1))
         upconv_feature3 = self.upconv3(torch.cat([upconv_feature4, conv_feature3], 1))
         upconv_feature2 = self.upconv2(torch.cat([upconv_feature3, conv_feature2], 1))
         upconv_feature1 = self.upconv1(torch.cat([upconv_feature2, conv_feature1], 1))
         upconv_feature0 = self.upconv0(upconv_feature1)
-
         return bottleneck_feature, upconv_feature0
 
 
@@ -70,14 +65,14 @@ class ResidualActor1D(nn.Module):
         self.unet = UNet(image_dim, image_c, activation_function)
         self.multihead_attn = MultiheadAttention(attn_embed_dim, attn_num_heads, kdim=2, vdim=2)
         self.action_encoder = ActionEncoder(attn_embed_dim, action_dim, activation_function)
-        self.fc_bottleneck = nn.Linear(512, 256)
+        self.fc_bottleneck = nn.Linear(256, 256)
         self.fc1 = nn.Linear(attn_embed_dim, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, action_dim)
 
     def forward(self, observation):
         bottleneck_feature, upconv_feature0 = self.unet(observation)
-        action_bottleneck = self.get_fc_action(bottleneck_feature.reshape(-1, 512))
+        action_bottleneck = self.get_fc_action(bottleneck_feature.reshape(-1, 256))
         action_residual, attn_output_weights = self.get_MHA_action(upconv_feature0, action_bottleneck)
         action = F.tanh(action_bottleneck + action_residual) * self.max_action
         self.info = {'action_bottleneck': action_bottleneck,
@@ -139,7 +134,7 @@ class ResidualCriticSingle1D(nn.Module):
         action_embed_dim = attn_embed_dim
         self.action_encoder = ActionEncoder(action_embed_dim, action_dim, activation_function)
         self.action_attn_encoder = ActionEncoder(attn_embed_dim, action_dim, activation_function)
-        self.fc_bottleneck = nn.Linear(512 + action_embed_dim, 256)
+        self.fc_bottleneck = nn.Linear(256 + action_embed_dim, 256)
         self.fc1 = nn.Linear(64, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, action_dim)
@@ -156,7 +151,7 @@ class ResidualCriticSingle1D(nn.Module):
 
     def get_fc_value(self, bottleneck_feature, action):
         action_embed = self.action_encoder(action)
-        hidden = self.act_fn(self.fc_bottleneck(torch.cat([bottleneck_feature.reshape(-1, 512), action_embed], 1)))
+        hidden = self.act_fn(self.fc_bottleneck(torch.cat([bottleneck_feature.reshape(-1, 256), action_embed], 1)))
         hidden = self.act_fn(self.fc2(hidden))
         action = self.fc3(hidden)
         return action

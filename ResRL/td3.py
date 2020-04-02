@@ -20,6 +20,7 @@ class TD3(object):
       action_embed_dim,
       max_action,
       visual_encoder_name,
+      weight_decay = 1e-4,
       discount=0.99,
       tau=0.005,
       policy_noise=0.2,
@@ -42,12 +43,12 @@ class TD3(object):
         self.actor_target = copy.deepcopy(self.actor)
         if hasattr(self.actor_target, 'multihead_attn'):
             self.actor_target.multihead_attn._qkv_same_embed_dim = self.actor.multihead_attn._qkv_same_embed_dim # Hacky fix for pytorch bug
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4, weight_decay=1e-4)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4, weight_decay=weight_decay)
         self.critic_target = copy.deepcopy(self.critic)
         if hasattr(self.critic_target, 'critic1'):
             self.critic_target.critic1.multihead_attn._qkv_same_embed_dim = self.critic.critic1.multihead_attn._qkv_same_embed_dim
             self.critic_target.critic2.multihead_attn._qkv_same_embed_dim = self.critic.critic2.multihead_attn._qkv_same_embed_dim
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4, weight_decay=1e-4)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4, weight_decay=weight_decay)
 
         self.max_action = max_action
         self.discount = discount

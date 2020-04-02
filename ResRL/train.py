@@ -111,6 +111,7 @@ def run_task(arg_vv, log_dir, exp_name):
                   max_action=max_action,
                   discount=vv['discount'],
                   tau=vv['tau'],
+                  weight_decay=vv['weight_decay'],
                   device=device)
 
     # Initialize policy
@@ -158,8 +159,7 @@ def run_task(arg_vv, log_dir, exp_name):
 
         # Perform action
         next_obs, reward, done, _ = env.step(action)
-        # print(action)
-        # env.render()
+        env.render()
         # done_bool = float(done) if episode_timesteps < env.horizon else 0
 
         # Store data in replay buffer.
