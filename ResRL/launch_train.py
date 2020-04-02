@@ -17,7 +17,7 @@ def main(mode, debug, dry):
     }
     vg.add('env_name', ['Box1D'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_image_observation', [True])
+    vg.add('env_kwargs_image_observation', [True, False])
     vg.add('env_kwargs_image_dim', [128])
     vg.add('visual_encoder_name', lambda env_kwargs_image_observation: [None] if not env_kwargs_image_observation else [
         'Residual'
@@ -25,7 +25,7 @@ def main(mode, debug, dry):
         # 'VisualEncoderConv1d',
         # 'VisualEncoder',
     ])
-    vg.add('weight_decay', lambda visual_encoder_name: [1e-4] if 'Residual' in visual_encoder_name else [1e-4])
+    vg.add('weight_decay', lambda visual_encoder_name: [1e-4] if visual_encoder_name is not None and 'Residual' in visual_encoder_name else [1e-4])
     vg.add('max_episode_length', [200])  # Upper bound on the horizon. Not used here
     vg.add('max_timesteps', [2e5])
     # vg.add('max_timesteps', [1e4])

@@ -10,15 +10,17 @@ import cv2 as cv
 # |
 # O------> x
 class Box1d(gym.Env):
-    def __init__(self, horizon=20, canvas_size=500, image_dim=64, box_size_range=(0.01, 0.3), image_observation=False, **kwargs):
+    def __init__(self, horizon=10, canvas_size=500, image_dim=64, box_size_range=(0.01, 0.3), image_observation=False,
+                 reward_type='normalized_dist', **kwargs):
         self.horizon = horizon
         self.image_dim = image_dim
         self.canvas_size = canvas_size
         self.box_size_range = box_size_range
         self.box_pos_range = (0, 1)
         self.box_pos = self.box_goal_pos = self.box_size = self.time_step = None
-        self.action_space = Box(low=-0.05, high=0.05, shape=(1,), dtype=np.float32)
+        self.action_space = Box(low=-0.15, high=0.15, shape=(1,), dtype=np.float32)
         self.image_observation = image_observation
+        self.reward_type = reward_type  # Reward type should be in {'dist', 'normalized_dist'}
         if image_observation:
             self.observation_space = Box(low=-np.inf, high=np.inf, shape=(image_dim, image_dim, 2), dtype=np.float32)
         else:
@@ -29,6 +31,9 @@ class Box1d(gym.Env):
         self.box_size = np.random.uniform(*self.box_size_range)
         self.box_pos = np.random.uniform(*self.box_pos_range)
         self.box_goal_pos = np.random.uniform(*self.box_pos_range)
+        while abs(self.box_pos - self.box_goal_pos) < 0.01:
+            self.box_goal_pos = np.random.uniform(*self.box_pos_range)
+        self.box_init_dist = abs(self.box_pos - self.box_goal_pos)
         # self.box_size = 0.3
         # self.box_pos = 0.3
         # self.box_goal_pos = 0.5
@@ -36,7 +41,12 @@ class Box1d(gym.Env):
 
     def step(self, action):
         self.box_pos += action
-        reward = -abs(self.box_pos - self.box_goal_pos)
+        if self.reward_type == 'dist':
+            reward = -abs(self.box_pos - self.box_goal_pos)
+        elif self.reward_type == 'normalized_dist':
+            reward = -abs(self.box_pos - self.box_goal_pos) / self.box_init_dist
+        else:
+            raise NotImplementedError
         obs = self._get_current_obs()
         info = self._get_current_info()
         self.time_step += 1
@@ -65,7 +75,6 @@ class Box1d(gym.Env):
                 curr_img = cv.resize(curr_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
                 goal_img = cv.resize(goal_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
                 return np.vstack([curr_img, goal_img])
-
 
     def _to_canvas(self, x):
         return int(np.round(x * self.canvas_size))

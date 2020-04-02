@@ -11,7 +11,7 @@ from softgym.utils.visualization import save_numpy_as_gif, make_grid
 
 default_vv = {
     "start_timesteps": 1e2,  # Time steps initial random policy is used
-    "eval_freq": 200,  # How often (time steps) we evaluate
+    "eval_freq": 400,  # How often (time steps) we evaluate
     "max_timesteps": 1e6,  # Max time steps to run environment
     "expl_noise": 0.1,  # Std of Gaussian exploration noise
     "batch_size": 256,  # Batch size for both actor and critic
@@ -31,7 +31,9 @@ default_vv = {
 def eval_policy(policy, eval_env, seed, eval_episodes=10, visualization=False):
     eval_env.seed(seed + 100)
 
+    info = {}
     all_returns = []
+    all_actions = []
     vis_trajs = []
     for _ in range(eval_episodes):
         state, done, ret = eval_env.reset(), False, 0.
@@ -40,14 +42,21 @@ def eval_policy(policy, eval_env, seed, eval_episodes=10, visualization=False):
             action = policy.select_action(np.array(state))
             state, reward, done, _ = eval_env.step(action)
             ret += reward[0]
+            all_actions.append(action)
             if visualization:
                 vis_traj.append(eval_env.render(mode='rgb_array'))
         if visualization:
             vis_trajs.append(vis_traj)
         all_returns.append(ret)
 
+    info['eval_return_mean'] = np.mean(all_returns)
+    info['eval_return_std'] = np.std(all_returns)
+    info['eval_action_mean'] = np.mean(all_actions)
+    info['eval_action_std'] = np.std(all_actions)
+    info['eval_abs_action_mean'] = np.mean(np.abs(all_actions))
+
     if not visualization:
-        return np.mean(all_returns)
+        return info
     else:
         idxes = list(reversed(np.argsort(all_returns)))
         all_returns = np.array([all_returns[idx] for idx in idxes])
@@ -128,7 +137,9 @@ def run_task(arg_vv, log_dir, exp_name):
     replay_buffer = utils.ReplayBuffer(obs_dim, action_dim, device=device)
 
     # Evaluate untrained policy
-    logger.record_tabular('eval_return', eval_policy(policy, eval_env, vv['seed']))
+    eval_info = eval_policy(policy, eval_env, vv['seed'], eval_episodes=20)
+    for key, val in eval_info.items():
+        logger.record_tabular(key, val)
 
     obs, done = env.reset(), False
     episode_reward = 0
@@ -184,7 +195,11 @@ def run_task(arg_vv, log_dir, exp_name):
         if (t + 1) % vv['eval_freq'] == 0:
             logger.record_tabular('timesteps', t + 1)
             logger.record_tabular('episode_num', episode_num)
-            logger.record_tabular('eval_return', eval_policy(policy, eval_env, vv['seed']))
+            eval_info = eval_policy(policy, eval_env, vv['seed'], eval_episodes=20)
+            for key, val in eval_info.items():
+                logger.record_tabular(key, val)
+            for key, val in policy.get_logs().items():
+                logger.record_tabular(key, val)
             logger.dump_tabular()
 
     # # Run policy

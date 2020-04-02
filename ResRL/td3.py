@@ -20,7 +20,7 @@ class TD3(object):
       action_embed_dim,
       max_action,
       visual_encoder_name,
-      weight_decay = 1e-4,
+      weight_decay=1e-4,
       discount=0.99,
       tau=0.005,
       policy_noise=0.2,
@@ -42,7 +42,7 @@ class TD3(object):
 
         self.actor_target = copy.deepcopy(self.actor)
         if hasattr(self.actor_target, 'multihead_attn'):
-            self.actor_target.multihead_attn._qkv_same_embed_dim = self.actor.multihead_attn._qkv_same_embed_dim # Hacky fix for pytorch bug
+            self.actor_target.multihead_attn._qkv_same_embed_dim = self.actor.multihead_attn._qkv_same_embed_dim  # Hacky fix for pytorch bug
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4, weight_decay=weight_decay)
         self.critic_target = copy.deepcopy(self.critic)
         if hasattr(self.critic_target, 'critic1'):
@@ -58,6 +58,7 @@ class TD3(object):
         self.policy_freq = policy_freq
 
         self.total_it = 0
+        self.logs = {}
 
     def select_action(self, state):
         state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
@@ -91,12 +92,17 @@ class TD3(object):
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
         if hasattr(self.critic, 'get_info'):
             info = self.critic.get_info()
-            value_residual_q1, value_residual_q2 = info['value_residual_q2'], info['value_residual_q2']
-            value_bottleneck_q1 = info['value_bottleneck_q1']
+            value_residual_q1, value_residual_q2 = info['value_residual_q1'], info['value_residual_q2']
+            value_bottleneck_q1, value_bottleneck_q2 = info['value_bottleneck_q1'], info['value_bottleneck_q2']
             loss_residual_penalty = value_residual_q1.square().mean() + value_residual_q2.square().mean()
             # print('bottleneck:', value_bottleneck_q1.abs().mean(), 'residual:', value_residual_q1.abs().mean())
             # print('critic loss:', critic_loss, 'residual loss:', loss_residual_penalty)
             critic_loss += loss_residual_penalty
+            self.logs['abs_value_bottleneck_q1'] = value_bottleneck_q1.cpu().detach().abs().numpy().mean()
+            self.logs['abs_value_bottleneck_q2'] = value_bottleneck_q2.cpu().detach().abs().numpy().mean()
+            self.logs['abs_value_residual_q1'] = value_residual_q1.cpu().detach().abs().numpy().mean()
+            self.logs['abs_value_residual_q2'] = value_residual_q2.cpu().detach().abs().numpy().mean()
+
         # Optimize the critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -118,7 +124,8 @@ class TD3(object):
                 # print('action abs mean (bottleneck, residual):', info['action_bottleneck'].abs().mean(), info['action_residual'].abs().mean())
                 # print('actor_loss:', actor_loss, 'residual_loss:', loss_residual_penalty)
                 actor_loss += loss_residual_penalty
-
+                self.logs['abs_action_residual'] = info['action_residual'].cpu().detach().abs().numpy().mean()
+                self.logs['abs_action_bottleneck'] = info['action_bottleneck'].cpu().detach().abs().numpy().mean()
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
@@ -131,6 +138,13 @@ class TD3(object):
 
             for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
                 target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+
+            # logging
+            self.logs['critic_loss'] = critic_loss.cpu().detach().numpy()
+            self.logs['actor_loss'] = actor_loss.cpu().detach().numpy()
+
+    def get_logs(self):
+        return self.logs
 
     def save(self, filename):
         torch.save({'critic': self.critic.state_dict(),
