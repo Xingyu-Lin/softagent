@@ -89,7 +89,14 @@ class TD3(object):
 
         # Compute critic loss
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
-
+        if hasattr(self.critic, 'get_info'):
+            info = self.critic.get_info()
+            value_residual_q1, value_residual_q2 = info['value_residual_q2'], info['value_residual_q2']
+            value_bottleneck_q1 = info['value_bottleneck_q1']
+            loss_residual_penalty = value_residual_q1.square().mean() + value_residual_q2.square().mean()
+            # print('bottleneck:', value_bottleneck_q1.abs().mean(), 'residual:', value_residual_q1.abs().mean())
+            # print('critic loss:', critic_loss, 'residual loss:', loss_residual_penalty)
+            critic_loss += loss_residual_penalty
         # Optimize the critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -105,6 +112,13 @@ class TD3(object):
 
             # Compute actor losse
             actor_loss = -self.critic.Q1(obs, self.actor(obs)).mean()
+            if hasattr(self.actor, 'get_info'):
+                info = self.actor.get_info()
+                loss_residual_penalty = info['action_residual'].square().mean()
+                # print('action abs mean (bottleneck, residual):', info['action_bottleneck'].abs().mean(), info['action_residual'].abs().mean())
+                # print('actor_loss:', actor_loss, 'residual_loss:', loss_residual_penalty)
+                actor_loss += loss_residual_penalty
+
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
