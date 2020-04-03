@@ -101,7 +101,17 @@ class Box1d(gym.Env):
             goal_img = cv.resize(goal_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
             obs = np.dstack([curr_img, goal_img])
         else:
-            obs = np.array([self.box_pos, self.box_goal_pos], dtype=np.float32)
+            curr_img = self._draw_box(self.box_pos, self.box_size)
+            curr_img = cv.resize(curr_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
+            idx_non_zero = np.argwhere(curr_img[:, self.image_dim // 2] == 255) / float(self.image_dim)
+            curr_box_idx = min(idx_non_zero) if len(idx_non_zero) > 0 else 0
+
+            goal_img = self._draw_box(self.box_goal_pos, self.box_size)
+            goal_img = cv.resize(goal_img, (self.image_dim, self.image_dim), interpolation=cv.INTER_LINEAR)
+            idx_non_zero = np.argwhere(goal_img[:, self.image_dim // 2] == 255) / float(self.image_dim)
+            goal_box_idx = min(idx_non_zero) if len(idx_non_zero) > 0 else 0
+            obs = np.array([curr_box_idx, goal_box_idx], dtype=np.float32)
+            # obs = np.array([self.box_pos, self.box_goal_pos], dtype=np.float32)
         return obs
 
     def _get_current_info(self):
