@@ -170,7 +170,7 @@ def run_task(arg_vv, log_dir, exp_name):
 
         # Perform action
         next_obs, reward, done, _ = env.step(action)
-        env.render()
+        # env.render()
         # done_bool = float(done) if episode_timesteps < env.horizon else 0
 
         # Store data in replay buffer.
