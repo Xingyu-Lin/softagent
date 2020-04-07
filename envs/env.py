@@ -198,6 +198,8 @@ class SoftGymEnv(object):
         self.action_repeat = action_repeat
         self.bit_depth = bit_depth
         self.image_dim = image_dim
+        if image_dim is None:
+            self.image_dim = image_dim = self._env.observation_space.shape[0]
         if not self.symbolic:
             self.image_c = np.prod(self._env.observation_space.shape) // (image_dim * image_dim)
 

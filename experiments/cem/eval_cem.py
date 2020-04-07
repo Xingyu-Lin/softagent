@@ -18,6 +18,8 @@ def run_task(arg_vv, log_dir, exp_name):
     mp.set_start_method('spawn')
     vv = arg_vv
     vv['population_size'] = vv['timestep_per_decision'] // vv['max_iters']
+    if vv['use_mpc']:
+        vv['population_size'] = vv['population_size'] // vv['plan_horizon']
     vv['num_elites'] = vv['population_size'] // 10
     vv = update_env_kwargs(vv)
 
@@ -38,7 +40,9 @@ def run_task(arg_vv, log_dir, exp_name):
     # Dump parameters
     with open(osp.join(logger.get_dir(), 'variant.json'), 'w') as f:
         json.dump(vv, f, indent=2, sort_keys=True)
+
     env_symbolic = vv['env_kwargs']['observation_mode'] != 'cam_rgb'
+
     env_class = Env
     env_kwargs = {'env': vv['env_name'],
                   'symbolic': env_symbolic,
@@ -61,10 +65,12 @@ def run_task(arg_vv, log_dir, exp_name):
     for i in range(vv['test_episodes']):
         logger.log('episode ' + str(i))
         obs = env.reset()
+        policy.reset()
         initial_state = env.get_state()
         action_traj = []
         infos = []
-        for _ in range(env.horizon):
+        for j in range(env.horizon):
+            print('episode {}, step {}'.format(i, j))
             action = policy.get_action(obs)
             action_traj.append(copy.copy(action))
             obs, reward, _, info = env.step(action)
@@ -82,12 +88,6 @@ def run_task(arg_vv, log_dir, exp_name):
             logger.record_tabular('info_' + 'sum_' + info_name, np.sum(transformed_info[info_name][0, :], axis=-1))
         logger.dump_tabular()
 
-    # Dump info
-    # transformed_info = transform_info(all_infos)
-    # for info_name in transformed_info:
-    #     logger.record_tabular('info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
-    #     logger.record_tabular('info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
-    #     logger.record_tabular('info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))
     # Dump trajectories
     traj_dict = {
         'initial_states': initial_states,

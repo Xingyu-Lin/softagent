@@ -2,10 +2,17 @@ import multiprocessing as mp
 from multiprocessing import Pool
 import numpy as np
 
+env = None
+
 
 def get_cost(args):
     init_state, action_trajs, env_class, env_kwargs = args
-    env = env_class(**env_kwargs)
+    global env
+    if env is None:
+        # Need to create the env inside the function such that the GPU buffer is associated with the child process and avoid any deadlock.
+        # Use the global variable to access the child process-specific memory
+        env = env_class(**env_kwargs)
+        print('Child env created!')
     env.reset(config_id=init_state['config_id'])
 
     N = action_trajs.shape[0]
@@ -16,12 +23,15 @@ def get_cost(args):
         for action in action_trajs[i, :]:
             _, reward, _, _ = env.step(action)
             ret += reward
-        costs.append(ret)
+        costs.append(-ret)
+        # print('get_cost {}: {}'.format(i, ret))
     return costs
 
 
 class ParallelRolloutWorker(object):
-    def __init__(self, env_class, env_kwargs, plan_horizon, action_dim, num_worker=2):
+    """ Rollout a set of trajectory in parallel. """
+
+    def __init__(self, env_class, env_kwargs, plan_horizon, action_dim, num_worker=20):
         self.num_worker = num_worker
         self.plan_horizon, self.action_dim = plan_horizon, action_dim
         self.env_class, self.env_kwargs = env_class, env_kwargs
@@ -53,6 +63,6 @@ if __name__ == '__main__':
         action = env.action_space.sample()
         action_trajs.append(action)
     action_trajs = np.array(action_trajs).reshape([4, 100, -1])
-    rollout_worker = ParallelRolloutWorker(env_class, env_kwargs)
+    rollout_worker = ParallelRolloutWorker(env_class, env_kwargs, 10, 4)
     cost = rollout_worker.cost_function(initial_state, action_trajs)
     print('cost:', cost)

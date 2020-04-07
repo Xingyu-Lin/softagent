@@ -21,29 +21,29 @@ def main(mode, debug, dry):
         'RopeFlatten': 15
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['PassWater'])
+    vg.add('env_name', ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
     vg.add('env_kwargs_observation_mode', ['key_point'])
 
-    vg.add('seed', [100])
+    vg.add('seed', [100, 200])
     vg.add('max_episode_length', [200])
 
     if not debug:
         vg.add('max_iters', [10])
         vg.add('plan_horizon', lambda env_name: [cem_plan_horizon[env_name]])
         vg.add('timestep_per_decision', [21000])
-        vg.add('test_episodes', [10])
-        vg.add('use_mpc', [False])
+        vg.add('test_episodes', [5])
+        vg.add('use_mpc', [True])
         # Add possible vgs for non-debug purpose
         pass
     else:
-        vg.add('max_iters', [1])
-        vg.add('test_episodes', [2])
-        vg.add('timestep_per_decision', [100])
-        vg.add('use_mpc', [False])
-        vg.add('plan_horizon', [10])
+        vg.add('max_iters', [10])
+        vg.add('test_episodes', [1])
+        vg.add('timestep_per_decision', [21000])
+        vg.add('use_mpc', [True])
+        vg.add('plan_horizon', [7])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))

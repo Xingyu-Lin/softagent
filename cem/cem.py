@@ -39,11 +39,8 @@ class CEMOptimizer(object):
         :param init_var: (np.ndarray) The variance of the initial candidate distribution.
         :return:
         """
-        if init_mean is None or init_var is None:
-            mean = (self.ub + self.lb) / 2.
-            var = (self.ub - self.lb) / 4.
-        else:
-            mean, var = init_mean, init_var
+        mean = (self.ub + self.lb) / 2. if init_mean is None else init_mean
+        var = (self.ub - self.lb) / 4. if init_var is None else init_var
         t = 0
         X = stats.norm(loc=np.zeros_like(mean), scale=np.ones_like(mean))
 
@@ -55,10 +52,8 @@ class CEMOptimizer(object):
             sort_costs = np.argsort(costs)
 
             elites = samples[sort_costs][:self.num_elites]
-
             mean = np.mean(elites, axis=0)
             var = np.var(elites, axis=0)
-
             t += 1
         sol, solvar = mean, var
         return sol
@@ -72,6 +67,7 @@ class CEMPolicy(object):
         self.use_mpc = use_mpc
         self.plan_horizon, self.action_dim = plan_horizon, len(env.action_space.sample())
         self.action_buffer = []
+        self.prev_sol = None
         self.rollout_worker = ParallelRolloutWorker(env_class, env_kwargs, plan_horizon, self.action_dim)
 
         lower_bound = np.tile(env.action_space.low[None], [self.plan_horizon, 1]).flatten()
@@ -82,7 +78,7 @@ class CEMPolicy(object):
                                       population_size=population_size,
                                       num_elites=num_elites,
                                       lower_bound=lower_bound,
-                                      upper_bound=upper_bound,)
+                                      upper_bound=upper_bound, )
 
     # def cost_function(self, cur_state, action_trajs):
     #     env = self.env
@@ -99,17 +95,25 @@ class CEMPolicy(object):
     #             ret += reward
     #         costs.append(-ret)
     #     return costs
+    def reset(self):
+        self.prev_sol = None
 
     def get_action(self, state):
-        if len(self.action_buffer) > 0 and not self.use_mpc:
+        if len(self.action_buffer) > 0 and self.use_mpc:
             action, self.action_buffer = self.action_buffer[0], self.action_buffer[1:]
             return action
         self.env.debug = False
         env_state = self.env.get_state()
-        self.action_buffer = self.optimizer.obtain_solution(env_state).reshape([-1, self.action_dim])
+
+        soln = self.optimizer.obtain_solution(env_state, self.prev_sol).reshape([-1, self.action_dim])
+        if self.use_mpc:
+            self.prev_sol = np.vstack([np.copy(soln)[1:, :], np.zeros([1, self.action_dim])]).flatten()
+        else:
+            self.prev_sol = None
+            self.action_buffer = soln[1:]  # self.action_buffer is only needed for the non-mpc case.
         self.env.set_state(env_state)  # Recover the environment
         print("cem finished planning!")
-        return self.get_action(state)
+        return soln[0]
 
 
 if __name__ == '__main__':
