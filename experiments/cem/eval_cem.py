@@ -70,7 +70,7 @@ def run_task(arg_vv, log_dir, exp_name):
         action_traj = []
         infos = []
         for j in range(env.horizon):
-            print('episode {}, step {}'.format(i, j))
+            logger.log('episode {}, step {}'.format(i, j))
             action = policy.get_action(obs)
             action_traj.append(copy.copy(action))
             obs, reward, _, info = env.step(action)

@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0308_cem'
+    exp_prefix = '0406_cem'
     vg = VariantGenerator()
     cem_plan_horizon = {
         'PassWater': 7,

@@ -31,7 +31,7 @@ def get_cost(args):
 class ParallelRolloutWorker(object):
     """ Rollout a set of trajectory in parallel. """
 
-    def __init__(self, env_class, env_kwargs, plan_horizon, action_dim, num_worker=20):
+    def __init__(self, env_class, env_kwargs, plan_horizon, action_dim, num_worker=8):
         self.num_worker = num_worker
         self.plan_horizon, self.action_dim = plan_horizon, action_dim
         self.env_class, self.env_kwargs = env_class, env_kwargs
