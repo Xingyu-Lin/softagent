@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from ResRL.models import *
 from ResRL.residual_models import *
+from ResRL.ablation import *
 
 
 # Implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
@@ -33,6 +34,9 @@ class TD3(object):
             if 'Residual' in visual_encoder_name:
                 self.actor = ResidualActor1D(image_dim, image_c, action_dim, max_action).to(device)
                 self.critic = ResidualCritic1D(image_dim, image_c, action_dim).to(device)
+            elif 'UNet' in visual_encoder_name:
+                self.actor = UNetActor1D(image_dim, image_c, action_dim, max_action).to(device)
+                self.critic = UNetCritic1D(image_dim, image_c, action_dim).to(device)
             else:
                 self.actor = ConvActor(obs_embed_dim, action_dim, image_dim, image_c, max_action, visual_encoder_name).to(device)
                 self.critic = ConvCritic(obs_embed_dim, action_dim, image_dim, image_c, action_embed_dim, visual_encoder_name).to(device)

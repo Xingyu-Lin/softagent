@@ -9,7 +9,7 @@ from ResRL.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0408_resRL'
+    exp_prefix = '0408_resRL_ablation_unet'
     vg = VariantGenerator()
 
     env_arg_dict = {
@@ -17,13 +17,14 @@ def main(mode, debug, dry):
     }
     vg.add('env_name', ['Box1D'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_image_observation', [True, False])
+    vg.add('env_kwargs_image_observation', [True])
     vg.add('env_kwargs_image_dim', [128])
     vg.add('visual_encoder_name', lambda env_kwargs_image_observation: [None] if not env_kwargs_image_observation else [
-        'Residual',
-        'VisualEncoderFc1d',
-        'VisualEncoderConv1d',
-        'VisualEncoder',
+        'UNet',
+        # 'Residual',
+        # 'VisualEncoderFc1d',
+        # 'VisualEncoderConv1d',
+        # 'VisualEncoder',
     ])
     vg.add('weight_decay',
            lambda visual_encoder_name: [0, 5e-5] if visual_encoder_name is not None and 'Residual' in visual_encoder_name else [0, 5e-5])
