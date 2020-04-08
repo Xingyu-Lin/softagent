@@ -17,16 +17,16 @@ replay_buffer_size = {
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '2-19-water-model-free-full-state'
+    exp_prefix = '0407_td3'
     vg = VariantGenerator()
     if debug:
-        vg.add('env_name', ['PourWater'])
+        vg.add('env_name', ['RopeFlatten'])
     else:
-        vg.add('env_name', ['PourWater', 'PassWater', ])  # 'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten'])
+        vg.add('env_name', ['RopeFlatten', 'PassWater'])  # 'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['point_cloud'])
+    vg.add('env_kwargs_observation_mode', ['key_point'])
     if not debug:
-        vg.add('algorithm', ['TD3', 'SAC'])
+        vg.add('algorithm', ['TD3'])
     else:
         vg.add('algorithm', ['TD3'])
     vg.add('version', ['normal'])
@@ -41,9 +41,16 @@ def main(mode, debug, dry):
                                                      qf_lr=3E-4,
                                                      reward_scale=1,
                                                      use_automatic_entropy_tuning=True,
-                                                     ) if algorithm == 'SAC' else dict(discount=0.99,
-                                                                                       policy_learning_rate=3e-4,
-                                                                                       qf_learning_rate=3e-4, )])
+                                                     )] if algorithm == 'SAC' else [dict(discount=0.99,
+                                                                                         policy_learning_rate=3e-4,
+                                                                                         qf_learning_rate=3e-4, ),
+                                                                                    dict(discount=0.99,
+                                                                                         policy_learning_rate=1e-4,
+                                                                                         qf_learning_rate=1e-4, ),
+                                                                                    dict(discount=0.99,
+                                                                                         policy_learning_rate=3e-5,
+                                                                                         qf_learning_rate=3e-5, ),
+                                                                                    ])
     vg.add('max_episode_length', [200])
     if debug:
         vg.add('seed', [100])
@@ -62,12 +69,12 @@ def main(mode, debug, dry):
     else:
         vg.add('algorithm_kwargs', [dict(num_epochs=500,
                                          num_eval_steps_per_epoch=900,
-                                         num_trains_per_train_loop=1,
+                                         num_trains_per_train_loop=1000,
                                          num_expl_steps_per_train_loop=1000,
                                          min_num_steps_before_training=1000,
                                          max_path_length=200,
                                          batch_size=256,
-                                         dump_policy_video_interval=1)])
+                                         dump_policy_video_interval=20)])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))

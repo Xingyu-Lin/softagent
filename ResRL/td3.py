@@ -94,7 +94,7 @@ class TD3(object):
             info = self.critic.get_info()
             value_residual_q1, value_residual_q2 = info['value_residual_q1'], info['value_residual_q2']
             value_bottleneck_q1, value_bottleneck_q2 = info['value_bottleneck_q1'], info['value_bottleneck_q2']
-            loss_residual_penalty = value_residual_q1.square().mean() + value_residual_q2.square().mean()
+            loss_residual_penalty = value_residual_q1.pow(2).mean() + value_residual_q2.pow(2).mean()
             # print('bottleneck:', value_bottleneck_q1.abs().mean(), 'residual:', value_residual_q1.abs().mean())
             # print('critic loss:', critic_loss, 'residual loss:', loss_residual_penalty)
             critic_loss += loss_residual_penalty
@@ -120,7 +120,7 @@ class TD3(object):
             actor_loss = -self.critic.Q1(obs, self.actor(obs)).mean()
             if hasattr(self.actor, 'get_info'):
                 info = self.actor.get_info()
-                loss_residual_penalty = info['action_residual'].square().mean()
+                loss_residual_penalty = info['action_residual'].pow(2).mean()
                 # print('action abs mean (bottleneck, residual):', info['action_bottleneck'].abs().mean(), info['action_residual'].abs().mean())
                 # print('actor_loss:', actor_loss, 'residual_loss:', loss_residual_penalty)
                 actor_loss += loss_residual_penalty
