@@ -64,9 +64,14 @@ class TD3(object):
         self.total_it = 0
         self.logs = {}
 
-    def select_action(self, state):
+    def select_action(self, state, return_info=False):
         state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
-        return self.actor(state).cpu().data.numpy().flatten()
+        action = self.actor(state).cpu().data.numpy().flatten()
+        if return_info:
+            return action, self.actor.get_info()
+        else:
+            return action
+
 
     def train(self, replay_buffer, batch_size=100):
         self.total_it += 1
