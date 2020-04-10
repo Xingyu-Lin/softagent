@@ -8,7 +8,7 @@ from envs.env import Env
 from softgym.utils.visualization import save_numpy_as_gif, make_grid
 
 args = argparse.ArgumentParser(sys.argv[0])
-args.add_argument("--policy", type=str, default='data/seuss/0405_resRL_hyper_search/0405_resRL_hyper_search/0405_resRL_hyper_search_2020_04_05_11_33_48_0001/model_190000.pth')
+args.add_argument("--policy", type=str, default='data/seuss/0405_resRL_hyper_search/0405_resRL_hyper_search/0405_resRL_hyper_search_2020_04_05_11_33_48_0002/model_190000.pth')
 args = args.parse_args()
 
 
@@ -30,7 +30,9 @@ def eval_policy(policy, eval_env, seed, eval_episodes=10):
             attn_weights = info['attn_action_output_weights'].detach().cpu().numpy()
             # print('weight mean and std:', np.mean(attn_weights), np.std(attn_weights))
             # exit()
-            attn_weights /= 0.1
+            if len(vis_traj) == 1:
+                max_attn_weight = np.max(attn_weights)
+            attn_weights /= max_attn_weight
             attention_img = np.tile(attn_weights, [50, 1]) * 255
             vis_traj[-1] = np.vstack([vis_traj[-1], attention_img])
             vis_traj.append(eval_env.render(mode='rgb_array'))
