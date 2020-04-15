@@ -10,6 +10,8 @@ from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.envs.cloth_drop import ClothDropEnv
+from softgym.envs.cloth_fold_crumpled import ClothFoldCrumpledEnv
+from softgym.envs.cloth_fold_drop import ClothFoldDropEnv
 from softgym.utils.normalized_env import normalize
 
 from ResRL.envs.box1d import Box1d
@@ -29,6 +31,8 @@ SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
                        'PourWater': PourWaterPosControlEnv,
                        'ClothFlatten': ClothFlattenEnv,
                        'ClothFold': ClothFoldEnv,
+                       'ClothFoldCrumpled': ClothFoldCrumpledEnv,
+                       'ClothFoldDrop': ClothFoldDropEnv,
                        'ClothDrop': ClothDropEnv,
                        'RopeFlatten': RopeFlattenEnv,
                        # ResRL env

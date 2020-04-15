@@ -36,8 +36,8 @@ def _worker_start():
             elif 'update' in msgs:
                 env, policy = msgs['update']
                 # env.start_viewer()
-            elif 'demo' in msgs:
-                param_values, max_length = msgs['demo']
+            elif 'bindings' in msgs:
+                param_values, max_length = msgs['bindings']
                 policy.set_param_values(param_values)
                 rollout(env, policy, max_path_length=max_length, animated=True, speedup=5)
             else:
@@ -67,4 +67,4 @@ def init_plot(env, policy):
 
 
 def update_plot(policy, max_length=np.inf):
-    queue.put(['demo', policy.get_param_values(), max_length])
+    queue.put(['bindings', policy.get_param_values(), max_length])

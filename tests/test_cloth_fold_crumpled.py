@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 import pyflex
-from softgym.envs.cloth_fold import ClothFoldEnv
+from softgym.envs.cloth_fold_crumpled import ClothFoldCrumpledEnv
 from softgym.utils.visualization import save_numpy_as_gif
 from softgym.utils.normalized_env import normalize
 
@@ -58,25 +58,27 @@ def test_random(env, N=5):
 
 if __name__ == '__main__':
     # test_picker(num_picker=2)
-    env = ClothFoldEnv(
-        observation_mode='cam_rgb',
+
+    env = ClothFoldCrumpledEnv(
+        observation_mode='key_point',
         action_mode='picker',
         num_picker=2,
         render=True,
         headless=False,
         horizon=75,
         action_repeat=8,
-        render_mode='cloth',
-        cached_init_state_path=None,
+        render_mode='particle',
         use_cached_states=True,
-        save_cache_states=False)
+        save_cache_states=False,
+        num_variations=1000,
+        deterministic=False)
     env = normalize(env)
     env.start_record()
-    env.reset()
-    for i in range(10):
-        action = env.action_space.sample()
-        print(i, action)
-        env.step(action)
+    for _ in range(10):
+        env.reset()
+        for i in range(5):
+            action = env.action_space.sample()
+            env.step(action)
     env.end_record(video_path='./test.gif')
     # env.reset()
     # for _ in range(500):
