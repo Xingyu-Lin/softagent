@@ -5,8 +5,10 @@ import gym
 import softgym
 from gym.spaces import Box
 from softgym.envs.pour_water import PourWaterPosControlEnv
+from softgym.envs.pour_water_amount import PourWaterAmountPosControlEnv
 from softgym.envs.pass_water import PassWater1DEnv
 from softgym.envs.rope_flatten import RopeFlattenEnv
+from softgym.envs.rope_alphabet import RopeAlphaBetEnv
 from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.envs.cloth_drop import ClothDropEnv
@@ -35,6 +37,8 @@ SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
                        'ClothFoldDrop': ClothFoldDropEnv,
                        'ClothDrop': ClothDropEnv,
                        'RopeFlatten': RopeFlattenEnv,
+                       'RopeAlphaBet': RopeAlphaBetEnv,
+                       'PourWaterAmount': PourWaterAmountPosControlEnv,
                        # ResRL env
                        'Box1D': Box1d}
 

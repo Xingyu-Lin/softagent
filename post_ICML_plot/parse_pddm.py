@@ -8,7 +8,9 @@ def custom_series_splitter(x):
     # print(params)
     # print("-" * 50)
     # exit()
-    if ('env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True):
+    if ('env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True) or (
+        params['action_correlation'] == False
+    ):
         return 'filtered'
     else:
         if 'RIG' in params['exp_name']: 
@@ -19,7 +21,7 @@ def custom_series_splitter(x):
             return params['algorithm'] + '_' + params['env_kwargs.observation_mode']
 
 data_path = [
-            './data/yufei_seuss_data/0229-pddm-all'
+            './data/yufei_seuss_data/0311-pddm-all'
         ]
 
 plot_keys = ['info_sum_performance']
@@ -45,7 +47,7 @@ for tmp_env_name in plot_envs:
         progresses = [np.concatenate([ps, np.ones(max_size - len(ps)) * np.nan]) for ps in progresses]
         progresses = np.asarray(progresses)
         print("{} {}".format(tmp_env_name, progresses))
-        mean = np.mean(progresses)
+        mean = np.median(progresses)
         std = np.std(progresses)
         
         # print(np.mean(y))

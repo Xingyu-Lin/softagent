@@ -21,10 +21,10 @@ def get_spaced_idx(n, m):
 @click.option('--n_test_rollouts', type=int, default=8)
 @click.option('--render', type=int, default=1)
 # Should be ['0', '1', '2'], 0 if no rendering; 1 if using default rendering; 2 if using goal based rendering
-@click.option('--save_dir', type=str, default='data/open_loop_videos')
+@click.option('--save_dir', type=str, default='data/planet_open_loop_predictions')
 def main(policy_file, seed, n_test_rollouts, render, save_dir):
     if torch.cuda.is_available():
-        device = torch.device('cuda:1')
+        device = torch.device('cuda:0')
         torch.cuda.manual_seed(seed)
     else:
         device = torch.device('cpu')
@@ -59,6 +59,7 @@ def main(policy_file, seed, n_test_rollouts, render, save_dir):
                 total_reward += reward
                 observation = next_observation
                 frames.append(observation)
+                # frames.extend(info['flex_env_recorded_frames'])
                 if done:
                     break
 
