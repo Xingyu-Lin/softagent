@@ -17,6 +17,8 @@ def main(mode, debug, dry):
         'PourWater': 40,
         'PourWaterAmount': 40,
         'ClothFold': 15,
+        'ClothFoldCrumpled': 30,
+        'ClothFoldDrop': 30,
         'ClothFlatten': 15,
         'ClothDrop': 15,
         'RopeFlatten': 15,
