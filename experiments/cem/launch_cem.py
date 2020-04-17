@@ -10,38 +10,41 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0406_cem'
+    exp_prefix = '0411-cem-ropealphabet'
     vg = VariantGenerator()
     cem_plan_horizon = {
         'PassWater': 7,
         'PourWater': 40,
+        'PourWaterAmount': 40,
         'ClothFold': 15,
         'ClothFlatten': 15,
         'ClothDrop': 15,
-        'RopeFlatten': 15
+        'RopeFlatten': 15,
+        'RopeAlphaBet': 15
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
+    vg.add('env_name', ["RopeAlphaBet"]) #['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
     vg.add('env_kwargs_observation_mode', ['key_point'])
+    vg.add('env_kwargs_reward_type', ['index', 'bigraph']) # only for ropealphabet
 
-    vg.add('seed', [100, 200])
+    vg.add('seed', [100, 200, 300, 400, 500])
     vg.add('max_episode_length', [200])
 
     if not debug:
         vg.add('max_iters', [10])
         vg.add('plan_horizon', lambda env_name: [cem_plan_horizon[env_name]])
         vg.add('timestep_per_decision', [21000])
-        vg.add('test_episodes', [5])
+        vg.add('test_episodes', [1])
         vg.add('use_mpc', [True])
         # Add possible vgs for non-debug purpose
         pass
     else:
-        vg.add('max_iters', [10])
+        vg.add('max_iters', [1])
         vg.add('test_episodes', [1])
-        vg.add('timestep_per_decision', [21000])
+        vg.add('timestep_per_decision', [100])
         vg.add('use_mpc', [True])
         vg.add('plan_horizon', [7])
         exp_prefix += '_debug'
