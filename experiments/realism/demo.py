@@ -94,4 +94,5 @@ if __name__ == '__main__':
             pyflex.step()
             if env.recording:
                 env.video_frames.append(env.render(mode='rgb_array'))
+        break
     env.end_record(video_path='./experiments/realism/demo.gif')
