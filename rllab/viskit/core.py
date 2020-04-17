@@ -258,11 +258,9 @@ color_defaults = [
     '#009e73', # Bluish green
     '#d55e00', # vermillion
     
-    # '#f0e442', # yellow 
     '#56b3e9', # sky blue
-    
-
-    '#1f77b4',  # muted blue
+    '#9467bd', # muted purple 
+    '#7f7f7f',  # muted blue
     '#ff7f0e',  # safety orange
     '#2ca02c',  # cooked asparagus green
     '#d62728',  # brick red

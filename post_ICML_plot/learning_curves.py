@@ -27,23 +27,35 @@ expert_policy_std = {
     "ClothFlatten": 63.73237114254054
 }
 
-pddm_policy_mean = {
-    'PassWater': -34.5732503, 
-    'PourWater': 0.0, 
-    'RopeFlatten': 242.30841099999998, 
-    'ClothFlatten': 123.91792090000001, 
-    'ClothDrop': -15.767934200000003, 
-    'ClothFold': -102.9818137
+pddm_policy_mean = { # acutally is median
+    'PassWater':  -30.1493115, 
+    'PourWater': 25.0610495, 
+    'RopeFlatten': 334.14232, 
+    'ClothFlatten': 172.043855, 
+    'ClothDrop': -15.7190675, 
+    'ClothFold':  -95.79866000000001
 }
 
 pddm_policy_std = {
-    'PassWater': 27.207067001700096, 
-    'PourWater': 0.0, 
-    'RopeFlatten': 49.45464036035515, 
-    'ClothFlatten': 41.61138634249659, 
-    'ClothDrop': 9.822208231471963, 
-    'ClothFold': 22.984688068783825
+    'PassWater': 27.95782721795601, 
+    'PourWater': 32.37287722995299, 
+    'RopeFlatten': 102.25369485911942, 
+    'ClothFlatten': 48.40258333740897, 
+    'ClothDrop': 8.391374042216981, 
+    'ClothFold': 18.8498805234875
 }
+
+env_max_x = {
+    'PassWater': 2000000, 
+    'PourWater': 2000000, 
+    'RopeFlatten': 2000000, 
+    'ClothFlatten': 1000000, 
+    'ClothDrop': 1000000, 
+    'ClothFold': 2000000
+}
+
+cem_policy_mean = {'PassWater': -136.86884220000002, 'PourWater': 77.36095259999999, 'RopeFlatten': 543.3772710000001, 'ClothFlatten': 194.092694, 'ClothDrop': -14.914467849999998, 'ClothFold': -20.4387325}
+cem_policy_std = {'PassWater': 141.91251967433524, 'PourWater': 4.172459790260996, 'RopeFlatten': 28.525632736445466, 'ClothFlatten': 79.32274875977915, 'ClothDrop': 8.972272014085126, 'ClothFold': 4.671872594912007}
 
 RIG_fold_epoch_median =  [136.05282512954537, 114.24484040189607, 122.45100888645725, 148.31479379907105, 111.6825752511653, 130.43628585954556, 111.14634396673293, 114.12847153545995, 141.39887000497384, 119.44937511859125, 117.11791536075664, 128.97492191648053, 104.06639409162923]
 RIG_fold_epoch_lower =  [124.06683471324945, 112.78077397479451, 119.28894079604495, 134.83064717436523, 108.17928487690244, 129.5258304051843, 110.68422970554931, 113.39886249156423, 114.43859792595299, 117.72401864323471, 114.89675582091418, 128.30487727976484, 101.61799290375731]
@@ -65,8 +77,7 @@ algo_mapping = {
 }
 def custom_series_splitter(x):
     params = x['flat_params']
-    if ('env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True) \
-      or ('algorithm' in params and 'CEM' in params['algorithm']):
+    if ('env_kwargs.delta_reward' in params and params['env_kwargs.delta_reward'] is True):
         return 'filtered'
     else:
         if 'RIG' in params['exp_name']:
@@ -76,7 +87,8 @@ def custom_series_splitter(x):
         else:
             ret = params['algorithm'] + '_' + params['env_kwargs.observation_mode']
         return algo_mapping[ret]
-dict_leg2col = {'planet': 5, 'TD3_feature': 1, 'SAC_feature': 2, 'SAC_RGB': 3, "RIG": 4, "UpperBound": 0, "Heuristic": 6, "pddm": 7}
+# dict_leg2col = {'planet': 5, 'TD3_feature': 1, 'SAC_feature': 2, 'SAC_RGB': 3, "RIG": 4, "UpperBound": 0, "Heuristic": 6, "pddm": 7}
+dict_leg2col = { 'TD3_feature': 6, 'SAC_feature': 2, 'planet': 5, 'SAC_RGB': 1, "RIG": 3, "UpperBound": 0, "Heuristic": 4, "pddm": 7, "CEM": 8}
 
 save_path = './data/post_icml/'
 
@@ -167,18 +179,18 @@ def filter_nan(xs, *args):
 # hardcode env horizons
 env_horizons = [75, 100, 75, 100, 15, 100]
 
-
 def plot_all():
-    data_path = ['./data/yufei_s3_data/PlaNet-0202',
+    data_path = [
                  './data/yufei_s3_data/RIG-128-0202-all',
                  './data/yufei_s3_data/model-free-key-point-0202',
                  './data/yufei_s3_data/model-free-key-point-0203-last-2-seeds',
-                 '/tmp/0201_model_free_cam_rgb/0201_model_free_cam_rgb',
+                 './data/yufei_seuss_data/0201_model_free_cam_rgb',
                  './data/yufei_s3_data/model-free-key-point-0204-ClothFold',
                  './data/yufei_s3_data/RIG-128-0204-ClothFold',
-                 './data/yufei_s3_data/PlaNet-0204-ClothFold',
+                    '/tmp/0201_model_free_cam_rgb/0201_model_free_cam_rgb',
                  './data/yufei_s3_data/model-free-key-point-0205-ClothFlatten',
-                 './data/yufei_s3_data/PlaNet-0205-ClothFlatten',
+                './data/yufei_seuss_data/PlaNet-0314-all',
+                './data/yufei_seuss_data/PlaNet-0208-all'
                  ]
 
     plot_keys = ['eval_info_sum_performance']
@@ -200,27 +212,41 @@ def plot_all():
         for plot_idx, env_name in enumerate(plot_envs):
             tmp_env_name = env_name
             ax = plt.subplot('23' + str(plot_idx + 1))
-
+            
+            lw = 3.5
             expert_mean = expert_policy_mean[env_name]
             expert_std = expert_policy_std[env_name]
             pddm_mean = pddm_policy_mean[env_name]
             pddm_std = pddm_policy_std[env_name]
+            cem_mean = cem_policy_mean[env_name]
+            max_x = env_max_x[env_name]
+
+            color = core.color_defaults[dict_leg2col["Heuristic"]]
+            ax.plot(range(max_x), np.ones(max_x) * expert_mean, color=color, linestyle='dashed', linewidth=lw, label='Heuristic')
+
+            color = core.color_defaults[dict_leg2col["pddm"]]
+            ax.plot(range(max_x), np.ones(max_x) * pddm_mean, color=color, linestyle='dashed', linewidth=lw, label='PDDM')
+
+            color = core.color_defaults[dict_leg2col["CEM"]]
+            ax.plot(range(max_x), np.ones(max_x) * cem_mean, color=color, linestyle='dashed', linewidth=lw, label='CEM')
+
 
             key = 'env_name'
-            max_x = 0
-            max_x_list = []
             for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
                 if len(selector.where(key, tmp_env_name).extract()) == 0:
                     continue
 
+                # Hack
                 RIG = False
-                if 'RIG' in selector._exps_data[-1]['flat_params']['exp_name']: #
+                if 'RIG' in selector._exps_data[-1]['flat_params']['exp_name']: 
                     tmp_env_name = plot_goal_envs[plot_idx]
                     key = 'skewfit_kwargs.env_id'
                     RIG = True
+
+                PlaNet = False
+                if "PlaNet" in selector._exps_data[-1]['flat_params']['exp_name']:
+                    PlaNet = True
                     
-                # print("key is: ", key)
-                # print("tmp_env_name is: ", tmp_env_name)
                 if 'env_kwargs' in selector.where(key, tmp_env_name).extract()[0].params:
                     env_horizon = selector.where(key, tmp_env_name).extract()[0].params["env_kwargs"]["horizon"]
                 else:
@@ -241,14 +267,14 @@ def plot_all():
                     x = [ele * env_horizon for ele in x]
 
                 y, [y_lower, y_upper, x] = filter_nan(y, y_lower, y_upper, x)
-                if "Rope" in tmp_env_name:
+                if "Rope" in tmp_env_name and not PlaNet: # older experiments we record this with a wrong sign
                     y, y_lower, y_upper = -y, -y_lower, -y_upper
 
                 if "Drop" in tmp_env_name:
                     ax.set_ylim(bottom = -20, top=-10)
 
                 if "Fold" in tmp_env_name:
-                    ax.set_ylim(bottom = -120, top=-25)
+                    ax.set_ylim(bottom = -120, top=-15)
                 
                 if "Water" in tmp_env_name or "Rope" in tmp_env_name or "Fold" in tmp_env_name:
                     ax.set_xlim(right=2000000)
@@ -262,24 +288,18 @@ def plot_all():
                     y_upper = RIG_fold_epoch_upper
                     x = [i * 20 * 1000 for i in range(len(y))]
 
-                lw = 3.5
                 plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=lw))
                 ax.fill_between(x, y_lower, y_upper, interpolate=True, facecolor=color, linewidth=0.0,
                                 alpha=0.2)
 
-                # record the longest x
-                if x[-1] > max_x:
-                    max_x = x[-1]
-                    max_x_list = x
+                # # record the longest x
+                # if x[-1] > max_x:
+                #     max_x = x[-1]
+                #     max_x_list = x
 
             # plot performance of heuristic policy
             # ax.hlines(expert_mean, xmin=0, xmax=max_x, color='red', linewidth=3.0, label='Heuristic')
-            max_x = int(max_x)
-            color = core.color_defaults[dict_leg2col["Heuristic"]]
-            ax.plot(range(max_x), np.ones(max_x) * expert_mean, color=color, linewidth=lw, label='Heuristic')
-
-            color = core.color_defaults[dict_leg2col["pddm"]]
-            ax.plot(range(max_x), np.ones(max_x) * pddm_mean, color=color, linewidth=lw, label='PDDM')
+         
             # expert_low = [expert_mean - expert_std for i in range(len(max_x_list))]
             # expert_high = [expert_mean + expert_std for i in range(len(max_x_list))]
             # ax.fill_between(max_x_list, expert_low, expert_high, interpolate=True, facecolor='red', linewidth=0.0,
@@ -306,7 +326,7 @@ def plot_all():
         # extrally store a legend
         # loc = 'best'
         # # ax = plt.subplot('231')
-        # leg = ax.legend(loc=loc, prop={'size': 16}, ncol=6, labels=group_legends + ["Heuristic", "PDDM"], bbox_to_anchor=(5.02, 1.45))
+        # leg = ax.legend(loc=loc, prop={'size': 16}, ncol=8, labels= ["Heuristic", "PDDM", "CEM"] + group_legends, bbox_to_anchor=(5.02, 1.45))
         # leg.get_frame().set_linewidth(0.0)
         # for legobj in leg.legendHandles:
         #     legobj.set_linewidth(7.0)
