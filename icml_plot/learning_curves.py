@@ -155,7 +155,7 @@ def plot_all():
                  './data/yufei_s3_data/RIG-128-0202-all',
                  './data/yufei_s3_data/model-free-key-point-0202',
                  './data/yufei_s3_data/model-free-key-point-0203-last-2-seeds',
-                 '/tmp/0201_model_free_cam_rgb/0201_model_free_cam_rgb',
+                 '/data/yufei_seuss_data/0201_model_free_cam_rgb',
                  './data/yufei_s3_data/model-free-key-point-0204-ClothFold',
                  './data/yufei_s3_data/RIG-128-0204-ClothFold',
                  './data/yufei_s3_data/PlaNet-0204-ClothFold',
