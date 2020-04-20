@@ -1,7 +1,7 @@
 import numpy as np
 import pyflex
 from softgym.envs.cloth_fold import ClothFoldEnv
-from softgym.envs.pass_water import PassWater1DEnv
+from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.utils.normalized_env import normalize
 
 
@@ -19,6 +19,7 @@ def render_sawyer_cloth():
         use_cached_states=False,
         save_cache_states=False,
         deterministic=True)
+
     config = {'ClothPos': [-0.31, -0.6, -0.184], 'ClothSize': [int(0.6 / particle_radius), int(0.368 / particle_radius)],
               'ClothStiff': [0.8, 1, 0.9], 'camera_name': 'default_camera',
               'camera_params': {'default_camera': {'pos': np.array([0.0, 1.4, 0.6]),
@@ -34,7 +35,18 @@ def render_sawyer_cloth():
 
 
 def render_sawyer_rope():
-    pass
+    env = RopeFlattenEnv(
+        observation_mode='cam_rgb',
+        action_mode='sawyer',
+        render=True,
+        headless=False,
+        horizon=75,
+        action_repeat=8,
+        cached_states_path='cloth_fold_test.pkl',
+        use_cached_states=False,
+        save_cache_states=False,
+        deterministic=True)
+    pyflex.loop()
 
 
 def render_sawyer_fluid():
@@ -42,6 +54,9 @@ def render_sawyer_fluid():
 
 
 if __name__ == '__main__':
+    render_sawyer_rope()
+    exit()
+
     particle_radius = 0.00625
     generate_cache = True
     if generate_cache:
