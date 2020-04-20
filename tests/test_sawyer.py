@@ -42,28 +42,14 @@ def render_sawyer_rope():
     env = RopeFlattenEnv(
         observation_mode='cam_rgb',
         action_mode='sawyer',
-        num_picker=2,
         render=True,
         headless=False,
         horizon=75,
         action_repeat=8,
-        render_mode='cloth',
         cached_states_path='cloth_fold_test.pkl',
         use_cached_states=False,
         save_cache_states=False,
         deterministic=True)
-    particle_radius = 0.00625
-    config = {'ClothPos': [-0.31, -0.6, -0.184], 'ClothSize': [int(0.6 / particle_radius), int(0.368 / particle_radius)],
-              'ClothStiff': [0.8, 1, 0.9], 'camera_name': 'default_camera',
-              'camera_params': {'default_camera': {'pos': np.array([0.0, 1.4, 0.6]),
-                                                   'angle': np.array([0, -60 / 180. * np.pi, 0.]),
-                                                   'width': 720,
-                                                   'height': 720}}, 'env_idx': 14, 'mass': 0.3}
-
-    camera_params = config['camera_params'][config['camera_name']]
-    scene_params = np.array([*config['ClothPos'], *config['ClothSize'], *config['ClothStiff'], 2,
-                             *camera_params['pos'][:], *camera_params['angle'][:], camera_params['width'], camera_params['height'], 0.5])
-    pyflex.set_scene(14, scene_params, 0, [0.])
     pyflex.loop()
 
 
