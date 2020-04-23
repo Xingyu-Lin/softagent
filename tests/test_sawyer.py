@@ -42,9 +42,9 @@ def render_sawyer_rope():
         headless=False,
         horizon=75,
         action_repeat=8,
-        cached_states_path='cloth_fold_test.pkl',
+        cached_states_path='rope_test.pkl',
         use_cached_states=False,
-        save_cache_states=False,
+        save_cache_states=True,
         deterministic=True)
     pyflex.loop()
 
