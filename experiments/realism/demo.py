@@ -3,7 +3,7 @@ import numpy as np
 import pyflex
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.utils.normalized_env import normalize
-
+import cv2, os
 
 def generate_pick_and_place(sx, sy, ex, ey, zl, zh):
     a0 = [sx, zh, sy, 0]
@@ -14,6 +14,19 @@ def generate_pick_and_place(sx, sy, ex, ey, zl, zh):
     actions = np.array([a0, a1, a2, a3, a4])
     return actions
 
+def write_video(frames, title, path=''):
+    frames = np.stack(frames, axis=0).astype(np.uint8)[:, :, :,
+             ::-1]  # VideoWrite expects H x W x C in BGR
+
+    _, H, W, _ = frames.shape
+    save_path = os.path.join(path, '%s.mp4' % title)
+    
+    writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), 40., (W, H), True)
+    for frame in frames:
+        writer.write(frame)
+    writer.release()
+    print('saved to: ', save_path)
+    
 
 def get_robot_data():
     pickpts, placepts = np.load('experiments/realism/pickpts.npy'), np.load('experiments/realism/placepts.npy')
@@ -53,8 +66,8 @@ if __name__ == '__main__':
             deterministic=True)
         config = {'ClothPos': [-0.31, -0.2, -0.184], 'ClothSize': [int(0.6 / particle_radius), int(0.368 / particle_radius)],
                   'ClothStiff': [0.8, 1, 0.9], 'camera_name': 'default_camera',
-                  'camera_params': {'default_camera': {'pos': np.array([0.0, 1.4, 0.6]),
-                                                       'angle': np.array([0, -60 / 180. * np.pi, 0.]),
+                  'camera_params': {'default_camera': {'pos': np.array([-0.06, 0.9, 0.75]),
+                                                       'angle': np.array([0, -45 / 180. * np.pi, 0.]),
                                                        'width': 720,
                                                        'height': 720}}, 'env_idx': 14, 'mass': 0.3}
         env.cached_configs, env.cached_init_states = env.generate_env_variation(1, vary_cloth_size=False, config=config, save_to_file=True)
@@ -78,21 +91,34 @@ if __name__ == '__main__':
     pickpts, placepts = get_robot_data()
 
     # env = normalize(env) TODO: No normalization as actions matter here. Be cautious when actually using the pick and place action space
-    env.start_record()
 
-    for i in range(pickpts.shape[0]):
+    for i in range(8, pickpts.shape[0]):
+        print(i)
         env.reset()
         env.action_tool.update_picker_boundary([-np.inf] * 3, [np.inf] * 3)
         # actions = generate_pick_and_place(0, 0, 0, 0, 0.2, 0.2 + 0.1065
 
         actions = generate_pick_and_place(pickpts[i, 0], pickpts[i, 1] - 0.06, placepts[i, 0] , placepts[i, 1]-0.06, 0.2, 0.2 + 0.1065)
 
-        for action in actions:
-            print('action:', action)
-            env.step(action)
-        for j in range(100):
+        env.step(actions[0])
+        env.start_record()
+        for j in range(30):
             pyflex.step()
             if env.recording:
                 env.video_frames.append(env.render(mode='rgb_array'))
-        break
-    env.end_record(video_path='./experiments/realism/demo.gif')
+        for action in actions[1:]:
+            print('action:', action)
+            env.step(action)
+        for j in range(5):
+            pyflex.step()
+            if env.recording:
+                env.video_frames.append(env.render(mode='rgb_array'))
+        
+        # print(len(env.video_frames))
+        # print(env.video_frames[0].shape)
+        # exit()
+        write_video(env.video_frames, 'demo_{}'.format(i), 'data/realism_demo')
+        env.end_record(video_path='./experiments/realism/demo_{}.gif'.format(i))
+        # break
+
+    # env.end_record(video_path='./experiments/realism/demo.gif')
