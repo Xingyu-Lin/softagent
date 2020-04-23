@@ -1,4 +1,4 @@
-# PATH=~/software/miniconda3/bin:$PATH
+PATH=~/software/miniconda3/bin:$PATH
 cd softgym
 . prepare_1.0.sh
 cd ..
