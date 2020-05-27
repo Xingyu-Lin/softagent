@@ -5,6 +5,7 @@ from softgym.envs.pass_water import PassWater1DEnv
 from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.utils.normalized_env import normalize
 import cv2
+import matplotlib.pyplot as plt
 
 
 def render_sawyer_cloth():
@@ -18,7 +19,7 @@ def render_sawyer_cloth():
         action_repeat=8,
         render_mode='cloth',
         cached_states_path='cloth_fold_test.pkl',
-        use_cached_states=False,
+        use_cached_states=True,
         save_cache_states=False,
         deterministic=True)
     particle_radius = 0.00625
@@ -34,6 +35,16 @@ def render_sawyer_cloth():
                              *camera_params['pos'][:], *camera_params['angle'][:], camera_params['width'], camera_params['height'], 0.5])
     print("before set scene")
     pyflex.set_scene(14, scene_params, 0, [0.])
+    for i in range(20):
+        pyflex.set_sensor_segment(i % 2 == 0)
+        pyflex.step()
+        rgbd = pyflex.render_sensor()
+        rgbd = np.array(rgbd).reshape(720, 720, 4)
+        # fig, (ax1, ax2) = plt.subplots(1, 2)
+        # ax1.imshow(rgbd[::-1, :, :3])
+        # ax2.imshow(rgbd[::-1, :, 3])
+        # plt.show()
+
     print("after set scene")
     pyflex.loop()
 
@@ -55,25 +66,25 @@ def render_sawyer_rope():
 
 def render_sawyer_fluid():
     env = PassWater1DEnv(observation_mode='cam_rgb',
-                      action_mode='sawyer',
-                      render=True,
-                      headless=False,
-                      horizon=75,
-                      action_repeat=8,
-                      render_mode='fluid',
-                      delta_reward=False,
-                      deterministic=True,
-                      num_variations=1,
-                      use_cached_states=False,
-                      save_cache_states=False,
-                      )
+                         action_mode='sawyer',
+                         render=True,
+                         headless=False,
+                         horizon=75,
+                         action_repeat=8,
+                         render_mode='fluid',
+                         delta_reward=False,
+                         deterministic=True,
+                         num_variations=1,
+                         use_cached_states=False,
+                         save_cache_states=False,
+                         )
 
     # for i in range(100000):
     #     pyflex.step()
     # pyflex.loop()
     for i in range(100):
         pyflex.step()
-    
+
     img = env.render(mode='rgb_array')
     img = img[:, :, ::-1]
     cv2.imwrite('./data/robotics_demo/water.png', img)
