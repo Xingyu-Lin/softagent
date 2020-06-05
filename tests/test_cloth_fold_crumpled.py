@@ -68,7 +68,7 @@ if __name__ == '__main__':
         horizon=75,
         action_repeat=8,
         render_mode='particle',
-        use_cached_states=True,
+        use_cached_states=False,
         save_cache_states=False,
         num_variations=1000,
         deterministic=False)

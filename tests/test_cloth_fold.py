@@ -16,6 +16,9 @@ def test_picker(num_picker=3, save_dir='./videos'):
         horizon=75,
         action_repeat=8,
         render_mode='particle',
+        use_cached_states=False,
+        save_cache_states=False,
+        deterministic=True,
         cached_init_state_path=None)
 
     obs = env.reset()
@@ -67,13 +70,13 @@ if __name__ == '__main__':
         horizon=75,
         action_repeat=8,
         render_mode='cloth',
-        cached_init_state_path=None,
-        use_cached_states=True,
+        use_cached_states=False,
+        deterministic=True,
         save_cache_states=False)
     env = normalize(env)
     env.start_record()
     env.reset()
-    for i in range(10):
+    for i in range(100000):
         action = env.action_space.sample()
         print(i, action)
         env.step(action)
