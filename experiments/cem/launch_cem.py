@@ -25,12 +25,12 @@ def main(mode, debug, dry):
         'RopeAlphaBet': 15
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ["RopeAlphaBet"]) #['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
+    vg.add('env_name', ["RopeAlphaBet"])  # ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
     vg.add('env_kwargs_observation_mode', ['key_point'])
-    vg.add('env_kwargs_reward_type', ['index', 'bigraph']) # only for ropealphabet
+    vg.add('env_kwargs_reward_type', ['index', 'bigraph'])  # only for ropealphabet
 
     vg.add('seed', [100, 200, 300, 400, 500])
     vg.add('max_episode_length', [200])
