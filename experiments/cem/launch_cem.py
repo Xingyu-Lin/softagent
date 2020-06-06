@@ -61,7 +61,7 @@ def main(mode, debug, dry):
             time.sleep(10)
         if mode == 'seuss':
             if idx == 0:
-                compile_script = 'compile.sh'  # For the first experiment, compile the current softgym
+                compile_script = 'compile_1.0.sh'  # For the first experiment, compile the current softgym
                 wait_compile = None
             else:
                 compile_script = None

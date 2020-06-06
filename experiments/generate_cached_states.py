@@ -21,7 +21,6 @@ def generate_video(env, env_name):
         for j in range(env.horizon):
             action = env.action_space.sample()
             obs, _, _, info = env.step(action)
-            print(info['normalized_performance'])
             obs = (obs + 0.5) * 256.
             video.append(obs)
         all_videos.append(torch.cat(video, 0))
@@ -39,7 +38,7 @@ def generate_video(env, env_name):
 def generate_env_state(env_name):
     kwargs = env_arg_dict[env_name]
     kwargs['headless'] = True
-    kwargs['use_cached_states'] = True
+    kwargs['use_cached_states'] = False
     kwargs['num_variations'] = 1000
     kwargs['save_cached_states'] = True
 
@@ -50,6 +49,7 @@ def generate_env_state(env_name):
 
 if __name__ == '__main__':
     env_names = ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
+    env_names = ['ClothFold']
 
     for env_name in env_names:
         p = Process(target=generate_env_state, args=(env_name,))
