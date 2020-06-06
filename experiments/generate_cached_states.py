@@ -20,7 +20,8 @@ def generate_video(env, env_name):
         video = [obs]
         for j in range(env.horizon):
             action = env.action_space.sample()
-            obs, _, _, _ = env.step(action)
+            obs, _, _, info = env.step(action)
+            print(info['normalized_performance'])
             obs = (obs + 0.5) * 256.
             video.append(obs)
         all_videos.append(torch.cat(video, 0))
