@@ -89,6 +89,7 @@ def evaluate(env, agent, video, num_episodes, L, step, args):
 def make_agent(obs_shape, action_shape, args, device):
     if args.agent == 'curl_sac':
         return CurlSacAgent(
+            args=args,
             obs_shape=obs_shape,
             action_shape=action_shape,
             device=device,

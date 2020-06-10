@@ -14,6 +14,9 @@ def main(mode, debug, dry):
 
     vg.add('domain_name', ['cartpole'])
     vg.add('task_name', ['swingup'])
+    vg.add('bc_update', [True, False])
+    vg.add('bc_actor_loss_threshold', lambda bc_update: [1e-1] if bc_update else [None])
+    vg.add('bc_critic_loss_threshold', lambda bc_update: [1e-3] if bc_update else [None])
     vg.add('action_repeat', [8])
     vg.add('save_tb', [True])
     vg.add('save_video', [True])

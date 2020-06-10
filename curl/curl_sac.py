@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import copy
+from matplotlib import pyplot as plt
 import math
 
 from curl import utils
@@ -46,9 +47,10 @@ def weight_init(m):
 
 class Actor(nn.Module):
     """MLP actor network."""
+
     def __init__(
-        self, obs_shape, action_shape, hidden_dim, encoder_type,
-        encoder_feature_dim, log_std_min, log_std_max, num_layers, num_filters
+      self, obs_shape, action_shape, hidden_dim, encoder_type,
+      encoder_feature_dim, log_std_min, log_std_max, num_layers, num_filters
     ):
         super().__init__()
 
@@ -70,7 +72,7 @@ class Actor(nn.Module):
         self.apply(weight_init)
 
     def forward(
-        self, obs, compute_pi=True, compute_log_pi=True, detach_encoder=False
+      self, obs, compute_pi=True, compute_log_pi=True, detach_encoder=False
     ):
         obs = self.encoder(obs, detach=detach_encoder)
 
@@ -79,7 +81,7 @@ class Actor(nn.Module):
         # constrain log_std inside [log_std_min, log_std_max]
         log_std = torch.tanh(log_std)
         log_std = self.log_std_min + 0.5 * (
-            self.log_std_max - self.log_std_min
+          self.log_std_max - self.log_std_min
         ) * (log_std + 1)
 
         self.outputs['mu'] = mu
@@ -116,6 +118,7 @@ class Actor(nn.Module):
 
 class QFunction(nn.Module):
     """MLP for q-function."""
+
     def __init__(self, obs_dim, action_dim, hidden_dim):
         super().__init__()
 
@@ -134,12 +137,12 @@ class QFunction(nn.Module):
 
 class Critic(nn.Module):
     """Critic network, employes two q-functions."""
+
     def __init__(
-        self, obs_shape, action_shape, hidden_dim, encoder_type,
-        encoder_feature_dim, num_layers, num_filters
+      self, obs_shape, action_shape, hidden_dim, encoder_type,
+      encoder_feature_dim, num_layers, num_filters
     ):
         super().__init__()
-
 
         self.encoder = make_encoder(
             encoder_type, obs_shape, encoder_feature_dim, num_layers,
@@ -193,7 +196,7 @@ class CURL(nn.Module):
 
         self.encoder = critic.encoder
 
-        self.encoder_target = critic_target.encoder 
+        self.encoder_target = critic_target.encoder
 
         self.W = nn.Parameter(torch.rand(z_dim, z_dim))
         self.output_type = output_type
@@ -227,38 +230,42 @@ class CURL(nn.Module):
         logits = logits - torch.max(logits, 1)[0][:, None]
         return logits
 
+
 class CurlSacAgent(object):
     """CURL representation learning with SAC."""
+
     def __init__(
-        self,
-        obs_shape,
-        action_shape,
-        device,
-        hidden_dim=256,
-        discount=0.99,
-        init_temperature=0.01,
-        alpha_lr=1e-3,
-        alpha_beta=0.9,
-        actor_lr=1e-3,
-        actor_beta=0.9,
-        actor_log_std_min=-10,
-        actor_log_std_max=2,
-        actor_update_freq=2,
-        critic_lr=1e-3,
-        critic_beta=0.9,
-        critic_tau=0.005,
-        critic_target_update_freq=2,
-        encoder_type='pixel',
-        encoder_feature_dim=50,
-        encoder_lr=1e-3,
-        encoder_tau=0.005,
-        num_layers=4,
-        num_filters=32,
-        cpc_update_freq=1,
-        log_interval=100,
-        detach_encoder=False,
-        curl_latent_dim=128
+      self,
+      obs_shape,
+      action_shape,
+      device,
+      args,
+      hidden_dim=256,
+      discount=0.99,
+      init_temperature=0.01,
+      alpha_lr=1e-3,
+      alpha_beta=0.9,
+      actor_lr=1e-3,
+      actor_beta=0.9,
+      actor_log_std_min=-10,
+      actor_log_std_max=2,
+      actor_update_freq=2,
+      critic_lr=1e-3,
+      critic_beta=0.9,
+      critic_tau=0.005,
+      critic_target_update_freq=2,
+      encoder_type='pixel',
+      encoder_feature_dim=50,
+      encoder_lr=1e-3,
+      encoder_tau=0.005,
+      num_layers=4,
+      num_filters=32,
+      cpc_update_freq=1,
+      log_interval=100,
+      detach_encoder=False,
+      curl_latent_dim=128
     ):
+        self.args = args
         self.device = device
         self.discount = discount
         self.critic_tau = critic_tau
@@ -283,6 +290,12 @@ class CurlSacAgent(object):
             encoder_feature_dim, num_layers, num_filters
         ).to(device)
 
+        if self.args.bc_update:
+            self.copy_actor = copy.deepcopy(self.actor)
+            self.copy_critic = copy.deepcopy(self.critic)
+            self.actor_converge = utils.ConvergenceChecker(threshold=self.args.bc_actor_loss_threshold, history_len=20)
+            self.critic_converge = utils.ConvergenceChecker(threshold=self.args.bc_critic_loss_threshold, history_len=20)
+
         self.critic_target = Critic(
             obs_shape, action_shape, hidden_dim, encoder_type,
             encoder_feature_dim, num_layers, num_filters
@@ -297,7 +310,7 @@ class CurlSacAgent(object):
         self.log_alpha.requires_grad = True
         # set target entropy to -|A|
         self.target_entropy = -np.prod(action_shape)
-        
+
         # optimizers
         self.actor_optimizer = torch.optim.Adam(
             self.actor.parameters(), lr=actor_lr, betas=(actor_beta, 0.999)
@@ -306,6 +319,9 @@ class CurlSacAgent(object):
         self.critic_optimizer = torch.optim.Adam(
             self.critic.parameters(), lr=critic_lr, betas=(critic_beta, 0.999)
         )
+        if self.args.bc_update:
+            self.bc_actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr/20., betas=(actor_beta, 0.999))
+            self.bc_critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr / 20., betas=(critic_beta, 0.999))
 
         self.log_alpha_optimizer = torch.optim.Adam(
             [self.log_alpha], lr=alpha_lr, betas=(alpha_beta, 0.999)
@@ -314,7 +330,7 @@ class CurlSacAgent(object):
         if self.encoder_type == 'pixel':
             # create CURL encoder (the 128 batch size is probably unnecessary)
             self.CURL = CURL(obs_shape, encoder_feature_dim,
-                        self.curl_latent_dim, self.critic,self.critic_target, output_type='continuous').to(self.device)
+                             self.curl_latent_dim, self.critic, self.critic_target, output_type='continuous').to(self.device)
 
             # optimizer for critic encoder for reconstruction loss
             self.encoder_optimizer = torch.optim.Adam(
@@ -352,7 +368,7 @@ class CurlSacAgent(object):
     def sample_action(self, obs):
         if obs.shape[-1] != self.image_size:
             obs = utils.center_crop_image(obs, self.image_size)
- 
+
         with torch.no_grad():
             obs = torch.FloatTensor(obs).to(self.device)
             obs = obs.unsqueeze(0)
@@ -375,7 +391,6 @@ class CurlSacAgent(object):
         if step % self.log_interval == 0:
             L.log('train_critic/loss', critic_loss, step)
 
-
         # Optimize the critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -395,8 +410,8 @@ class CurlSacAgent(object):
             L.log('train_actor/loss', actor_loss, step)
             L.log('train_actor/target_entropy', self.target_entropy, step)
         entropy = 0.5 * log_std.shape[1] * \
-            (1.0 + np.log(2 * np.pi)) + log_std.sum(dim=-1)
-        if step % self.log_interval == 0:                                    
+                  (1.0 + np.log(2 * np.pi)) + log_std.sum(dim=-1)
+        if step % self.log_interval == 0:
             L.log('train_actor/entropy', entropy.mean(), step)
 
         # optimize the actor
@@ -416,14 +431,14 @@ class CurlSacAgent(object):
         self.log_alpha_optimizer.step()
 
     def update_cpc(self, obs_anchor, obs_pos, cpc_kwargs, L, step):
-        
+
         z_a = self.CURL.encode(obs_anchor)
         z_pos = self.CURL.encode(obs_pos, ema=True)
-        
+
         logits = self.CURL.compute_logits(z_a, z_pos)
         labels = torch.arange(logits.shape[0]).long().to(self.device)
         loss = self.cross_entropy_loss(logits, labels)
-        
+
         self.encoder_optimizer.zero_grad()
         self.cpc_optimizer.zero_grad()
         loss.backward()
@@ -433,13 +448,36 @@ class CurlSacAgent(object):
         if step % self.log_interval == 0:
             L.log('train/curl_loss', loss, step)
 
+    def bc_update(self, replay_buffer):
+        # Sample from replay buffer
+        obs, action, _, _, _, _ = replay_buffer.sample_cpc()
+
+        # Get output of network before cpc update
+        with torch.no_grad():
+            _, copy_action, _, _ = self.copy_actor(obs)
+            copy_Q1, copy_Q2 = self.copy_critic(obs, action, detach_encoder=True)
+
+        # Behaviour cloning
+        _, curr_action, _, _ = self.actor(obs)
+        curr_Q1, curr_Q2 = self.critic(obs, action, detach_encoder=True)
+        bc_actor_loss = F.mse_loss(copy_action, curr_action)
+        bc_critic_loss = F.mse_loss(copy_Q1, curr_Q1) + F.mse_loss(copy_Q2, curr_Q2)
+
+        self.bc_actor_optimizer.zero_grad()
+        bc_actor_loss.backward()
+        self.bc_actor_optimizer.step()
+
+        self.bc_critic_optimizer.zero_grad()
+        bc_critic_loss.backward()
+        self.bc_critic_optimizer.step()
+        return bc_actor_loss.item(), bc_critic_loss.item()
 
     def update(self, replay_buffer, L, step):
         if self.encoder_type == 'pixel':
             obs, action, reward, next_obs, not_done, cpc_kwargs = replay_buffer.sample_cpc()
         else:
             obs, action, reward, next_obs, not_done = replay_buffer.sample_proprio()
-    
+
         if step % self.log_interval == 0:
             L.log('train/batch_reward', reward.mean(), step)
 
@@ -459,10 +497,37 @@ class CurlSacAgent(object):
                 self.critic.encoder, self.critic_target.encoder,
                 self.encoder_tau
             )
-        
+
         if step % self.cpc_update_freq == 0 and self.encoder_type == 'pixel':
+            if self.args.bc_update:
+                self.copy_actor.load_state_dict(self.actor.state_dict())
+                self.copy_critic.load_state_dict(self.critic.state_dict())
+
             obs_anchor, obs_pos = cpc_kwargs["obs_anchor"], cpc_kwargs["obs_pos"]
-            self.update_cpc(obs_anchor, obs_pos,cpc_kwargs, L, step)
+            self.update_cpc(obs_anchor, obs_pos, cpc_kwargs, L, step)
+
+            if self.args.bc_update:
+                self.actor_converge.clear()
+                self.critic_converge.clear()
+                losses_actor, losses_critic = [], []
+                for i in range(100):
+                    bc_actor_loss, bc_critic_loss = self.bc_update(replay_buffer)
+                    losses_actor.append(bc_actor_loss)
+                    losses_critic.append(bc_critic_loss)
+                    self.actor_converge.append(bc_actor_loss)
+                    self.critic_converge.append(bc_critic_loss)
+                    if self.actor_converge.converge() and self.critic_converge.converge():
+                        break
+
+                    # Heuristic way of determine convergence
+                    # if bc_loss < self.args.bc_loss_threshold:
+                    #     converged = True
+                    #     break
+
+                # fig, axes = plt.subplots(1, 2)
+                # axes[0].plot(range(len(losses_actor)), losses_actor, label='actor_loss')
+                # axes[1].plot(range(len(losses_critic)), losses_critic, label='critic_loss')
+                # plt.show()
 
     def save(self, model_dir, step):
         torch.save(
@@ -484,4 +549,3 @@ class CurlSacAgent(object):
         self.critic.load_state_dict(
             torch.load('%s/critic_%s.pt' % (model_dir, step))
         )
- 

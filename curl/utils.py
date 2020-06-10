@@ -8,6 +8,32 @@ import random
 from torch.utils.data import Dataset, DataLoader
 import time
 from skimage.util.shape import view_as_windows
+from collections import deque
+
+
+class ConvergenceChecker(object):
+    def __init__(self, threshold, history_len):
+        self.threshold = threshold
+        self.history_len = history_len
+        self.queue = deque(maxlen=history_len)
+        self.converged = None
+
+    def clear(self):
+        self.queue.clear()
+        self.converged = False
+
+    def append(self, value):
+        self.queue.append(value)
+
+    def converge(self):
+        if self.converged:
+            return True
+        else:
+            losses = np.array(list(self.queue))
+            self.converged = (len(losses) >= self.history_len) and (np.mean(losses[self.history_len // 2:]) > np.mean(
+                losses[:self.history_len // 2]) - self.threshold)
+            return self.converged
+
 
 class eval_mode(object):
     def __init__(self, *models):
@@ -57,10 +83,10 @@ def make_dir(dir_path):
 
 def preprocess_obs(obs, bits=5):
     """Preprocessing image, see https://arxiv.org/abs/1807.03039."""
-    bins = 2**bits
+    bins = 2 ** bits
     assert obs.dtype == torch.float32
     if bits < 8:
-        obs = torch.floor(obs / 2**(8 - bits))
+        obs = torch.floor(obs / 2 ** (8 - bits))
     obs = obs / bins
     obs = obs + torch.rand_like(obs) / bins
     obs = obs - 0.5
@@ -69,7 +95,8 @@ def preprocess_obs(obs, bits=5):
 
 class ReplayBuffer(Dataset):
     """Buffer to store environment transitions."""
-    def __init__(self, obs_shape, action_shape, capacity, batch_size, device,image_size=84,transform=None):
+
+    def __init__(self, obs_shape, action_shape, capacity, batch_size, device, image_size=84, transform=None):
         self.capacity = capacity
         self.batch_size = batch_size
         self.device = device
@@ -77,7 +104,7 @@ class ReplayBuffer(Dataset):
         self.transform = transform
         # the proprioceptive obs is stored as float32, pixels obs as uint8
         obs_dtype = np.float32 if len(obs_shape) == 1 else np.uint8
-        
+
         self.obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
         self.next_obses = np.empty((capacity, *obs_shape), dtype=obs_dtype)
         self.actions = np.empty((capacity, *action_shape), dtype=np.float32)
@@ -88,11 +115,8 @@ class ReplayBuffer(Dataset):
         self.last_save = 0
         self.full = False
 
-
-    
-
     def add(self, obs, action, reward, next_obs, done):
-       
+
         np.copyto(self.obses[self.idx], obs)
         np.copyto(self.actions[self.idx], action)
         np.copyto(self.rewards[self.idx], reward)
@@ -103,11 +127,11 @@ class ReplayBuffer(Dataset):
         self.full = self.full or self.idx == 0
 
     def sample_proprio(self):
-        
+
         idxs = np.random.randint(
             0, self.capacity if self.full else self.idx, size=self.batch_size
         )
-        
+
         obses = self.obses[idxs]
         next_obses = self.next_obses[idxs]
 
@@ -126,7 +150,7 @@ class ReplayBuffer(Dataset):
         idxs = np.random.randint(
             0, self.capacity if self.full else self.idx, size=self.batch_size
         )
-      
+
         obses = self.obses[idxs]
         next_obses = self.next_obses[idxs]
         pos = obses.copy()
@@ -134,7 +158,7 @@ class ReplayBuffer(Dataset):
         obses = random_crop(obses, self.image_size)
         next_obses = random_crop(next_obses, self.image_size)
         pos = random_crop(pos, self.image_size)
-    
+
         obses = torch.as_tensor(obses, device=self.device).float()
         next_obses = torch.as_tensor(
             next_obses, device=self.device
@@ -196,7 +220,8 @@ class ReplayBuffer(Dataset):
         return obs, action, reward, next_obs, not_done
 
     def __len__(self):
-        return self.capacity 
+        return self.capacity
+
 
 class FrameStack(gym.Wrapper):
     def __init__(self, env, k):
@@ -245,20 +270,18 @@ def random_crop(imgs, output_size):
     h1 = np.random.randint(0, crop_max, n)
     # creates all sliding windows combinations of size (output_size)
     windows = view_as_windows(
-        imgs, (1, output_size, output_size, 1))[..., 0,:,:, 0]
+        imgs, (1, output_size, output_size, 1))[..., 0, :, :, 0]
     # selects a random window for each batch element
     cropped_imgs = windows[np.arange(n), w1, h1]
     return cropped_imgs
+
 
 def center_crop_image(image, output_size):
     h, w = image.shape[1:]
     new_h, new_w = output_size, output_size
 
-    top = (h - new_h)//2
-    left = (w - new_w)//2
+    top = (h - new_h) // 2
+    left = (w - new_w) // 2
 
     image = image[:, top:top + new_h, left:left + new_w]
     return image
-
-
-
