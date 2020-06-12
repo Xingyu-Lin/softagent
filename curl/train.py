@@ -38,7 +38,7 @@ def vv_to_args(vv):
 
 def run_task(vv, log_dir=None, exp_name=None):
     if log_dir or logger.get_dir() is None:
-        logger.configure(dir=log_dir, exp_name=exp_name)
+        logger.configure(dir=log_dir, exp_name=exp_name, format_strs=['csv'])
     logdir = logger.get_dir()
     assert logdir is not None
     os.makedirs(logdir, exist_ok=True)

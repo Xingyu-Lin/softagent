@@ -162,7 +162,7 @@ class Logger(object):
         self._try_sw_log_histogram(key, histogram, step)
 
     def dump(self, step):
-        self._train_mg.dump(step, 'train')
-        self._eval_mg.dump(step, 'eval')
         if len(self._eval_mg._prime_meters()) > 0 and self.chester_logger is not None:
             self.chester_logger.dump_tabular()
+        self._train_mg.dump(step, 'train')
+        self._eval_mg.dump(step, 'eval')

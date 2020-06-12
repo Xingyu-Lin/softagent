@@ -52,7 +52,7 @@ class HumanOutputFormat(KVWriter, SeqWriter):
             self.file = filename_or_file
             self.own_file = False
 
-    def writekvs(self, kvs, dump_to_screen=True):
+    def writekvs(self, kvs):
         # Create strings for printing
         key2str = {}
         for (key, val) in sorted(kvs.items()):
@@ -70,27 +70,25 @@ class HumanOutputFormat(KVWriter, SeqWriter):
             keywidth = max(map(len, key2str.keys()))
             valwidth = max(map(len, key2str.values()))
 
-        if dump_to_screen:
-            # Write out the data
-            now = datetime.datetime.now(dateutil.tz.tzlocal())
-            timestamp = now.strftime('%Y-%m-%d %H:%M:%S.%f %Z')
+        # Write out the data
+        now = datetime.datetime.now(dateutil.tz.tzlocal())
+        timestamp = now.strftime('%Y-%m-%d %H:%M:%S.%f %Z')
 
-            dashes = '-' * (keywidth + valwidth + 7)
-            dashes_time = put_in_middle(dashes, timestamp)
-            lines = [dashes_time]
-            for (key, val) in sorted(key2str.items()):
-                lines.append('| %s%s | %s%s |' % (
-                    key,
-                    ' ' * (keywidth - len(key)),
-                    val,
-                    ' ' * (valwidth - len(val)),
-                ))
-            lines.append(dashes)
+        dashes = '-' * (keywidth + valwidth + 7)
+        dashes_time = put_in_middle(dashes, timestamp)
+        lines = [dashes_time]
+        for (key, val) in sorted(key2str.items()):
+            lines.append('| %s%s | %s%s |' % (
+                key,
+                ' ' * (keywidth - len(key)),
+                val,
+                ' ' * (valwidth - len(val)),
+            ))
+        lines.append(dashes)
+        self.file.write('\n'.join(lines) + '\n')
 
-            self.file.write('\n'.join(lines) + '\n')
-
-            # Flush the output to the file
-            self.file.flush()
+        # Flush the output to the file
+        self.file.flush()
 
     def _truncate(self, s):
         return s[:30] + '...' if len(s) > 33 else s

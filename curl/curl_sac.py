@@ -559,6 +559,7 @@ class CurlSacAgent(object):
                 features_prev = self.actor.encoder(obses).detach()
 
             start_time = time.time()
+
             for i in range(self.args.bc_aux_repeat):
                 obs_anchor, obs_pos = cpc_kwargs["obs_anchor"], cpc_kwargs["obs_pos"]
                 self.update_cpc(obs_anchor, obs_pos, cpc_kwargs, L, step)

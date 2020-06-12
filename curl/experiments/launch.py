@@ -9,15 +9,23 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0610_curl_frequent'
+    exp_prefix = '0612_curl'
     vg = VariantGenerator()
 
-    vg.add('domain_name', ['cartpole'])
-    vg.add('task_name', ['swingup'])
+    task_dict = {
+        'cartpole': 'swingup',
+        'finger': 'spin',
+        'reacher': 'easy',
+        'cheetah': 'run',
+        'walker': 'walk',
+        'ball_in_cup': 'catch'
+    }
+    vg.add('domain_name', ['cartpole', 'finger', 'reacher'])
+    vg.add('task_name', lambda domain_name: [task_dict[domain_name]])
     vg.add('bc_update', [True, False])
     vg.add('bc_actor_loss_threshold', lambda bc_update: [1e-1] if bc_update else [None])
     vg.add('bc_critic_loss_threshold', lambda bc_update: [1e-3] if bc_update else [None])
-    vg.add('bc_aux_repeat', [1, 5])
+    vg.add('bc_aux_repeat', lambda bc_update: [1, 5] if bc_update else [1])
     vg.add('action_repeat', [8])
     vg.add('save_tb', [True])
     vg.add('save_video', [True])
