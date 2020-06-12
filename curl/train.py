@@ -37,7 +37,6 @@ def vv_to_args(vv):
 
 
 def run_task(vv, log_dir=None, exp_name=None):
-
     if log_dir or logger.get_dir() is None:
         logger.configure(dir=log_dir, exp_name=exp_name)
     logdir = logger.get_dir()
@@ -186,6 +185,7 @@ def main(args):
 
     episode, episode_reward, done = 0, 0, True
     start_time = time.time()
+    bc_time, bc_cnt = 0, 0
 
     for step in range(args.num_train_steps):
         # evaluate agent periodically
@@ -202,8 +202,13 @@ def main(args):
             if step > 0:
                 if step % args.log_interval == 0:
                     L.log('train/duration', time.time() - start_time, step)
+                    if args.bc_update:
+                        L.log('train/bc_duration', bc_time, step)
+                        L.log('train/bc_average_duration', bc_time / bc_cnt if bc_cnt != 0 else np.inf, step)
                     L.dump(step)
                 start_time = time.time()
+                bc_time = 0
+                bc_cnt = 0
             if step % args.log_interval == 0:
                 L.log('train/episode_reward', episode_reward, step)
 
@@ -226,7 +231,7 @@ def main(args):
         if step >= args.init_steps:
             num_updates = 1
             for _ in range(num_updates):
-                agent.update(replay_buffer, L, step)
+                agent.update(replay_buffer, L, step, [bc_time, bc_cnt])
 
         next_obs, reward, done, _ = env.step(action)
 

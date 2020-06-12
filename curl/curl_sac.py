@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import copy
 from matplotlib import pyplot as plt
+import time
 import math
 
 from curl import utils
@@ -104,6 +105,35 @@ class Actor(nn.Module):
 
         return mu, pi, log_pi, log_std
 
+    def forward_from_feature(self, obs, compute_pi=False, compute_log_pi=False):
+        mu, log_std = self.trunk(obs).chunk(2, dim=-1)
+
+        # constrain log_std inside [log_std_min, log_std_max]
+        log_std = torch.tanh(log_std)
+        log_std = self.log_std_min + 0.5 * (
+          self.log_std_max - self.log_std_min
+        ) * (log_std + 1)
+
+        self.outputs['mu'] = mu
+        self.outputs['std'] = log_std.exp()
+
+        if compute_pi:
+            std = log_std.exp()
+            noise = torch.randn_like(mu)
+            pi = mu + noise * std
+        else:
+            pi = None
+            entropy = None
+
+        if compute_log_pi:
+            log_pi = gaussian_logprob(noise, log_std)
+        else:
+            log_pi = None
+
+        mu, pi, log_pi = squash(mu, pi, log_pi)
+
+        return mu, log_std
+
     def log(self, L, step, log_freq=LOG_FREQ):
         if step % log_freq != 0:
             return
@@ -165,6 +195,17 @@ class Critic(nn.Module):
 
         q1 = self.Q1(obs, action)
         q2 = self.Q2(obs, action)
+
+        self.outputs['q1'] = q1
+        self.outputs['q2'] = q2
+
+        return q1, q2
+
+    def forward_from_feature(self, feature, action):
+        # detach_encoder allows to stop gradient propogation to encoder
+
+        q1 = self.Q1(feature, action)
+        q2 = self.Q2(feature, action)
 
         self.outputs['q1'] = q1
         self.outputs['q2'] = q2
@@ -320,8 +361,8 @@ class CurlSacAgent(object):
             self.critic.parameters(), lr=critic_lr, betas=(critic_beta, 0.999)
         )
         if self.args.bc_update:
-            self.bc_actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr/20., betas=(actor_beta, 0.999))
-            self.bc_critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr / 20., betas=(critic_beta, 0.999))
+            self.bc_actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr, betas=(actor_beta, 0.999))
+            self.bc_critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr, betas=(critic_beta, 0.999))
 
         self.log_alpha_optimizer = torch.optim.Adam(
             [self.log_alpha], lr=alpha_lr, betas=(alpha_beta, 0.999)
@@ -448,19 +489,28 @@ class CurlSacAgent(object):
         if step % self.log_interval == 0:
             L.log('train/curl_loss', loss, step)
 
-    def bc_update(self, replay_buffer):
+    def bc_update(self, features_prev, features_curr, actions, batch_size, step):
+        """ Input the features instead of the actual observations """
         # Sample from replay buffer
-        obs, action, _, _, _, _ = replay_buffer.sample_cpc()
+        N = len(features_prev)
+        idxs = np.random.randint(0, N, size=3*batch_size)
+        feature_prev, feature_curr, action = features_prev[idxs, ...], features_curr[idxs, ...], actions[idxs, ...]
+
+        # Round robin sample
+        # step = step % 5
+        # N = len(features_prev) // 5
+        # idxs = list(range(step*N, (step+1) * N))
+        # feature_prev, feature_curr, action = features_prev[idxs, ...], features_curr[idxs, ...], actions[idxs, ...]
 
         # Get output of network before cpc update
         with torch.no_grad():
-            _, copy_action, _, _ = self.copy_actor(obs)
-            copy_Q1, copy_Q2 = self.copy_critic(obs, action, detach_encoder=True)
+            copy_action_mu, copy_action_log_std = self.copy_actor.forward_from_feature(feature_prev)
+            copy_Q1, copy_Q2 = self.copy_critic.forward_from_feature(feature_prev, action)
 
         # Behaviour cloning
-        _, curr_action, _, _ = self.actor(obs)
-        curr_Q1, curr_Q2 = self.critic(obs, action, detach_encoder=True)
-        bc_actor_loss = F.mse_loss(copy_action, curr_action)
+        curr_action_mu, curr_action_log_std = self.actor.forward_from_feature(feature_curr)
+        curr_Q1, curr_Q2 = self.critic.forward_from_feature(feature_curr, action)
+        bc_actor_loss = F.mse_loss(copy_action_mu, curr_action_mu) + F.mse_loss(copy_action_log_std, curr_action_log_std)
         bc_critic_loss = F.mse_loss(copy_Q1, curr_Q1) + F.mse_loss(copy_Q2, curr_Q2)
 
         self.bc_actor_optimizer.zero_grad()
@@ -472,7 +522,7 @@ class CurlSacAgent(object):
         self.bc_critic_optimizer.step()
         return bc_actor_loss.item(), bc_critic_loss.item()
 
-    def update(self, replay_buffer, L, step):
+    def update(self, replay_buffer, L, step, bc_stats=[]):
         if self.encoder_type == 'pixel':
             obs, action, reward, next_obs, not_done, cpc_kwargs = replay_buffer.sample_cpc()
         else:
@@ -481,10 +531,13 @@ class CurlSacAgent(object):
         if step % self.log_interval == 0:
             L.log('train/batch_reward', reward.mean(), step)
 
+        start_time = time.time()
         self.update_critic(obs, action, reward, next_obs, not_done, L, step)
-
+        # print('critic update time:', time.time() - start_time)
         if step % self.actor_update_freq == 0:
+            start_time = time.time()
             self.update_actor_and_alpha(obs, L, step)
+            # print('actor update time:', time.time() - start_time)
 
         if step % self.critic_target_update_freq == 0:
             utils.soft_update_params(
@@ -502,27 +555,40 @@ class CurlSacAgent(object):
             if self.args.bc_update:
                 self.copy_actor.load_state_dict(self.actor.state_dict())
                 self.copy_critic.load_state_dict(self.critic.state_dict())
+                obses, actions = replay_buffer.sample_bc_update(batch_size_scale=5)
+                features_prev = self.actor.encoder(obses).detach()
 
-            obs_anchor, obs_pos = cpc_kwargs["obs_anchor"], cpc_kwargs["obs_pos"]
-            self.update_cpc(obs_anchor, obs_pos, cpc_kwargs, L, step)
+            start_time = time.time()
+            for i in range(self.args.bc_aux_repeat):
+                obs_anchor, obs_pos = cpc_kwargs["obs_anchor"], cpc_kwargs["obs_pos"]
+                self.update_cpc(obs_anchor, obs_pos, cpc_kwargs, L, step)
+            # print('update cpc time: {}'.format(time.time()- start_time))
 
             if self.args.bc_update:
-                self.actor_converge.clear()
-                self.critic_converge.clear()
+                start_time = time.time()
+                # self.actor_converge.clear()
+                # self.critic_converge.clear()
+                features_curr = self.actor.encoder(obses).detach()
+
                 losses_actor, losses_critic = [], []
-                for i in range(100):
-                    bc_actor_loss, bc_critic_loss = self.bc_update(replay_buffer)
+                for i in range(5):
+                    bc_actor_loss, bc_critic_loss = self.bc_update(features_prev, features_curr, actions, replay_buffer.batch_size, i)
+                    # print(bc_actor_loss, bc_critic_loss)
                     losses_actor.append(bc_actor_loss)
                     losses_critic.append(bc_critic_loss)
-                    self.actor_converge.append(bc_actor_loss)
-                    self.critic_converge.append(bc_critic_loss)
-                    if self.actor_converge.converge() and self.critic_converge.converge():
-                        break
+                    # self.actor_converge.append(bc_actor_loss)
+                    # self.critic_converge.append(bc_critic_loss)
+                    # if self.actor_converge.converge() and self.critic_converge.converge():
+                    #     break
 
                     # Heuristic way of determine convergence
                     # if bc_loss < self.args.bc_loss_threshold:
                     #     converged = True
                     #     break
+                tot_time = time.time() - start_time
+                # print('bc_update time:', tot_time)
+                bc_stats[0] += tot_time
+                bc_stats[1] += i+1
 
                 # fig, axes = plt.subplots(1, 2)
                 # axes[0].plot(range(len(losses_actor)), losses_actor, label='actor_loss')

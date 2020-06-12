@@ -14,7 +14,8 @@ FORMAT_CONFIG = {
             ('episode', 'E', 'int'), ('step', 'S', 'int'),
             ('duration', 'D', 'time'), ('episode_reward', 'R', 'float'),
             ('batch_reward', 'BR', 'float'), ('actor_loss', 'A_LOSS', 'float'),
-            ('critic_loss', 'CR_LOSS', 'float'), ('curl_loss', 'CU_LOSS', 'float')
+            ('critic_loss', 'CR_LOSS', 'float'), ('curl_loss', 'CU_LOSS', 'float'),
+            ('bc_duration', 'B', 'time'), ('bc_duration_avg', 'BA', 'time')
         ],
         'eval': [('step', 'S', 'int'), ('episode_reward', 'ER', 'float')]
     }

@@ -48,5 +48,5 @@ DEFAULT_CONFIG = {
     'save_video': False,
     'save_model': False,
     'detach_encoder': False,
-    'log_interval': 100
+    'log_interval': 1
 }
