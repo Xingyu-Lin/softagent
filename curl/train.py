@@ -181,7 +181,7 @@ def main(args):
         device=device
     )
 
-    L = Logger(args.work_dir, use_tb=args.save_tb)
+    L = Logger(args.work_dir, use_tb=args.save_tb, chester_logger=logger)
 
     episode, episode_reward, done = 0, 0, True
     start_time = time.time()

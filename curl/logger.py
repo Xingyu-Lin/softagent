@@ -58,6 +58,7 @@ class MetersGroup(object):
         return data
 
     def _dump_to_file(self, data):
+
         with open(self._file_name, 'a') as f:
             f.write(json.dumps(data) + '\n')
 
@@ -82,8 +83,6 @@ class MetersGroup(object):
         print('| %s' % (' | '.join(pieces)))
 
     def dump(self, step, prefix):
-        if len(self._meters) == 0:
-            return
         data = self._prime_meters()
         data['step'] = step
         self._dump_to_file(data)
@@ -92,7 +91,7 @@ class MetersGroup(object):
 
 
 class Logger(object):
-    def __init__(self, log_dir, use_tb=True, config='rl'):
+    def __init__(self, log_dir, use_tb=True, config='rl', chester_logger=None):
         self._log_dir = log_dir
         if use_tb:
             tb_dir = os.path.join(log_dir, 'tb')
@@ -109,6 +108,7 @@ class Logger(object):
             os.path.join(log_dir, 'eval.log'),
             formating=FORMAT_CONFIG[config]['eval']
         )
+        self.chester_logger = chester_logger
 
     def _try_sw_log(self, key, value, step):
         if self._sw is not None:
@@ -137,6 +137,8 @@ class Logger(object):
         self._try_sw_log(key, value / n, step)
         mg = self._train_mg if key.startswith('train') else self._eval_mg
         mg.log(key, value, n)
+        if key.startswith('eval') and self.chester_logger is not None:
+            self.chester_logger.record_tabular(key, value)
 
     def log_param(self, key, param, step):
         self.log_histogram(key + '_w', param.weight.data, step)
@@ -162,3 +164,5 @@ class Logger(object):
     def dump(self, step):
         self._train_mg.dump(step, 'train')
         self._eval_mg.dump(step, 'eval')
+        if len(self._eval_mg._prime_meters()) > 0 and self.chester_logger is not None:
+            self.chester_logger.dump_tabular()
