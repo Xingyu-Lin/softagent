@@ -1,45 +1,35 @@
-import numpy as np
-from softgym.envs.cloth_fold_crumpled import ClothFoldCrumpledEnv
-from softgym.envs.cloth_fold_drop import ClothFoldDropEnv
+from softgym.registered_env import env_arg_dict, SOFTGYM_ENVS
 from softgym.utils.normalized_env import normalize
+from softgym.utils.visualization import save_numpy_as_gif, make_grid
+from multiprocessing import Process
+import numpy as np
+import os.path as osp
+import torchvision
+import torch
+
+from envs.env import Env
 
 
-def test_random(env, N=5):
-    N = 5
-    for i in range(N):
-        print('episode {}'.format(i))
-        env.reset()
-        for _ in range(env.horizon):
-            action = env.action_space.sample()
-            env.step(action)
+def generate_env_state(env_name):
+    kwargs = env_arg_dict[env_name]
+    kwargs['headless'] = False
+    kwargs['use_cached_states'] = True
+    kwargs['num_variations'] = 1000
+    kwargs['save_cached_states'] = False
+
+    # Env wrappter
+    env = Env(env_name, False, 100, 200, 1, 8, 128, kwargs)
+    return env
 
 
 if __name__ == '__main__':
-    env = ClothFoldDropEnv(
-        observation_mode='key_point',
-        action_mode='picker',
-        num_picker=2,
-        render=True,
-        headless=False,
-        horizon=75,
-        action_repeat=8,
-        render_mode='particle',
-        use_cached_states=True,
-        save_cache_states=False,
-        num_variations=1000,
-        deterministic=False)
-    env = normalize(env)
-    env.start_record()
-    for _ in range(20):
+    env_names = ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
+    env_names = ['ClothFoldDrop']
+
+    env = generate_env_state(env_names[0])
+    for i in range(100):
         env.reset()
         for i in range(50):
             action = env.action_space.sample()
-            # action = np.zeros_like(action)
-            action[3] = action[7] = 1.
+            # action =np.zeros_like(action)
             env.step(action)
-    env.end_record(video_path='./test.gif')
-    # env.reset()
-    # for _ in range(500):
-    #     pyflex.step()
-
-    # test_random(env)
