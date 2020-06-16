@@ -58,8 +58,11 @@ def postprocess_observation(observation, bit_depth):
 
 
 def _images_to_observation(images, bit_depth, image_dim):
-    images = torch.tensor(cv2.resize(images, (image_dim, image_dim), interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1),
-                          dtype=torch.float32)  # Resize and put channel first
+    if images.shape[0] != image_dim:
+        images = torch.tensor(cv2.resize(images, (image_dim, image_dim), interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1),
+                              dtype=torch.float32)  # Resize and put channel first
+    else:
+        images = torch.tensor(images.transpose(2, 0, 1), dtype=torch.float32)  # Resize and put channel first
     preprocess_observation_(images, bit_depth)  # Quantise, centre and dequantise inplace
     return images.unsqueeze(dim=0)  # Add batch dimension
 
