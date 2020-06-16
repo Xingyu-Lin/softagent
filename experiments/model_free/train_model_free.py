@@ -1,4 +1,4 @@
-from rlkit.data_management.env_replay_buffer import EnvReplayBuffer
+from rlkit.data_management.env_replay_buffer import EnvReplayBuffer, ImageEnvReplayBuffer
 from rlkit.samplers.data_collector import MdpPathCollector
 from rlkit.torch.sac.policies import TanhGaussianPolicy, MakeDeterministic
 from rlkit.exploration_strategies.gaussian_strategy import GaussianStrategy
@@ -35,9 +35,8 @@ def run_task(arg_vv, log_dir, exp_name):
     else:
         device = torch.device('cpu')
 
-    env_symbolic = vv['env_kwargs']['observation_mode'] != 'cam_rgb' # symbolic means not using image obs
-    env = WrapperRlkit(Env(vv['env_name'], env_symbolic, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'],
-                           env_kwargs=vv['env_kwargs']))
+    env_symbolic = vv['env_kwargs']['observation_mode'] != 'cam_rgb'  # symbolic means not using image obs
+    env = WrapperRlkit(Env(vv['env_name'], env_symbolic, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'], env_kwargs=vv['env_kwargs']))
     obs_dim = env.observation_space.low.size
     action_dim = env.action_space.low.size
 
@@ -50,20 +49,20 @@ def run_task(arg_vv, log_dir, exp_name):
             target_qf1 = FlattenMlp(input_size=obs_dim + action_dim, output_size=1, hidden_sizes=[M, M], )
             target_qf2 = FlattenMlp(input_size=obs_dim + action_dim, output_size=1, hidden_sizes=[M, M], )
             policy = TanhGaussianPolicy(obs_dim=obs_dim, action_dim=action_dim, hidden_sizes=[M, M], )
+            replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
         else:
             qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
             qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
             target_qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
             target_qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
-
             policy = ConvPolicy(vv['embedding_size'], vv['image_dim'], [M, M], action_dim, TanhGaussianPolicy)
+            replay_buffer = ImageEnvReplayBuffer(vv['replay_buffer_size'], env, )
 
         eval_policy = MakeDeterministic(policy)
         eval_path_collector = MdpPathCollector(env, eval_policy, eval_flag=True)
         expl_deterministic_path_collector = MdpPathCollector(env, eval_policy, eval_flag=False)
         expl_path_collector = MdpPathCollector(env, policy, eval_flag=False)
 
-        replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
         trainer = SACTrainer(
             env=env,
             policy=policy,
@@ -81,6 +80,7 @@ def run_task(arg_vv, log_dir, exp_name):
             target_qf2 = FlattenMlp(input_size=obs_dim + action_dim, output_size=1, hidden_sizes=[M, M], )
             policy = TanhMlpPolicy(input_size=obs_dim, output_size=action_dim, hidden_sizes=[M, M])
             target_policy = TanhMlpPolicy(input_size=obs_dim, output_size=action_dim, hidden_sizes=[M, M])
+            replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
         else:
             qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
             qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
@@ -89,6 +89,7 @@ def run_task(arg_vv, log_dir, exp_name):
 
             policy = ConvPolicy(vv['embedding_size'], vv['image_dim'], [M, M], action_dim, TanhMlpPolicy)
             target_policy = ConvPolicy(vv['embedding_size'], vv['image_dim'], [M, M], action_dim, TanhMlpPolicy)
+            replay_buffer = ImageEnvReplayBuffer(vv['replay_buffer_size'], env, )
 
         es = GaussianStrategy(
             action_space=env.action_space,
@@ -103,8 +104,6 @@ def run_task(arg_vv, log_dir, exp_name):
         eval_path_collector = MdpPathCollector(env, policy, eval_flag=True)
         expl_deterministic_path_collector = MdpPathCollector(env, policy, eval_flag=False)
         expl_path_collector = MdpPathCollector(env, exploration_policy, eval_flag=False)
-
-        replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
 
         trainer = TD3Trainer(
             policy=policy,

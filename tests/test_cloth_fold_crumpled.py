@@ -32,4 +32,4 @@ if __name__ == '__main__':
         for i in range(50):
             action = env.action_space.sample()
             # action =np.zeros_like(action)
-            env.step(action)
+            obs, _, _, info = env.step(action)

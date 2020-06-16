@@ -209,7 +209,7 @@ class SoftGymEnv(object):
         if image_dim is None:
             self.image_dim = image_dim = self._env.observation_space.shape[0]
         if not self.symbolic:
-            self.image_c = np.prod(self._env.observation_space.shape) // (image_dim * image_dim)
+            self.image_c = self._env.observation_space.shape[-1]
 
     def reset(self, **kwargs):
         self.t = 0  # Reset internal timer

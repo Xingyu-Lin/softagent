@@ -74,7 +74,7 @@ def FloatTensor(*args, torch_device=None, **kwargs):
 
 
 def from_numpy(*args, **kwargs):
-    return torch.from_numpy(*args, **kwargs).float().to(device)
+    return torch.from_numpy(*args, **kwargs).to(device, non_blocking=True).float()
 
 
 def get_numpy(tensor):

@@ -17,20 +17,20 @@ replay_buffer_size = {
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0407_td3'
+    exp_prefix = '0614_model_free'
     vg = VariantGenerator()
     if debug:
-        vg.add('env_name', ['RopeFlatten'])
+        vg.add('env_name', ['ClothFoldCrumpled'])
     else:
-        vg.add('env_name', ['RopeFlatten'])  # 'ClothDrop', 'ClothFlatten', 'ClothFold', 'RopeFlatten'])
+        vg.add('env_name', ['ClothFold', 'ClothFlatten', 'ClothDrop'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['key_point'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
     if not debug:
-        vg.add('algorithm', ['TD3'])
+        vg.add('algorithm', ['SAC', 'TD3'])
     else:
-        vg.add('algorithm', ['TD3'])
+        vg.add('algorithm', ['SAC'])
     vg.add('version', ['normal'])
-    vg.add('layer_size', [256])
+    vg.add('layer_size', [1024])
     vg.add('replay_buffer_size', lambda env_kwargs_observation_mode: [replay_buffer_size[env_kwargs_observation_mode]])
     vg.add('embedding_size', [256])
     vg.add('image_dim', [128])
@@ -55,7 +55,7 @@ def main(mode, debug, dry):
     if debug:
         vg.add('seed', [100])
     else:
-        vg.add('seed', [300, 400, 500])
+        vg.add('seed', [100, 200])
 
     if not debug:
         vg.add('algorithm_kwargs', [dict(num_epochs=2000,

@@ -4,6 +4,7 @@ from collections import OrderedDict
 from typing import Iterable
 from torch import nn as nn
 
+import numpy as np
 from rlkit.core.batch_rl_algorithm import BatchRLAlgorithm
 from rlkit.core.online_rl_algorithm import OnlineRLAlgorithm
 from rlkit.core.trainer import Trainer
@@ -34,9 +35,10 @@ class TorchTrainer(Trainer, metaclass=abc.ABCMeta):
     def __init__(self):
         self._num_train_steps = 0
 
-    def train(self, np_batch):
+    def train(self, batch):
         self._num_train_steps += 1
-        batch = np_to_pytorch_batch(np_batch)
+        if ('observations' not in batch) or isinstance(batch['observations'], np.ndarray):  # If not already on GPU (For image replay buffer)
+            batch = np_to_pytorch_batch(batch)
         self.train_from_torch(batch)
 
     def get_diagnostics(self):
