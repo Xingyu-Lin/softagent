@@ -13,6 +13,7 @@ from os import path as osp
 import numpy as np
 from matplotlib import pyplot as plt
 
+
 def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./plot.png'):
     '''
     doc
@@ -37,13 +38,14 @@ def plot_latent_dist(env, policy, rollout_function, horizon, N=10, save_name='./
     mean_dist = np.mean(dist, axis=0)
     std_dist = np.std(dist, axis=0)
 
-    markers, caps, bars = plt.errorbar(list(range(horizon)), mean_dist, std_dist) #, colors[i], label = labels[i])
+    markers, caps, bars = plt.errorbar(list(range(horizon)), mean_dist, std_dist)  # , colors[i], label = labels[i])
     [bar.set_alpha(0.5) for bar in bars]
     [cap.set_alpha(0.5) for cap in caps]
     plt.xlabel('Episode time')
     plt.ylabel('VAE distance to goal')
     plt.savefig(save_name)
     plt.clf()
+
 
 def video_multitask_rollout(*args, **kwargs):
     return multitask_rollout(*args, **kwargs,
@@ -78,6 +80,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
       evaluation_data_collector: DataCollector,
       explore_deterministic_data_collector: DataCollector,
       replay_buffer: ReplayBuffer,
+      evaluation_interval=20,
     ):
         self.trainer = trainer
         self.expl_env = exploration_env
@@ -87,7 +90,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
         self.expl_deterministic_data_collector = explore_deterministic_data_collector
         self.replay_buffer = replay_buffer
         self._start_epoch = 0
-
+        self.evaluation_interval = evaluation_interval
         self.post_epoch_funcs = []
 
     def train(self, start_epoch=0):
@@ -145,7 +148,7 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
                 # and once it is set to be true, image desired goals would be replaced as the decoded images from sampled latents.
 
             dump_path = logger.get_snapshot_dir()
-            
+
             if isinstance(env, VAEWrappedEnv):  # indicates skewfit and multitask env
                 rollout_func = video_multitask_rollout
             else:
@@ -158,39 +161,44 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
                 latent_distance_name = "{}_train_stochastic_latent.png".format(epoch)
                 dump_video(env, self.expl_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
                            horizon=self.max_path_length, rows=2, columns=4)
-                plot_latent_dist(env, self.expl_data_collector._policy, save_name=osp.join(dump_path, latent_distance_name), rollout_function=rollout_func, 
-                           horizon=self.max_path_length)
-                
+                plot_latent_dist(env, self.expl_data_collector._policy, save_name=osp.join(dump_path, latent_distance_name),
+                                 rollout_function=rollout_func,
+                                 horizon=self.max_path_length)
+
                 video_name = "{}_train_deterministic.gif".format(epoch)
                 latent_distance_name = "{}_train_deterministic_latent.png".format(epoch)
                 dump_video(env, self.eval_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
                            horizon=self.max_path_length, rows=2, columns=4)
-                plot_latent_dist(env, self.eval_data_collector._policy, save_name=osp.join(dump_path, latent_distance_name), rollout_function=rollout_func, 
-                           horizon=self.max_path_length)
+                plot_latent_dist(env, self.eval_data_collector._policy, save_name=osp.join(dump_path, latent_distance_name),
+                                 rollout_function=rollout_func,
+                                 horizon=self.max_path_length)
 
                 env.eval_flag = True
                 video_name = "{}_eval_deterministic.gif".format(epoch)
                 latent_distance_name = "{}_eval_deterministic_latent.png".format(epoch)
                 dump_video(env, self.eval_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
-                           horizon=self.max_path_length, rows=2, columns=4)                
-                plot_latent_dist(env, self.eval_data_collector._policy, save_name=osp.join(dump_path, latent_distance_name), rollout_function=rollout_func, 
-                           horizon=self.max_path_length)
+                           horizon=self.max_path_length, rows=2, columns=4)
+                plot_latent_dist(env, self.eval_data_collector._policy, save_name=osp.join(dump_path, latent_distance_name),
+                                 rollout_function=rollout_func,
+                                 horizon=self.max_path_length)
 
                 self.eval_env.decode_goals = old_decode_goals
             else:
                 env.eval_flag = False
                 video_name = "{}_train_stochastic.gif".format(epoch)
-                dump_video_non_goal(env, self.expl_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
+                dump_video_non_goal(env, self.expl_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func,
+                                    imsize=imsize,
                                     horizon=self.max_path_length, rows=2, columns=4)
                 video_name = "{}_train_deterministic.gif".format(epoch)
-                dump_video_non_goal(env, self.eval_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
-                           horizon=self.max_path_length, rows=2, columns=4)
+                dump_video_non_goal(env, self.eval_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func,
+                                    imsize=imsize,
+                                    horizon=self.max_path_length, rows=2, columns=4)
 
                 env.eval_flag = True
                 video_name = "{}_test_deterministic.gif".format(epoch)
-                dump_video_non_goal(env, self.eval_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func, imsize=imsize,
-                           horizon=self.max_path_length, rows=2, columns=4)
-
+                dump_video_non_goal(env, self.eval_data_collector._policy, osp.join(dump_path, video_name), rollout_function=rollout_func,
+                                    imsize=imsize,
+                                    horizon=self.max_path_length, rows=2, columns=4)
 
             self.eval_env.eval_flag = old_eval_flag
 
@@ -224,42 +232,43 @@ class BaseRLAlgorithm(object, metaclass=abc.ABCMeta):
             eval_util.get_generic_path_information(expl_paths),
             prefix="exploration/",
         )
-        """
-        Evaluation
-        """
-        logger.record_dict(
-            self.eval_data_collector.get_diagnostics(),
-            prefix='evaluation/',
-        )
-        eval_paths = self.eval_data_collector.get_epoch_paths()
-        if hasattr(self.eval_env, 'get_diagnostics'):
+
+        if epoch % self.evaluation_interval == 0:
+            """
+            Evaluation
+            """
             logger.record_dict(
-                self.eval_env.get_diagnostics(eval_paths),
+                self.eval_data_collector.get_diagnostics(),
                 prefix='evaluation/',
             )
-        logger.record_dict(
-            eval_util.get_generic_path_information(eval_paths),
-            prefix="evaluation/",
-        )
-
-        """
-        Deterministic policy on train env
-        """
-        logger.record_dict(
-            self.expl_deterministic_data_collector.get_diagnostics(),
-            prefix='exploration_deterministic/',
-        )
-        expl_deterministic_paths = self.expl_deterministic_data_collector.get_epoch_paths()
-        if hasattr(self.expl_env, 'get_diagnostics'):
+            eval_paths = self.eval_data_collector.get_epoch_paths()
+            if hasattr(self.eval_env, 'get_diagnostics'):
+                logger.record_dict(
+                    self.eval_env.get_diagnostics(eval_paths),
+                    prefix='evaluation/',
+                )
             logger.record_dict(
-                self.expl_env.get_diagnostics(expl_deterministic_paths),
+                eval_util.get_generic_path_information(eval_paths),
+                prefix="evaluation/",
+            )
+
+            """
+            Deterministic policy on train env
+            """
+            logger.record_dict(
+                self.expl_deterministic_data_collector.get_diagnostics(),
                 prefix='exploration_deterministic/',
             )
-        logger.record_dict(
-            eval_util.get_generic_path_information(expl_deterministic_paths),
-            prefix="exploration_deterministic/",
-        )
-
+            expl_deterministic_paths = self.expl_deterministic_data_collector.get_epoch_paths()
+            if hasattr(self.expl_env, 'get_diagnostics'):
+                logger.record_dict(
+                    self.expl_env.get_diagnostics(expl_deterministic_paths),
+                    prefix='exploration_deterministic/',
+                )
+            logger.record_dict(
+                eval_util.get_generic_path_information(expl_deterministic_paths),
+                prefix="exploration_deterministic/",
+            )
 
         """
         Misc

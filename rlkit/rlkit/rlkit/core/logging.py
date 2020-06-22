@@ -91,6 +91,7 @@ class Logger(object):
         self._log_tabular_only = False
         self._header_printed = False
         self.table_printer = TerminalTablePrinter()
+        self.csv_writer = None
 
     def reset(self):
         self.__init__()
@@ -263,13 +264,14 @@ class Logger(object):
             # Also write to the csv files
             # This assumes that the keys in each iteration won't change!
             for tabular_fd in list(self._tabular_fds.values()):
-                writer = csv.DictWriter(tabular_fd,
-                                        fieldnames=list(tabular_dict.keys()))
+                if self.csv_writer is None:
+                    self.csv_writer = csv.DictWriter(tabular_fd,
+                                                     fieldnames=list(tabular_dict.keys()))
                 if wh or (
-                        wh is None and tabular_fd not in self._tabular_header_written):
-                    writer.writeheader()
+                  wh is None and tabular_fd not in self._tabular_header_written):
+                    self.csv_writer.writeheader()
                     self._tabular_header_written.add(tabular_fd)
-                writer.writerow(tabular_dict)
+                self.csv_writer.writerow(tabular_dict)
                 tabular_fd.flush()
             del self._tabular[:]
 
@@ -303,4 +305,3 @@ class Logger(object):
 
 
 logger = Logger()
-

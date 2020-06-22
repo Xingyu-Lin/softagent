@@ -31,7 +31,6 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
       num_trains_per_train_loop,
       num_train_loops_per_epoch=1,
       min_num_steps_before_training=0,
-      evaluation_interval=10,
       dump_policy_video_interval=50,
       no_goal_env=None
     ):
@@ -52,7 +51,6 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
         self.num_train_loops_per_epoch = num_train_loops_per_epoch
         self.num_expl_steps_per_train_loop = num_expl_steps_per_train_loop
         self.min_num_steps_before_training = min_num_steps_before_training
-        self.evaluation_interval = evaluation_interval
         self.dump_video_interval = dump_policy_video_interval
 
     def _train(self):
@@ -77,7 +75,7 @@ class BatchRLAlgorithm(BaseRLAlgorithm, metaclass=abc.ABCMeta):
 
             print("Training epoch: ", epoch)
 
-            if epoch % self.evaluation_interval == 0 and epoch != 0:
+            if epoch % self.evaluation_interval == 0:
                 self.eval_data_collector.collect_new_paths(
                     self.max_path_length,
                     self.num_eval_steps_per_epoch,
