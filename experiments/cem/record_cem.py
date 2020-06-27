@@ -70,3 +70,9 @@ if __name__ == '__main__':
                         help='path to the snapshot file')
     args = parser.parse_args()
     generate_video([osp.join(args.exp_dir, subdir, 'cem_traj.pkl') for subdir in os.listdir(args.exp_dir)])
+    # file_path = osp.join(args.exp_dir, 'cem_traj.pkl')
+    # with open(file_path, 'rb') as f:
+    #     traj_dict = pickle.load(f)
+    # initial_states, action_trajs, configs = traj_dict['initial_states'], traj_dict['action_trajs'], traj_dict['configs']
+    # for action in action_trajs[0]:
+    #     print(action)

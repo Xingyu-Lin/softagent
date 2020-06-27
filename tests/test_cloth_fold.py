@@ -4,27 +4,24 @@ import pyflex
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.utils.visualization import save_numpy_as_gif
 from softgym.utils.normalized_env import normalize
+from softgym.registered_env import env_arg_dict, SOFTGYM_ENVS
+from softgym.utils.normalized_env import normalize
+from softgym.utils.visualization import save_numpy_as_gif, make_grid
+from multiprocessing import Process
+import numpy as np
+import os.path as osp
+import torchvision
+import torch
+from envs.env import Env
+
+np.set_printoptions(precision=3, suppress=True)
 
 
-def test_picker(num_picker=3, save_dir='./videos'):
-    env = ClothFoldEnv(
-        observation_mode='key_point',
-        action_mode='picker',
-        num_picker=2,
-        render=True,
-        headless=False,
-        horizon=75,
-        action_repeat=8,
-        render_mode='particle',
-        use_cached_states=False,
-        save_cache_states=False,
-        deterministic=True,
-        cached_init_state_path=None)
-
+def test_picker(env, num_picker=2, save_dir='./videos'):
     obs = env.reset()
     key_pos1 = obs[:3]
     key_pos2 = obs[3:6]
-    picker_pos = obs[6:].reshape((-1, 3))
+    picker_pos = obs[-6:].reshape((-1, 3))
     imgs = []
     for _ in range(1):
         env.reset()
@@ -33,16 +30,24 @@ def test_picker(num_picker=3, save_dir='./videos'):
             print('step: ', i)
             action = np.zeros((num_picker, 4))
             if i < 12:
-                action[0, :3] = (key_pos1 - picker_pos[0, :]) * 0.01
-                action[1, :3] = (key_pos2 - picker_pos[1, :]) * 0.01
+                action[0, :3] = (key_pos1 - picker_pos[0, :]) * 2
+                action[1, :3] = (key_pos2 - picker_pos[1, :]) * 2
                 action[:, 3] = 0
-            elif i < 42:
-                action[:, 1] = 0.005
+                # print('action:', action[0], action[1])
+            elif i < 16:
+                action[:, 1] = 0.3
                 action[:, 0] = 0.01
                 action[:, 3] = 1
-            _, reward, _, _ = env.step(action)
-            total_reward += reward
-            print('total reward"', total_reward)
+            else:
+                action[:, 1] = 0.
+                action[:, 0] = 2.0
+                action[:, 3] = 1
+            obs, reward, _, _ = env.step(action.flatten())
+            picker_pos = obs[-6:].reshape((-1, 3))
+            # print('obs:', obs[-6:])
+            # total_reward += reward
+            # print('total reward"', total_reward)
+            print(reward)
             img = env.render(mode='rgb_array')
             imgs.append(img)
     fp_out = './videos/fold_picker_random_{}.gif'.format(num_picker)
@@ -59,30 +64,22 @@ def test_random(env, N=5):
             env.step(action)
 
 
-if __name__ == '__main__':
-    # test_picker(num_picker=2)
-    env = ClothFoldEnv(
-        observation_mode='cam_rgb',
-        action_mode='picker',
-        num_picker=2,
-        render=True,
-        headless=False,
-        horizon=75,
-        action_repeat=8,
-        render_mode='cloth',
-        use_cached_states=False,
-        deterministic=True,
-        save_cache_states=False)
-    env = normalize(env)
-    env.start_record()
-    env.reset()
-    for i in range(100000):
-        action = env.action_space.sample()
-        print(i, action)
-        env.step(action)
-    env.end_record(video_path='./test.gif')
-    # env.reset()
-    # for _ in range(500):
-    #     pyflex.step()
+def generate_env_state(env_name):
+    kwargs = env_arg_dict[env_name]
+    kwargs['headless'] = False
+    kwargs['render'] = True
+    kwargs['use_cached_states'] = True
+    kwargs['num_variations'] = 1000
+    kwargs['save_cached_states'] = False
+    kwargs['observation_mode'] = 'key_point'
 
-    # test_random(env)
+    # Env wrappter
+    env = SOFTGYM_ENVS[env_name](**kwargs)
+    # env = Env(env_name, False, 100, 200, 1, 8, 128, kwargs)
+    return env
+
+
+if __name__ == '__main__':
+    env = generate_env_state('ClothFold')
+    env = normalize(env)
+    test_picker(env)
