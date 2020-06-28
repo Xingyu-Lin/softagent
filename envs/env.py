@@ -12,6 +12,7 @@ from softgym.envs.rope_alphabet import RopeAlphaBetEnv
 from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.envs.cloth_drop import ClothDropEnv
+from softgym.envs.rigid_cloth_fold import RigidClothFoldEnv
 from softgym.envs.cloth_fold_crumpled import ClothFoldCrumpledEnv
 from softgym.envs.cloth_fold_drop import ClothFoldDropEnv
 from softgym.utils.normalized_env import normalize
@@ -36,6 +37,7 @@ SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
                        'ClothFoldCrumpled': ClothFoldCrumpledEnv,
                        'ClothFoldDrop': ClothFoldDropEnv,
                        'ClothDrop': ClothDropEnv,
+                       'RigidClothFold': RigidClothFoldEnv,
                        'RopeFlatten': RopeFlattenEnv,
                        'RopeAlphaBet': RopeAlphaBetEnv,
                        'PourWaterAmount': PourWaterAmountPosControlEnv,
