@@ -41,6 +41,7 @@ def test_flex_env():
     for _ in range(100000):
         # pyflex.step(render=True)
         action = env.action_space.sample()
+        action = np.zeros_like(action)
         env.step(action, record_continuous_video=True, img_size=720)
 
 

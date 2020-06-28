@@ -19,10 +19,10 @@ import numpy as np
 # def test_env(env):
 #     obs = env.reset()
 #     for i in range(10000):
-#         # action = env.action_space.sample()
+#         action = env.action_space.sample()
 #         # action = np.array([1., 1., 1., 0., 1., 1., 1., 0.])
-#         # obs, reward, done, info = env.step(action, )
-#         env.get_image(width=720, height=720)
+#         obs, reward, done, info = env.step(action, record_continuous_video=True, img_size=720)
+#         # env.get_image(width=720, height=720)
 
 
 def run_task(arg_vv, log_dir, exp_name):
@@ -44,14 +44,18 @@ def run_task(arg_vv, log_dir, exp_name):
     else:
         device = torch.device('cpu')
 
-    vv['env_kwargs']['render']= True
-    vv['env_kwargs']['headless'] = False
-    vv['env_kwargs']['deterministic'] = True
+    # All for debugging purpose
+    # vv['env_kwargs']['render']= True
+    # vv['env_kwargs']['headless'] = False
+    # vv['env_kwargs']['deterministic'] = True
+    # vv['env_kwargs']['num_variations'] = 1
+    # vv['env_kwargs']['use_cached_states'] = False
+
     env_symbolic = vv['env_kwargs']['observation_mode'] != 'cam_rgb'  # symbolic means not using image obs
     env = WrapperRlkit(Env(vv['env_name'], env_symbolic, vv['seed'], vv['max_episode_length'], 1, 8, vv['image_dim'], env_kwargs=vv['env_kwargs']))
 
     # test_env(env)
-
+    # exit()
     obs_dim = env.observation_space.low.size
     action_dim = env.action_space.low.size
 
