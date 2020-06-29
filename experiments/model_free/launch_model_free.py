@@ -17,15 +17,15 @@ replay_buffer_size = {
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0627_cloth_fold_rgb'
+    exp_prefix = '0628_rigid_cloth_model_free'
     vg = VariantGenerator()
     if debug:
-        vg.add('env_name', ['ClothFlatten'])
+        vg.add('env_name', ['RigidClothFold'])
     else:
         # vg.add('env_name', ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop'])
         vg.add('env_name', ['ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
     if not debug:
         vg.add('algorithm', ['TD3', 'SAC'])
     else:

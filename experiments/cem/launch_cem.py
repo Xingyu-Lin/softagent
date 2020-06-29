@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0613_cloth'
+    exp_prefix = '0628_rigid_cloth'
     vg = VariantGenerator()
     cem_plan_horizon = {
         'PassWater': 7,
@@ -22,10 +22,11 @@ def main(mode, debug, dry):
         'ClothFlatten': 15,
         'ClothDrop': 15,
         'RopeFlatten': 15,
-        'RopeAlphaBet': 15
+        'RopeAlphaBet': 15,
+        'RigidClothFold': 15
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothFoldCrumpled', 'ClothFoldDrop'])
+    vg.add('env_name', ['RigidClothFold'])
     # ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
