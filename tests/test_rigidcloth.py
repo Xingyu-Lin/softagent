@@ -72,7 +72,7 @@ def visualize_cem():
 
 
 if __name__ == '__main__':
-    # test_pyflex_scene()
+    test_pyflex_scene()
     # import time
     # time.sleep(10)
     # test_flex_env()
