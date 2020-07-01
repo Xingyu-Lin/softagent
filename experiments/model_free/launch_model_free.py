@@ -17,17 +17,17 @@ replay_buffer_size = {
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)  # mainly for debug
 def main(mode, debug, dry):
-    exp_prefix = '0628_rigid_cloth_model_free'
+    exp_prefix = '0629_water_model_free_sac_cam'
     vg = VariantGenerator()
     if debug:
-        vg.add('env_name', ['RigidClothFold'])
+        vg.add('env_name', ['PassWater'])
     else:
-        # vg.add('env_name', ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop'])
-        vg.add('env_name', ['ClothFold'])
+        vg.add('env_name', ['PassWater', 'PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
+    # vg.add('env_kwargs_render_mode', ['particle'])
     if not debug:
-        vg.add('algorithm', ['TD3', 'SAC'])
+        vg.add('algorithm', ['SAC'])
     else:
         vg.add('algorithm', ['TD3'])
     vg.add('version', ['normal'])
@@ -80,7 +80,7 @@ def main(mode, debug, dry):
             time.sleep(10)
         if mode == 'seuss':
             if idx == 0:
-                compile_script = 'compile.sh'  # For the first experiment, compile the current softgym
+                compile_script = 'compile_1.0.sh'  # For the first experiment, compile the current softgym
                 wait_compile = None
             else:
                 compile_script = None
