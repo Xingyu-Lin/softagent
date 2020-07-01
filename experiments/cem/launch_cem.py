@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0628_rigid_cloth'
+    exp_prefix = '0629_cloth_cem'
     vg = VariantGenerator()
     cem_plan_horizon = {
         'PassWater': 7,
@@ -26,7 +26,7 @@ def main(mode, debug, dry):
         'RigidClothFold': 15
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['RigidClothFold'])
+    vg.add('env_name', ['ClothFold', 'ClothFlatten', 'ClothDrop'])
     # ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
@@ -34,7 +34,7 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_observation_mode', ['key_point'])
     vg.add('env_kwargs_reward_type', lambda env_name: ['index', 'bigraph'] if env_name == 'RopeAlphaBet' else [None])  # only for ropealphabet
 
-    vg.add('seed', [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000])
+    vg.add('seed', [100, 200, 300])
     vg.add('max_episode_length', [200])
 
     if not debug:

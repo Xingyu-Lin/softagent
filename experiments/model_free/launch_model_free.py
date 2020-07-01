@@ -29,9 +29,9 @@ def main(mode, debug, dry):
     if not debug:
         vg.add('algorithm', ['SAC'])
     else:
-        vg.add('algorithm', ['TD3'])
+        vg.add('algorithm', ['SAC'])
     vg.add('version', ['normal'])
-    vg.add('layer_size', [256])
+    vg.add('layer_size', [1024])
     vg.add('replay_buffer_size', lambda env_kwargs_observation_mode: [replay_buffer_size[env_kwargs_observation_mode]])
     vg.add('embedding_size', [256])
     vg.add('image_dim', [128])
