@@ -8,6 +8,7 @@ from rlkit.torch.td3.td3 import TD3Trainer
 from rlkit.torch.networks import FlattenMlp, TanhMlpPolicy
 from rlkit.launchers.launcher_util import setup_logger
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
+from torch.utils.tensorboard import SummaryWriter
 import rlkit.torch.pytorch_util as ptu
 
 from experiments.planet.train import update_env_kwargs
@@ -15,6 +16,7 @@ from experiments.model_free.models import ConvQ, ConvPolicy
 from envs.env import Env, WrapperRlkit
 import torch
 import numpy as np
+
 
 # def test_env(env):
 #     obs = env.reset()
@@ -31,6 +33,8 @@ def run_task(arg_vv, log_dir, exp_name):
 
     # Configure logger
     setup_logger(exp_prefix=exp_name, log_dir=log_dir, variant=vv, exp_id=0, seed=vv['seed'], snapshot_mode='gap_and_last', snapshot_gap=20)
+    writer = SummaryWriter(log_dir=log_dir, flush_secs=30)
+    # writer = None
 
     # Configure torch
     if torch.cuda.is_available():
@@ -70,7 +74,7 @@ def run_task(arg_vv, log_dir, exp_name):
             policy = TanhGaussianPolicy(obs_dim=obs_dim, action_dim=action_dim, hidden_sizes=[M, M], )
             replay_buffer = EnvReplayBuffer(vv['replay_buffer_size'], env, )
         else:
-            qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
+            qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim, writer, log_prefix='qf1')
             qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
             target_qf1 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)
             target_qf2 = ConvQ(vv['embedding_size'], vv['image_dim'], [M, M], action_dim)

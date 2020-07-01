@@ -49,7 +49,7 @@ def generate_env_state(env_name):
 
 if __name__ == '__main__':
     env_names = ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
-    env_names = ['ClothFlatten']
+    env_names = ['RigidClothFold']
 
     for env_name in env_names:
         p = Process(target=generate_env_state, args=(env_name,))

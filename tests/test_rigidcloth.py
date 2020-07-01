@@ -17,8 +17,6 @@ def test_pyflex_scene():
             stat[x] = 1
         else:
             stat[x] += 1
-    print(stat)
-    exit()
 
     for i in range(10000):
         pyflex.step(render=True)
@@ -72,7 +70,7 @@ def visualize_cem():
 
 
 if __name__ == '__main__':
-    test_pyflex_scene()
+    # test_pyflex_scene()
     # import time
     # time.sleep(10)
     # test_flex_env()
