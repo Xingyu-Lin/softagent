@@ -144,18 +144,6 @@ class ReplayBuffer(Dataset):
         not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
         return obses, actions, rewards, next_obses, not_dones
 
-    def sample_bc_update(self, batch_size_scale):
-        idxs = np.random.randint(
-            0, self.capacity if self.full else self.idx, size=self.batch_size * batch_size_scale
-        )
-
-        obses = self.obses[idxs]
-        obses = random_crop(obses, self.image_size)
-        obses = torch.as_tensor(obses, device=self.device).float()
-        actions = torch.as_tensor(self.actions[idxs], device=self.device)
-
-        return obses, actions
-
 
     def sample_cpc(self):
 
@@ -290,6 +278,9 @@ def random_crop(imgs, output_size):
 
 
 def center_crop_image(image, output_size):
+    # print('input image shape:', image.shape)
+    if image.shape[0] ==1:
+        image = image[0]
     h, w = image.shape[1:]
     new_h, new_w = output_size, output_size
 
@@ -297,4 +288,5 @@ def center_crop_image(image, output_size):
     left = (w - new_w) // 2
 
     image = image[:, top:top + new_h, left:left + new_w]
+    # print('output image shape:', image.shape)
     return image

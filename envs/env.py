@@ -59,13 +59,15 @@ def postprocess_observation(observation, bit_depth):
         np.uint8)
 
 
-def _images_to_observation(images, bit_depth, image_dim):
+def _images_to_observation(images, bit_depth, image_dim, normalize_observation=True):
+    dtype = torch.float32 if normalize_observation else torch.uint8
     if images.shape[0] != image_dim:
         images = torch.tensor(cv2.resize(images, (image_dim, image_dim), interpolation=cv2.INTER_LINEAR).transpose(2, 0, 1),
-                              dtype=torch.float32)  # Resize and put channel first
+                              dtype=dtype)  # Resize and put channel first
     else:
-        images = torch.tensor(images.transpose(2, 0, 1), dtype=torch.float32)  # Resize and put channel first
-    preprocess_observation_(images, bit_depth)  # Quantise, centre and dequantise inplace
+        images = torch.tensor(images.transpose(2, 0, 1), dtype=dtype)  # Resize and put channel first
+    if normalize_observation:
+        preprocess_observation_(images, bit_depth)  # Quantise, centre and dequantise inplace
     return images.unsqueeze(dim=0)  # Add batch dimension
 
 
@@ -199,7 +201,8 @@ class GymEnv():
 
 
 class SoftGymEnv(object):
-    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None):
+    def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None,
+                 normalize_observation = True):
         if env in SOFTGYM_CUSTOM_ENVS:
             self._env = SOFTGYM_CUSTOM_ENVS[env](**env_kwargs)
         else:
@@ -215,6 +218,7 @@ class SoftGymEnv(object):
             self.image_dim = image_dim = self._env.observation_space.shape[0]
         if not self.symbolic:
             self.image_c = self._env.observation_space.shape[-1]
+        self.normalize_observation = normalize_observation
 
     def reset(self, **kwargs):
         self.t = 0  # Reset internal timer
@@ -222,7 +226,7 @@ class SoftGymEnv(object):
         if self.symbolic:
             return torch.tensor(obs, dtype=torch.float32)
         else:
-            return _images_to_observation(obs, self.bit_depth, self.image_dim)
+            return _images_to_observation(obs, self.bit_depth, self.image_dim, normalize_observation=self.normalize_observation)
 
     def step(self, action, **kwargs):
         if not isinstance(action, np.ndarray):
@@ -237,7 +241,7 @@ class SoftGymEnv(object):
             if self.symbolic:
                 obs = torch.tensor(obs, dtype=torch.float32)
             else:
-                obs = _images_to_observation(obs, self.bit_depth, self.image_dim)
+                obs = _images_to_observation(obs, self.bit_depth, self.image_dim, normalize_observation=self.normalize_observation)
             if done:
                 break
         return obs, reward, done, info
@@ -275,13 +279,13 @@ class SoftGymEnv(object):
         return getattr(self._env, name)
 
 
-def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None):
+def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None, normalize_observation=True):
     if env in GYM_ENVS:
         return GymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim)
     elif env in CONTROL_SUITE_ENVS:
         return ControlSuiteEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim)
     elif env in SOFTGYM_ENVS or env in SOFTGYM_CUSTOM_ENVS:
-        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs)
+        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs, normalize_observation=normalize_observation)
     else:
         raise NotImplementedError
 
