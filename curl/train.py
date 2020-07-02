@@ -16,10 +16,13 @@ from curl.logger import Logger
 from curl.curl_sac import CurlSacAgent
 from curl.default_config import DEFAULT_CONFIG
 
+from experiments.planet.train import update_env_kwargs
+
 from chester import logger
 from envs.env import Env
 
 from softgym.utils.visualization import save_numpy_as_gif, make_grid
+
 
 def vv_to_args(vv):
     class VArgs(object):
@@ -154,7 +157,12 @@ def main(args):
         args.__dict__["seed"] = np.random.randint(1, 1000000)
     utils.set_seed_everywhere(args.seed)
 
-    env = Env(args.env_name, False, args.seed, 200, 1, 8, args.pre_transform_image_size, env_kwargs=args.env_kwargs, normalize_observation=False)
+    args.__dict__ = update_env_kwargs(args.__dict__)  # Update env_kwargs
+
+    symbolic = args.env_kwargs['observation_mode'] != 'cam_rgb'
+    args.encoder_type = 'identity' if symbolic else 'pixel'
+
+    env = Env(args.env_name, symbolic, args.seed, 200, 1, 8, args.pre_transform_image_size, env_kwargs=args.env_kwargs, normalize_observation=False)
     env.seed(args.seed)
 
     # make directory
@@ -213,7 +221,7 @@ def main(args):
                 if step % args.log_interval == 0:
                     L.log('train/duration', time.time() - start_time, step)
                     for key, val in get_info_stats([ep_info]).items():
-                        L.log('train/info_'+ key, val, step)
+                        L.log('train/info_' + key, val, step)
                     L.dump(step)
                 start_time = time.time()
             if step % args.log_interval == 0:
@@ -228,7 +236,6 @@ def main(args):
             if step % args.log_interval == 0:
                 L.log('train/episode', episode, step)
 
-
         # sample action for data collection
         if step < args.init_steps:
             action = env.action_space.sample()
@@ -242,7 +249,6 @@ def main(args):
             for _ in range(num_updates):
                 agent.update(replay_buffer, L, step)
         next_obs, reward, done, info = env.step(action)
-
 
         # allow infinit bootstrap
         ep_info.append(info)

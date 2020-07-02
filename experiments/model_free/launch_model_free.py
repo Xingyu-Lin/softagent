@@ -23,7 +23,7 @@ def main(mode, debug, dry):
         vg.add('env_name', ['RigidClothFold'])
     else:
         # vg.add('env_name', ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop'])
-        vg.add('env_name', ['ClothFold'])
+        vg.add('env_name', ['ClothFold', 'RigidClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['key_point'])
     if not debug:
@@ -49,7 +49,7 @@ def main(mode, debug, dry):
     if debug:
         vg.add('seed', [100])
     else:
-        vg.add('seed', [100, 200])
+        vg.add('seed', [100, 200, 300])
 
     if not debug:
         vg.add('algorithm_kwargs', [dict(num_epochs=2000,

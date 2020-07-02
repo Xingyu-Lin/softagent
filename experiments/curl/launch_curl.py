@@ -10,16 +10,17 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0701_curl'
+    exp_prefix = '0701_cloth_fold_curl_state'
     vg = VariantGenerator()
 
     vg.add('env_name', ['RigidClothFold', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
+    vg.add('env_kwargs_observation_mode', ['key_point'])
 
+    vg.add('algorithm', ['CURL'])
     vg.add('save_tb', [True])
     vg.add('save_video', [True])
-    vg.add('seed', [100, 200])
+    vg.add('seed', [100, 200, 300])
 
     if not debug:
         pass

@@ -156,10 +156,10 @@ class SACTrainer(TorchTrainer):
             )
 
         """ Logging intermediate stats in tensorboard"""
-        self.qf1.log(step=self._n_train_steps_total)
-        self.qf2.log(step=self._n_train_steps_total)
-        self.target_qf1.log(step=self._n_train_steps_total)
-        self.target_qf2.log(step=self._n_train_steps_total)
+        # self.qf1.log(step=self._n_train_steps_total)
+        # self.qf2.log(step=self._n_train_steps_total)
+        # self.target_qf1.log(step=self._n_train_steps_total)
+        # self.target_qf2.log(step=self._n_train_steps_total)
         """
         Save some statistics for eval
         """
