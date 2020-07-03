@@ -33,8 +33,8 @@ def run_task(arg_vv, log_dir, exp_name):
 
     # Configure logger
     setup_logger(exp_prefix=exp_name, log_dir=log_dir, variant=vv, exp_id=0, seed=vv['seed'], snapshot_mode='gap_and_last', snapshot_gap=20)
-    writer = SummaryWriter(log_dir=log_dir, flush_secs=30)
-    # writer = None
+    # writer = SummaryWriter(log_dir=log_dir, flush_secs=30)
+    writer = None
 
     # Configure torch
     if torch.cuda.is_available():

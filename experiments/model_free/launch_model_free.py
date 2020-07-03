@@ -49,7 +49,7 @@ def main(mode, debug, dry):
     if debug:
         vg.add('seed', [100])
     else:
-        vg.add('seed', [100, 200])
+        vg.add('seed', [100, 200, 300])
 
     if not debug:
         vg.add('algorithm_kwargs', [dict(num_epochs=2000,

@@ -15,7 +15,6 @@ FORMAT_CONFIG = {
             ('duration', 'D', 'time'), ('episode_reward', 'R', 'float'),
             ('batch_reward', 'BR', 'float'), ('actor_loss', 'A_LOSS', 'float'),
             ('critic_loss', 'CR_LOSS', 'float'), ('curl_loss', 'CU_LOSS', 'float'),
-            ('bc_duration', 'B', 'time'), ('bc_duration_avg', 'BA', 'time')
         ],
         'eval': [('step', 'S', 'int'), ('episode_reward', 'ER', 'float')]
     }
@@ -137,7 +136,7 @@ class Logger(object):
         self._try_sw_log(key, value / n, step)
         mg = self._train_mg if key.startswith('train') else self._eval_mg
         mg.log(key, value, n)
-        if key.startswith('eval') and self.chester_logger is not None:
+        if self.chester_logger is not None:
             self.chester_logger.record_tabular(key, value)
 
     def log_param(self, key, param, step):

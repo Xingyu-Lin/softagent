@@ -30,7 +30,7 @@ class VideoRecorder(object):
                     mode='rgb_array',
                 )
     
-            self.frames.append(frame)
+            self.frames.append(frame.astype(np.uint8))
 
     def save(self, file_name):
         if self.enabled:

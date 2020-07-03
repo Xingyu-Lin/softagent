@@ -2,17 +2,16 @@ DEFAULT_CONFIG = {
     # environment
     'domain_name': 'cartpole',
     'task_name': 'swingup',
-    'pre_transform_image_size': 100,
-    'image_size': 84,
+    'pre_transform_image_size': 128,
+    'image_size': 100,
     'action_repeat': 1,
-    'frame_stack': 3,
     # replay buffer
-    'replay_buffer_capacity': 100000,
+    'replay_buffer_capacity': 80000,
     # train
     'agent': 'curl_sac',
     'init_steps': 1000,
-    'num_train_steps': 1000000,
-    'batch_size': 128,
+    'num_train_steps': 2000000,
+    'batch_size': 128,  # TODO This is 256 for other sac
     'hidden_dim': 1024,
     # eval
     'eval_freq': 10000,

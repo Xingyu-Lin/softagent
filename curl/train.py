@@ -8,17 +8,20 @@ import sys
 import random
 import time
 import json
-import dmc2gym
 import copy
 
 from curl import utils
 from curl.logger import Logger
-from curl.video import VideoRecorder
 
 from curl.curl_sac import CurlSacAgent
 from curl.default_config import DEFAULT_CONFIG
 
+from experiments.planet.train import update_env_kwargs
+
 from chester import logger
+from envs.env import Env
+
+from softgym.utils.visualization import save_numpy_as_gif, make_grid
 
 
 def vv_to_args(vv):
@@ -47,17 +50,37 @@ def run_task(vv, log_dir=None, exp_name=None):
     main(vv_to_args(updated_vv))
 
 
-def evaluate(env, agent, video, num_episodes, L, step, args):
+def get_info_stats(infos):
+    # infos is a list with N_traj x T entries
+    N = len(infos)
+    T = len(infos[0])
+    stat_dict_all = {key: np.empty([N, T], dtype=np.float32) for key in infos[0][0].keys()}
+    for i, info_ep in enumerate(infos):
+        for j, info in enumerate(info_ep):
+            for key, val in info.items():
+                stat_dict_all[key][i, j] = val
+
+    stat_dict = {}
+    for key in infos[0][0].keys():
+        stat_dict[key + '_mean'] = np.mean(np.array(stat_dict_all[key]))
+        stat_dict[key + '_final'] = np.mean(stat_dict_all[key][:, -1])
+    return stat_dict
+
+
+def evaluate(env, agent, video_dir, num_episodes, L, step, args):
     all_ep_rewards = []
 
     def run_eval_loop(sample_stochastically=True):
         start_time = time.time()
         prefix = 'stochastic_' if sample_stochastically else ''
+        infos = []
+        all_frames = []
         for i in range(num_episodes):
             obs = env.reset()
-            video.init(enabled=(i == 0))
             done = False
             episode_reward = 0
+            ep_info = []
+            frames = []
             while not done:
                 # center crop image
                 if args.encoder_type == 'pixel':
@@ -67,14 +90,22 @@ def evaluate(env, agent, video, num_episodes, L, step, args):
                         action = agent.sample_action(obs)
                     else:
                         action = agent.select_action(obs)
-                obs, reward, done, _ = env.step(action)
-                video.record(env)
+                obs, reward, done, info = env.step(action)
                 episode_reward += reward
+                ep_info.append(info)
+                frames.append(env.get_image(128, 128))
+            if len(all_frames) < 8:
+                all_frames.append(frames)
+            infos.append(ep_info)
 
-            video.save('%d.mp4' % step)
             L.log('eval/' + prefix + 'episode_reward', episode_reward, step)
             all_ep_rewards.append(episode_reward)
+        all_frames = np.array(all_frames).swapaxes(0, 1)
+        all_frames = np.array([make_grid(np.array(frame), nrow=2, padding=3) for frame in all_frames])
+        save_numpy_as_gif(all_frames, os.path.join(video_dir, '%d.gif' % step))
 
+        for key, val in get_info_stats(infos).items():
+            L.log('eval/info_' + prefix + key, val, step)
         L.log('eval/' + prefix + 'eval_time', time.time() - start_time, step)
         mean_ep_reward = np.mean(all_ep_rewards)
         best_ep_reward = np.max(all_ep_rewards)
@@ -125,42 +156,32 @@ def main(args):
     if args.seed == -1:
         args.__dict__["seed"] = np.random.randint(1, 1000000)
     utils.set_seed_everywhere(args.seed)
-    env = dmc2gym.make(
-        domain_name=args.domain_name,
-        task_name=args.task_name,
-        seed=args.seed,
-        visualize_reward=False,
-        from_pixels=(args.encoder_type == 'pixel'),
-        height=args.pre_transform_image_size,
-        width=args.pre_transform_image_size,
-        frame_skip=args.action_repeat
-    )
 
+    args.__dict__ = update_env_kwargs(args.__dict__)  # Update env_kwargs
+
+    symbolic = args.env_kwargs['observation_mode'] != 'cam_rgb'
+    args.encoder_type = 'identity' if symbolic else 'pixel'
+
+    env = Env(args.env_name, symbolic, args.seed, 200, 1, 8, args.pre_transform_image_size, env_kwargs=args.env_kwargs, normalize_observation=False)
     env.seed(args.seed)
-
-    # stack several consecutive frames together
-    if args.encoder_type == 'pixel':
-        env = utils.FrameStack(env, k=args.frame_stack)
 
     # make directory
     ts = time.gmtime()
     ts = time.strftime("%m-%d", ts)
-    env_name = args.domain_name + '-' + args.task_name
+
     args.work_dir = logger.get_dir()
 
     video_dir = utils.make_dir(os.path.join(args.work_dir, 'video'))
     model_dir = utils.make_dir(os.path.join(args.work_dir, 'model'))
     buffer_dir = utils.make_dir(os.path.join(args.work_dir, 'buffer'))
 
-    video = VideoRecorder(video_dir if args.save_video else None)
-
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     action_shape = env.action_space.shape
 
     if args.encoder_type == 'pixel':
-        obs_shape = (3 * args.frame_stack, args.image_size, args.image_size)
-        pre_aug_obs_shape = (3 * args.frame_stack, args.pre_transform_image_size, args.pre_transform_image_size)
+        obs_shape = (3, args.image_size, args.image_size)
+        pre_aug_obs_shape = (3, args.pre_transform_image_size, args.pre_transform_image_size)
     else:
         obs_shape = env.observation_space.shape
         pre_aug_obs_shape = obs_shape
@@ -183,37 +204,32 @@ def main(args):
 
     L = Logger(args.work_dir, use_tb=args.save_tb, chester_logger=logger)
 
-    episode, episode_reward, done = 0, 0, True
+    episode, episode_reward, done, ep_info = 0, 0, True, []
     start_time = time.time()
-    bc_time, bc_cnt = 0, 0
-
     for step in range(args.num_train_steps):
         # evaluate agent periodically
 
         if step % args.eval_freq == 0:
             L.log('eval/episode', episode, step)
-            evaluate(env, agent, video, args.num_eval_episodes, L, step, args)
+            evaluate(env, agent, video_dir, args.num_eval_episodes, L, step, args)
             if args.save_model:
                 agent.save_curl(model_dir, step)
             if args.save_buffer:
                 replay_buffer.save(buffer_dir)
-
         if done:
             if step > 0:
                 if step % args.log_interval == 0:
                     L.log('train/duration', time.time() - start_time, step)
-                    if args.bc_update:
-                        L.log('train/bc_duration', bc_time, step)
-                        L.log('train/bc_average_duration', bc_time / bc_cnt if bc_cnt != 0 else np.inf, step)
+                    for key, val in get_info_stats([ep_info]).items():
+                        L.log('train/info_' + key, val, step)
                     L.dump(step)
                 start_time = time.time()
-                bc_time = 0
-                bc_cnt = 0
             if step % args.log_interval == 0:
                 L.log('train/episode_reward', episode_reward, step)
 
             obs = env.reset()
             done = False
+            ep_info = []
             episode_reward = 0
             episode_step = 0
             episode += 1
@@ -231,14 +247,12 @@ def main(args):
         if step >= args.init_steps:
             num_updates = 1
             for _ in range(num_updates):
-                agent.update(replay_buffer, L, step, [bc_time, bc_cnt])
-
-        next_obs, reward, done, _ = env.step(action)
+                agent.update(replay_buffer, L, step)
+        next_obs, reward, done, info = env.step(action)
 
         # allow infinit bootstrap
-        done_bool = 0 if episode_step + 1 == env._max_episode_steps else float(
-            done
-        )
+        ep_info.append(info)
+        done_bool = 0 if episode_step + 1 == env.horizon else float(done)
         episode_reward += reward
         replay_buffer.add(obs, action, reward, next_obs, done_bool)
 
