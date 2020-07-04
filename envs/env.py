@@ -202,12 +202,12 @@ class GymEnv():
 
 class SoftGymEnv(object):
     def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None,
-                 normalize_observation = True):
+                 normalize_observation=True, scale_reward=1.0):
         if env in SOFTGYM_CUSTOM_ENVS:
             self._env = SOFTGYM_CUSTOM_ENVS[env](**env_kwargs)
         else:
             self._env = gym.make(env)
-        self._env = normalize(self._env)
+        self._env = normalize(self._env, scale_reward=scale_reward)
         self.symbolic = symbolic
         self._env.seed(seed)
         self.max_episode_length = max_episode_length
@@ -279,13 +279,16 @@ class SoftGymEnv(object):
         return getattr(self._env, name)
 
 
-def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None, normalize_observation=True):
+def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None, normalize_observation=True,
+        scale_reward=1.0):
     if env in GYM_ENVS:
         return GymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim)
     elif env in CONTROL_SUITE_ENVS:
         return ControlSuiteEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim)
     elif env in SOFTGYM_ENVS or env in SOFTGYM_CUSTOM_ENVS:
-        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs, normalize_observation=normalize_observation)
+        return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs,
+                          normalize_observation=normalize_observation,
+                          scale_reward=scale_reward)
     else:
         raise NotImplementedError
 
