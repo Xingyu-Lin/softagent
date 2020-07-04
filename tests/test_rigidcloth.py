@@ -52,15 +52,16 @@ def visualize_cem():
         render=True,
         headless=False,
         action_repeat=8,
-        use_cached_states=True,
+        use_cached_states=False,
         save_cache_states=False,
-        num_variations=10
+        num_variations=1
     )
     env.reset()
     for _ in range(100000):
         # pyflex.step(render=True)
         action = env.action_space.sample()
-        # action = np.zeros_like(action)
+
+        action = np.zeros_like(action)
         env.step(action, record_continuous_video=True, img_size=720)
 
     file_path = osp.join(args.exp_dir, 'cem_traj.pkl')

@@ -414,6 +414,8 @@ class CurlSacAgent(object):
             target_V = torch.min(target_Q1,
                                  target_Q2) - self.alpha.detach() * log_pi
             target_Q = reward + (not_done * self.discount * target_V)
+            # comp_Q = reward + (not_done * self.discount * torch.min(target_Q1, target_Q2))
+            # comp_E = reward + (not_done * self.discount * (- self.alpha.detach() * log_pi))
 
         # get current Q estimates
         current_Q1, current_Q2 = self.critic(
@@ -422,6 +424,9 @@ class CurlSacAgent(object):
                                  target_Q) + F.mse_loss(current_Q2, target_Q)
         if step % self.log_interval == 0:
             L.log('train_critic/loss', critic_loss, step)
+            # L.log('train/q1', torch.mean(current_Q1), step)
+            # L.log('train/comp_Q', torch.mean(comp_Q), step)
+            # L.log('train/comp_E', torch.mean(comp_E), step)
 
         # Optimize the critic
         self.critic_optimizer.zero_grad()
@@ -510,7 +515,6 @@ class CurlSacAgent(object):
             )
 
         if step % self.cpc_update_freq == 0 and self.encoder_type == 'pixel':
-
             start_time = time.time()
             obs_anchor, obs_pos = cpc_kwargs["obs_anchor"], cpc_kwargs["obs_pos"]
             self.update_cpc(obs_anchor, obs_pos, cpc_kwargs, L, step)

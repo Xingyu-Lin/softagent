@@ -22,6 +22,7 @@ from chester import logger
 from envs.env import Env
 
 from softgym.utils.visualization import save_numpy_as_gif, make_grid
+import matplotlib.pyplot as plt
 
 
 def vv_to_args(vv):
@@ -75,12 +76,14 @@ def evaluate(env, agent, video_dir, num_episodes, L, step, args):
         prefix = 'stochastic_' if sample_stochastically else ''
         infos = []
         all_frames = []
+        plt.figure()
         for i in range(num_episodes):
             obs = env.reset()
             done = False
             episode_reward = 0
             ep_info = []
-            frames = []
+            frames = [env.get_image(128, 128)]
+            rewards = []
             while not done:
                 # center crop image
                 if args.encoder_type == 'pixel':
@@ -94,12 +97,15 @@ def evaluate(env, agent, video_dir, num_episodes, L, step, args):
                 episode_reward += reward
                 ep_info.append(info)
                 frames.append(env.get_image(128, 128))
+                rewards.append(reward)
+            plt.plot(range(len(rewards)), rewards)
             if len(all_frames) < 8:
                 all_frames.append(frames)
             infos.append(ep_info)
 
             L.log('eval/' + prefix + 'episode_reward', episode_reward, step)
             all_ep_rewards.append(episode_reward)
+        plt.savefig(os.path.join(video_dir, '%d.png' % step))
         all_frames = np.array(all_frames).swapaxes(0, 1)
         all_frames = np.array([make_grid(np.array(frame), nrow=2, padding=3) for frame in all_frames])
         save_numpy_as_gif(all_frames, os.path.join(video_dir, '%d.gif' % step))
@@ -162,7 +168,8 @@ def main(args):
     symbolic = args.env_kwargs['observation_mode'] != 'cam_rgb'
     args.encoder_type = 'identity' if symbolic else 'pixel'
 
-    env = Env(args.env_name, symbolic, args.seed, 200, 1, 8, args.pre_transform_image_size, env_kwargs=args.env_kwargs, normalize_observation=False)
+    env = Env(args.env_name, symbolic, args.seed, 200, 1, 8, args.pre_transform_image_size, env_kwargs=args.env_kwargs, normalize_observation=False,
+              scale_reward=args.scale_reward)
     env.seed(args.seed)
 
     # make directory

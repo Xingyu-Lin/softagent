@@ -18,6 +18,11 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
 
     vg.add('algorithm', ['CURL'])
+    vg.add('critic_lr', [1e-3])
+    vg.add('actor_lr', lambda critic_lr: [critic_lr])
+    vg.add('scale_reward', [20.])
+    vg.add('batch_size', [128])
+    vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [True])
     vg.add('save_video', [True])
     vg.add('seed', [100, 200])
