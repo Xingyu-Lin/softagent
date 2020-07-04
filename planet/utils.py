@@ -1,7 +1,7 @@
 import os
 import cv2
 import numpy as np
-import plotly
+# import plotly
 
 
 # from plotly.graph_objs import Scatter
