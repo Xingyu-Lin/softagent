@@ -12,6 +12,26 @@ from curl.encoder import make_encoder
 
 LOG_FREQ = 10000
 
+def get_optimizer_stats(optim):
+    state_dict = optim.state_dict()['state']
+    if len(state_dict) ==0:
+        flattened_exp_avg = flattened_exp_avg_sq = 0.
+        print('Warning: optimizer dict is empty!')
+    else:
+        # flattened_exp_avg = flattened_exp_avg_sq = 0.
+        flattened_exp_avg = torch.cat([x['exp_avg'].flatten() for x in state_dict.values()]).cpu().numpy()
+        flattened_exp_avg_sq = torch.cat([x['exp_avg_sq'].flatten() for x in state_dict.values()]).cpu().numpy()
+    return {
+        'exp_avg_mean': np.mean(flattened_exp_avg),
+        'exp_avg_std': np.std(flattened_exp_avg),
+        'exp_avg_min': np.min(flattened_exp_avg),
+        'exp_avg_max': np.max(flattened_exp_avg),
+        'exp_avg_sq_mean': np.mean(flattened_exp_avg_sq),
+        'exp_avg_sq_std': np.std(flattened_exp_avg_sq),
+        'exp_avg_sq_min': np.min(flattened_exp_avg_sq),
+        'exp_avg_sq_max': np.max(flattened_exp_avg_sq),
+    }
+
 
 def gaussian_logprob(noise, log_std):
     """Compute Gaussian log probability."""
@@ -286,6 +306,7 @@ class CurlSacAgent(object):
       init_temperature=0.01,
       alpha_lr=1e-3,
       alpha_beta=0.9,
+      alpha_fixed=False,
       actor_lr=1e-3,
       actor_beta=0.9,
       actor_log_std_min=-10,
@@ -319,6 +340,7 @@ class CurlSacAgent(object):
         self.curl_latent_dim = curl_latent_dim
         self.detach_encoder = detach_encoder
         self.encoder_type = encoder_type
+        self.alpha_fixed = alpha_fixed
 
         self.actor = Actor(
             obs_shape, action_shape, hidden_dim, encoder_type,
@@ -428,6 +450,10 @@ class CurlSacAgent(object):
             # L.log('train/comp_Q', torch.mean(comp_Q), step)
             # L.log('train/comp_E', torch.mean(comp_E), step)
 
+            critic_stats = get_optimizer_stats(self.critic_optimizer)
+            for key, val in critic_stats.items():
+                L.log('train/critic_optim/' + key, val, step)
+
         # Optimize the critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -458,14 +484,21 @@ class CurlSacAgent(object):
 
         self.actor.log(L, step)
 
-        self.log_alpha_optimizer.zero_grad()
-        alpha_loss = (self.alpha *
-                      (-log_pi - self.target_entropy).detach()).mean()
         if step % self.log_interval == 0:
-            L.log('train_alpha/loss', alpha_loss, step)
-            L.log('train_alpha/value', self.alpha, step)
-        alpha_loss.backward()
-        self.log_alpha_optimizer.step()
+            actor_stats = get_optimizer_stats(self.actor_optimizer)
+            for key, val in actor_stats.items():
+                L.log('train/actor_optim/' + key, val, step)
+
+
+        if not self.alpha_fixed:
+            self.log_alpha_optimizer.zero_grad()
+            alpha_loss = (self.alpha *
+                          (-log_pi - self.target_entropy).detach()).mean()
+            if step % self.log_interval == 0:
+                L.log('train_alpha/loss', alpha_loss, step)
+                L.log('train_alpha/value', self.alpha, step)
+            alpha_loss.backward()
+            self.log_alpha_optimizer.step()
 
     def update_cpc(self, obs_anchor, obs_pos, cpc_kwargs, L, step):
 

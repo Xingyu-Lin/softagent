@@ -10,18 +10,20 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0704_cloth_fold_curl'
+    exp_prefix = '0705_cloth_fold_alpha'
     vg = VariantGenerator()
 
     vg.add('env_name', ['RigidClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb','key_point'])
+    vg.add('env_kwargs_observation_mode', ['key_point', 'cam_rgb'])
 
     vg.add('algorithm', ['CURL'])
-    vg.add('critic_lr', [1e-3])
+    vg.add('critic_lr', lambda env_kwargs_observation_mode: [1e-4] if env_kwargs_observation_mode == 'cam_rgb' else [1e-3])
     vg.add('actor_lr', lambda critic_lr: [critic_lr])
-    vg.add('scale_reward', [20.])
+    vg.add('scale_reward', [50.])
     vg.add('batch_size', [128])
+    vg.add('alpha_fixed', [True, False])
+    vg.add('init_temperature', [0.01, 0.03, 0.1])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [True])
     vg.add('save_video', [True])
