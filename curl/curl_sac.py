@@ -450,9 +450,9 @@ class CurlSacAgent(object):
             # L.log('train/comp_Q', torch.mean(comp_Q), step)
             # L.log('train/comp_E', torch.mean(comp_E), step)
 
-            critic_stats = get_optimizer_stats(self.critic_optimizer)
-            for key, val in critic_stats.items():
-                L.log('train/critic_optim/' + key, val, step)
+            # critic_stats = get_optimizer_stats(self.critic_optimizer)
+            # for key, val in critic_stats.items():
+            #     L.log('train/critic_optim/' + key, val, step)
 
         # Optimize the critic
         self.critic_optimizer.zero_grad()
@@ -484,10 +484,10 @@ class CurlSacAgent(object):
 
         self.actor.log(L, step)
 
-        if step % self.log_interval == 0:
-            actor_stats = get_optimizer_stats(self.actor_optimizer)
-            for key, val in actor_stats.items():
-                L.log('train/actor_optim/' + key, val, step)
+        # if step % self.log_interval == 0:
+        #     actor_stats = get_optimizer_stats(self.actor_optimizer)
+        #     for key, val in actor_stats.items():
+        #         L.log('train/actor_optim/' + key, val, step)
 
 
         if not self.alpha_fixed:
