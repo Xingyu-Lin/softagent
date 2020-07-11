@@ -42,6 +42,7 @@ def test_picker(env, num_picker=2, save_dir='./videos'):
                 action[:, 1] = 0.
                 action[:, 0] = 2.0
                 action[:, 3] = 1
+            action = np.zeros_like(action)
             obs, reward, _, _ = env.step(action.flatten())
             picker_pos = obs[-6:].reshape((-1, 3))
             # print('obs:', obs[-6:])
