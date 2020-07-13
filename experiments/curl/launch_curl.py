@@ -10,10 +10,10 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0707_cloth_fold_rigid'
+    exp_prefix = '0713_CoRL_Curl_PourWater'
     vg = VariantGenerator()
 
-    vg.add('env_name', ['RopeFlattenNew'])
+    vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['key_point', 'cam_rgb'])
 
@@ -24,7 +24,7 @@ def main(mode, debug, dry):
     vg.add('init_temperature', lambda env_kwargs_observation_mode: [0.1] if env_kwargs_observation_mode == 'cam_rgb' else [0.1])
     vg.add('replay_buffer_capacity', lambda env_kwargs_observation_mode: [100000] if env_kwargs_observation_mode == 'cam_rgb' else [100000])
 
-    vg.add('scale_reward', [50.])
+    vg.add('scale_reward', [20.])
     vg.add('batch_size', [128])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
