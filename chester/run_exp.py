@@ -444,7 +444,10 @@ def run_experiment_lite(
         s3_code_path = s3_sync_code(config_ec2, dry=dry)
         for task in batch_tasks:
             task["remote_log_dir"] = osp.join(config_ec2.AWS_S3_PATH, exp_prefix.replace("_", "-"), task["exp_name"])
-            task["pre_commands"] = [". ./prepare.sh", 'time ./compile.sh']
+            if compile_script is None:
+                task["pre_commands"] = [". ./prepare_ec2.sh", 'time ./compile.sh']
+            else:
+                task["pre_commands"] = [". ./prepare_ec2.sh", 'time ./' + compile_script]
         launch_ec2(batch_tasks,
                    exp_prefix=exp_prefix,
                    docker_image=None,  # Currently not using docker

@@ -10,12 +10,12 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0710_cloth_fold'
+    exp_prefix = '0711_cloth_drop'
     vg = VariantGenerator()
 
-    vg.add('env_name', ['RigidClothFold', 'ClothFold'])
+    vg.add('env_name', ['ClothDrop', 'RigidClothDrop'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
+    vg.add('env_kwargs_observation_mode', ['key_point', 'cam_rgb'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])
@@ -29,7 +29,7 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
-    vg.add('seed', [100, 200, 300])
+    vg.add('seed', [100])
 
     if not debug:
         pass
@@ -51,6 +51,9 @@ def main(mode, debug, dry):
             else:
                 compile_script = None
                 wait_compile = 120  # Wait 30 seconds for the compilation to finish
+        elif mode=='ec2':
+            compile_script = 'compile_1.0.sh'
+            wait_compile = None
         else:
             compile_script = wait_compile = None
 
@@ -67,6 +70,8 @@ def main(mode, debug, dry):
         )
         if cur_popen is not None:
             sub_process_popens.append(cur_popen)
+        if debug:
+            break
 
 
 if __name__ == '__main__':
