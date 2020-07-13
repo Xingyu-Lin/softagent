@@ -6,12 +6,12 @@ DEFAULT_CONFIG = {
     'image_size': 100,
     'action_repeat': 1,
     # replay buffer
-    'replay_buffer_capacity': 80000,
+    'replay_buffer_capacity': 100000,
     # train
     'agent': 'curl_sac',
     'init_steps': 1000,
     'num_train_steps': 2000000,
-    'batch_size': 128,  # TODO This is 256 for other sac
+    'batch_size': 128,  # This is 256 for other sac but experiments show that they don't matter much for curl_sac
     'hidden_dim': 1024,
     # eval
     'eval_freq': 10000,
@@ -40,6 +40,7 @@ DEFAULT_CONFIG = {
     'init_temperature': 0.1,
     'alpha_lr': 1e-4,
     'alpha_beta': 0.5,
+    'alpha_fixed': False,
     # misc
     'seed': 1,
     'save_tb': False,

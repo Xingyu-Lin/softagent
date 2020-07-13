@@ -134,6 +134,7 @@ def make_agent(obs_shape, action_shape, args, device):
             init_temperature=args.init_temperature,
             alpha_lr=args.alpha_lr,
             alpha_beta=args.alpha_beta,
+            alpha_fixed=args.alpha_fixed,
             actor_lr=args.actor_lr,
             actor_beta=args.actor_beta,
             actor_log_std_min=args.actor_log_std_min,
@@ -152,7 +153,6 @@ def make_agent(obs_shape, action_shape, args, device):
             log_interval=args.log_interval,
             detach_encoder=args.detach_encoder,
             curl_latent_dim=args.curl_latent_dim
-
         )
     else:
         assert 'agent is not supported: %s' % args.agent

@@ -10,22 +10,26 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0703-rope-curl-both'
+    exp_prefix = '0707_cloth_fold_rigid'
     vg = VariantGenerator()
 
     vg.add('env_name', ['RopeFlattenNew'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
+    vg.add('env_kwargs_observation_mode', ['key_point', 'cam_rgb'])
 
     vg.add('algorithm', ['CURL'])
-    vg.add('critic_lr', [1e-3])
+    vg.add('alpha_fixed', [False])
+    vg.add('critic_lr', lambda env_kwargs_observation_mode: [3e-4] if env_kwargs_observation_mode == 'cam_rgb' else [1e-3])
     vg.add('actor_lr', lambda critic_lr: [critic_lr])
-    vg.add('scale_reward', [20.])
+    vg.add('init_temperature', lambda env_kwargs_observation_mode: [0.1] if env_kwargs_observation_mode == 'cam_rgb' else [0.1])
+    vg.add('replay_buffer_capacity', lambda env_kwargs_observation_mode: [100000] if env_kwargs_observation_mode == 'cam_rgb' else [100000])
+
+    vg.add('scale_reward', [50.])
     vg.add('batch_size', [128])
     vg.add('env_kwargs_deterministic', [False])
-    vg.add('save_tb', [True])
+    vg.add('save_tb', [False])
     vg.add('save_video', [True])
-    vg.add('seed', [100, 200])
+    vg.add('seed', [100, 200, 300])
 
     if not debug:
         pass
@@ -40,7 +44,15 @@ def main(mode, debug, dry):
         while len(sub_process_popens) >= 1:
             sub_process_popens = [x for x in sub_process_popens if x.poll() is None]
             time.sleep(10)
-        compile_script = wait_compile = None
+        if mode == 'seuss':
+            if idx == 0:
+                compile_script = 'compile_1.0.sh'  # For the first experiment, compile the current softgym
+                wait_compile = None
+            else:
+                compile_script = None
+                wait_compile = 120  # Wait 30 seconds for the compilation to finish
+        else:
+            compile_script = wait_compile = None
 
         cur_popen = run_experiment_lite(
             stub_method_call=run_task,
@@ -55,8 +67,6 @@ def main(mode, debug, dry):
         )
         if cur_popen is not None:
             sub_process_popens.append(cur_popen)
-        if debug:
-            break
 
 
 if __name__ == '__main__':
