@@ -10,10 +10,10 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0711_cloth_drop'
+    exp_prefix = '0713_cloth_flatten'
     vg = VariantGenerator()
 
-    vg.add('env_name', ['ClothDrop', 'RigidClothDrop'])
+    vg.add('env_name', ['ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['key_point', 'cam_rgb'])
 
@@ -29,7 +29,8 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
-    vg.add('seed', [100])
+    vg.add('save_model', [True])
+    vg.add('seed', [100, 200])
 
     if not debug:
         pass
