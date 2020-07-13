@@ -559,6 +559,9 @@ class CurlSacAgent(object):
         torch.save(
             self.critic.state_dict(), '%s/critic_%s.pt' % (model_dir, step)
         )
+        
+        if self.encoder_type == 'pixel':
+            self.save_curl(model_dir, step)
 
     def save_curl(self, model_dir, step):
         torch.save(
@@ -572,3 +575,8 @@ class CurlSacAgent(object):
         self.critic.load_state_dict(
             torch.load('%s/critic_%s.pt' % (model_dir, step))
         )
+        
+        if self.encoder_type == 'pixel':    
+            self.CURL.load_state_dict(
+                torch.load('%s/curl_%s.pt' % (model_dir, step))
+            )
