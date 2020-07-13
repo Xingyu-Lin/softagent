@@ -15,7 +15,6 @@ def main(mode, debug, dry):
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
-        'PourWater': 20.0,
         'PourWaterAmount': 20.0,
         'ClothFold': 50.0,
         'ClothFoldCrumpled': 50.0,
