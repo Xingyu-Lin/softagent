@@ -9,7 +9,7 @@ LOG_DIR = os.path.join(PROJECT_PATH, "data")
 
 # Make sure to use absolute path
 REMOTE_DIR = {
-    'seuss': '/home/xlin3/Projects/softagent',
+    'seuss': '/home/yufeiw2/Projects/softagent',
     'psc': '/home/xlin3/Projects/softagent',
     'nsh': '/home/xingyu/Projects/softagent',
     'yertle': '/home/xingyu/Projects/softagent'
@@ -40,7 +40,7 @@ REMOTE_HEADER = dict(seuss="""
 #SBATCH --cpus-per-task=4
 #SBATCH --time=480:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=60G
+#SBATCH --mem=30G
 """.strip(), psc="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
