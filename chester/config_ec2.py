@@ -65,7 +65,7 @@ AWS_KEY_NAME = ALL_REGION_AWS_KEY_NAMES[AWS_REGION_NAME]
 
 AWS_SPOT = True
 
-AWS_SPOT_PRICE = '1.0'
+AWS_SPOT_PRICE = '2.0'
 
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY", None)
 
@@ -94,6 +94,7 @@ AWS_SECURITY_GROUP_IDS = ALL_REGION_AWS_SECURITY_GROUP_IDS[AWS_REGION_NAME]
 
 FAST_CODE_SYNC_IGNORES = [
     ".git",
+    "data/corl_s3_data",
     "data/videos",
     "data/open_loop_videos",
     "data/icml",
