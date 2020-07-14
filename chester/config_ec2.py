@@ -42,7 +42,7 @@ ALL_REGION_AWS_IMAGE_IDS = {
     # "eu-west-1": "ami-41484f27",
     # "sa-east-1": "ami-b7234edb",
     "us-east-1": "ami-83f26195",
-    "us-east-2": "ami-0b7e1e4346b5d2735",   #"ami-0e63a1a8842443350",
+    "us-east-2": "ami-0ec385d5f98faacc3",   #"ami-0e63a1a8842443350",
     "us-west-1": "ami-576f4b37",
     "us-west-2": "ami-b8b62bd8"
 }
@@ -50,7 +50,7 @@ ALL_REGION_AWS_IMAGE_IDS = {
 AWS_IMAGE_ID = ALL_REGION_AWS_IMAGE_IDS[AWS_REGION_NAME]
 
 if USE_GPU:
-    AWS_INSTANCE_TYPE = "p2.xlarge"
+    AWS_INSTANCE_TYPE = "p3.2xlarge"
 else:
     AWS_INSTANCE_TYPE = "c4.4xlarge"
 
@@ -65,7 +65,7 @@ AWS_KEY_NAME = ALL_REGION_AWS_KEY_NAMES[AWS_REGION_NAME]
 
 AWS_SPOT = True
 
-AWS_SPOT_PRICE = '1.0'
+AWS_SPOT_PRICE = '2.0'
 
 AWS_ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY", None)
 
@@ -94,6 +94,11 @@ AWS_SECURITY_GROUP_IDS = ALL_REGION_AWS_SECURITY_GROUP_IDS[AWS_REGION_NAME]
 
 FAST_CODE_SYNC_IGNORES = [
     ".git",
+    "data/corl_s3_data",
+    "data/videos",
+    "data/open_loop_videos",
+    "data/icml",
+    "data/local",
     "data/seuss",
     "data/yufei_s3_data",
     "data/icml"

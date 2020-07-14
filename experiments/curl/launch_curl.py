@@ -47,8 +47,8 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
-    vg.add('save_model', [True]) 
-    vg.add('seed', [100, 200, 300])
+    vg.add('save_model', [True])
+    vg.add('seed', [100, 200])
 
     if not debug:
         pass
@@ -71,6 +71,9 @@ def main(mode, debug, dry):
             else:
                 compile_script = None
                 wait_compile = 120  # Wait 30 seconds for the compilation to finish
+        elif mode == 'ec2':
+            compile_script = 'compile_1.0.sh'
+            wait_compile = None
         else:
             compile_script = wait_compile = None
 
@@ -87,6 +90,8 @@ def main(mode, debug, dry):
         )
         if cur_popen is not None:
             sub_process_popens.append(cur_popen)
+        if debug:
+            break
 
 
 if __name__ == '__main__':

@@ -33,11 +33,11 @@ def main():
     parser.add_argument('--param', type=int, default=0, help='Exclude')
     parser.add_argument('--gif', type=int, default=0, help='Exclude')
     parser.add_argument('--png', type=int, default=0, help='Exclude')
-    parser.add_argument('--include_all', type=int, default=0, help='pull all data')
+    parser.add_argument('--include_all', type=int, default=1, help='pull all data')
 
     args = parser.parse_args()
     s3_log_dir = "rllab/experiments/" + args.log_dir
-    local_dir = os.path.join('./data', 'yufei_s3_data', args.log_dir)
+    local_dir = os.path.join('./data', 'corl_s3_data', args.log_dir)
     if not os.path.exists(local_dir):
         os.makedirs(local_dir)
     aws_sync(args.bucket, s3_log_dir, local_dir, args)

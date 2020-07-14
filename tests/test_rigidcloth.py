@@ -46,10 +46,12 @@ def test_flex_env():
 def visualize_cem():
     from softgym.envs.rigid_cloth_fold import RigidClothFoldEnv
     from softgym.envs.cloth_fold import ClothFoldEnv
-    env = RigidClothFoldEnv(
+    from softgym.envs.cloth_drop import ClothDropEnv
+    from softgym.envs.rigid_cloth_drop import RigidClothDropEnv
+    env = ClothDropEnv(
         observation_mode='key_point',
         action_mode='picker',
-        num_pieces=2,
+        num_pieces=1,
         render=True,
         headless=False,
         action_repeat=8,
@@ -63,7 +65,9 @@ def visualize_cem():
         # pyflex.step(render=True)
         action = env.action_space.sample()
 
-        # action = np.zeros_like(action)
+        action = np.zeros_like(action)
+        action[3] = action[7] = 1
+        action[1] = -0.01
         env.step(action, record_continuous_video=True, img_size=720)
 
     file_path = osp.join(args.exp_dir, 'cem_traj.pkl')
