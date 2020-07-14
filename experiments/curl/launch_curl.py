@@ -10,12 +10,28 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0713_cloth_flatten'
+    exp_prefix = '0713-CoRL-Curl-PourWater'
+
+    reward_scales = {
+        'PourWater': 20.0,
+        'PassWaterTorus': 20.0,
+        'PourWaterAmount': 20.0,
+        'ClothFold': 50.0,
+        'ClothFoldCrumpled': 50.0,
+        'ClothFoldDrop': 50.0,
+        'ClothFlatten': 50.0,
+        'ClothDrop': 50.0,
+        'RopeFlatten': 50.0,
+        'RopeFlattenNew': 50.0,
+        'RopeAlphaBet': 50.0,
+        'RigidClothFold': 50.0  
+    }
+
     vg = VariantGenerator()
 
     vg.add('env_name', ['ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['key_point', 'cam_rgb'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])
@@ -25,7 +41,7 @@ def main(mode, debug, dry):
     vg.add('replay_buffer_capacity', lambda env_kwargs_observation_mode: [100000] if env_kwargs_observation_mode == 'cam_rgb' else [100000])
     vg.add('num_train_steps', lambda env_kwargs_observation_mode: [1000000] if env_kwargs_observation_mode == 'cam_rgb' else [2000000])
 
-    vg.add('scale_reward', [50.])
+    vg.add('scale_reward', lambda env_name: [reward_scales[env_name]])
     vg.add('batch_size', [128])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
@@ -40,6 +56,7 @@ def main(mode, debug, dry):
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))
+    print("exp_prefix: ", exp_prefix)
 
     sub_process_popens = []
     for idx, vv in enumerate(vg.variants()):
