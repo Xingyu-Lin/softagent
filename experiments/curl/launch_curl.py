@@ -10,11 +10,12 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0713-CoRL-Curl-PourWater'
+    exp_prefix = '0713-Curl-PassWater-and-Torus'
 
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
+        'PassWater': 20.0,
         'PourWaterAmount': 20.0,
         'ClothFold': 50.0,
         'ClothFoldCrumpled': 50.0,
@@ -29,7 +30,7 @@ def main(mode, debug, dry):
 
     vg = VariantGenerator()
 
-    vg.add('env_name', ['PourWater'])
+    vg.add('env_name', ['PassWater', 'PassWaterTorus'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
 
