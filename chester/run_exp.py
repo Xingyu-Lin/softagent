@@ -323,7 +323,7 @@ def run_experiment_lite(
                 exp_prefix, timestamp, exp_count)
         if task.get("log_dir", None) is None:
             # TODO add remote dir here
-            if mode in ['seuss', 'psc']:
+            if mode in ['seuss', 'psc', 'autobot']:
                 task["log_dir"] = config.REMOTE_LOG_DIR[mode] + "/local/" + exp_prefix + "/" + task["exp_name"]
             else:
                 task["log_dir"] = config.LOG_DIR + "/local/" + exp_prefix + "/" + task["exp_name"]
@@ -395,7 +395,7 @@ def run_experiment_lite(
                 if isinstance(e, KeyboardInterrupt):
                     raise
             return popen_obj
-    elif mode in ['seuss', 'psc']:
+    elif mode in ['seuss', 'psc', 'autobot']:
         for task in batch_tasks:
             # TODO check remote directory
             remote_dir = config.REMOTE_DIR[mode]
