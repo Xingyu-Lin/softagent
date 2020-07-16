@@ -10,7 +10,7 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0713-CoRL-Curl-PourWater'
+    exp_prefix = '0716_cloth_drop'
 
     reward_scales = {
         'PourWater': 20.0,
@@ -24,12 +24,12 @@ def main(mode, debug, dry):
         'RopeFlatten': 50.0,
         'RopeFlattenNew': 50.0,
         'RopeAlphaBet': 50.0,
-        'RigidClothFold': 50.0  
+        'RigidClothFold': 50.0
     }
 
     vg = VariantGenerator()
 
-    vg.add('env_name', ['ClothFlatten'])
+    vg.add('env_name', ['ClothFold', 'RigidClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
 
@@ -37,6 +37,7 @@ def main(mode, debug, dry):
     vg.add('alpha_fixed', [False])
     vg.add('critic_lr', lambda env_kwargs_observation_mode: [3e-4] if env_kwargs_observation_mode == 'cam_rgb' else [1e-3])
     vg.add('actor_lr', lambda critic_lr: [critic_lr])
+    vg.add('lr_decay', [None])
     vg.add('init_temperature', lambda env_kwargs_observation_mode: [0.1] if env_kwargs_observation_mode == 'cam_rgb' else [0.1])
     vg.add('replay_buffer_capacity', lambda env_kwargs_observation_mode: [100000] if env_kwargs_observation_mode == 'cam_rgb' else [100000])
     vg.add('num_train_steps', lambda env_kwargs_observation_mode: [1000000] if env_kwargs_observation_mode == 'cam_rgb' else [2000000])
@@ -47,7 +48,7 @@ def main(mode, debug, dry):
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
     vg.add('save_model', [True])
-    vg.add('seed', [100, 200])
+    vg.add('seed', [100, 200, 300])
 
     if not debug:
         pass
@@ -63,7 +64,7 @@ def main(mode, debug, dry):
         while len(sub_process_popens) >= 1:
             sub_process_popens = [x for x in sub_process_popens if x.poll() is None]
             time.sleep(10)
-        if mode == 'seuss':
+        if mode in ['seuss', 'autobot']:
             if idx == 0:
                 compile_script = 'compile_1.0.sh'  # For the first experiment, compile the current softgym
                 wait_compile = None

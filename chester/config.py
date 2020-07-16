@@ -38,7 +38,7 @@ REMOTE_HEADER = dict(seuss="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
 #SBATCH --partition=GPU
-#SBATCH --exclude=compute-0-[5,9]
+#SBATCH --exclude=compute-0-[5,9,17]
 #SBATCH --cpus-per-task=4
 #SBATCH --time=480:00:00
 #SBATCH --gres=gpu:1
@@ -65,8 +65,7 @@ REMOTE_HEADER = dict(seuss="""
 #SBATCH --time=3-12:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=40G
-""".strip()
-                     )
+""".strip())
 
 # location of the singularity file related to the project
 SIMG_DIR = {

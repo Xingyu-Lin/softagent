@@ -219,7 +219,7 @@ def main(args):
         if step % args.eval_freq == 0:
             L.log('eval/episode', episode, step)
             evaluate(env, agent, video_dir, args.num_eval_episodes, L, step, args)
-            if args.save_model:
+            if args.save_model and  step % (args.eval_freq *5):
                 agent.save(model_dir, step)
             if args.save_buffer:
                 replay_buffer.save(buffer_dir)
