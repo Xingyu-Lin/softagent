@@ -169,7 +169,7 @@ def main(args):
     args.encoder_type = 'identity' if symbolic else 'pixel'
 
     env = Env(args.env_name, symbolic, args.seed, 200, 1, 8, args.pre_transform_image_size, env_kwargs=args.env_kwargs, normalize_observation=False,
-              scale_reward=args.scale_reward)
+              scale_reward=args.scale_reward, clip_obs=args.clip_obs)
     env.seed(args.seed)
 
     # make directory

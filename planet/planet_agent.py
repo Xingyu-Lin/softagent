@@ -309,7 +309,6 @@ class PlaNetAgent(object):
         logger.record_tabular(prefix + 'test_rewards', np.mean(all_total_rewards))
         transformed_info = transform_info(all_infos)
         for info_name in transformed_info:
-            print('info_name:', info_name)
             logger.record_tabular(prefix + 'info_' + 'final_' + info_name, np.mean(transformed_info[info_name][:, -1]))
             logger.record_tabular(prefix + 'info_' + 'avarage_' + info_name, np.mean(transformed_info[info_name][:, :]))
             logger.record_tabular(prefix + 'info_' + 'sum_' + info_name, np.mean(np.sum(transformed_info[info_name][:, :], axis=-1)))

@@ -10,13 +10,14 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = 'PlaNet-0205-ClothFlatten'
+    exp_prefix = '0716_planet_cloth'
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
     if debug:
-        vg.add('env_name', ['RopeFlatten'])
+        vg.add('env_name', ['ClothFlatten', ])
     else:
-        vg.add('env_name', ['ClothFlatten']) #['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
+        vg.add('env_name', ['ClothDrop', 'ClothFlatten', 'ClothFold'])
+        # ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_delta_reward', [False])
@@ -27,7 +28,7 @@ def main(mode, debug, dry):
     if debug:
         vg.add('seed', [100])
     else:
-        vg.add('seed', [100, 200, 300, 400, 500])
+        vg.add('seed', [100, 200, 300])
 
     if not debug:
         vg.add('collect_interval', [100])
@@ -52,7 +53,7 @@ def main(mode, debug, dry):
             time.sleep(10)
         if mode == 'seuss':
             if idx == 0:
-                compile_script = 'compile.sh'  # For the first experiment, compile the current softgym
+                compile_script = 'compile_1.0.sh'  # For the first experiment, compile the current softgym
                 wait_compile = None
             else:
                 compile_script = None
