@@ -169,7 +169,7 @@ def main(args):
     args.encoder_type = 'identity' if symbolic else 'pixel'
 
     env = Env(args.env_name, symbolic, args.seed, 200, 1, 8, args.pre_transform_image_size, env_kwargs=args.env_kwargs, normalize_observation=False,
-              scale_reward=args.scale_reward)
+              scale_reward=args.scale_reward, clip_obs=args.clip_obs)
     env.seed(args.seed)
 
     # make directory
@@ -219,7 +219,7 @@ def main(args):
         if step % args.eval_freq == 0:
             L.log('eval/episode', episode, step)
             evaluate(env, agent, video_dir, args.num_eval_episodes, L, step, args)
-            if args.save_model:
+            if args.save_model and  step % (args.eval_freq *5):
                 agent.save(model_dir, step)
             if args.save_buffer:
                 replay_buffer.save(buffer_dir)

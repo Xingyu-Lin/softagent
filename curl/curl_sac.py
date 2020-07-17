@@ -381,6 +381,11 @@ class CurlSacAgent(object):
             [self.log_alpha], lr=alpha_lr, betas=(alpha_beta, 0.999)
         )
 
+        if self.args.lr_decay is not None:
+            # Actor is halved due to delayed update
+            self.actor_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.actor_optimizer, milestones=np.arange(15, 150, 15) * 5000, gamma=0.5)
+            self.critic_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.critic_optimizer, milestones=np.arange(15, 150, 15) * 10000, gamma=0.5)
+
         if self.encoder_type == 'pixel':
             # create CURL encoder (the 128 batch size is probably unnecessary)
             self.CURL = CURL(obs_shape, encoder_feature_dim,
@@ -459,6 +464,11 @@ class CurlSacAgent(object):
         critic_loss.backward()
         self.critic_optimizer.step()
 
+        if self.args.lr_decay is not None:
+            self.critic_lr_scheduler.step()
+            L.log('train/critic_lr', self.critic_optimizer.param_groups[0]['lr'], step)
+
+
         self.critic.log(L, step)
 
     def update_actor_and_alpha(self, obs, L, step):
@@ -481,6 +491,11 @@ class CurlSacAgent(object):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
+
+        if self.args.lr_decay is not None:
+            self.actor_lr_scheduler.step()
+            L.log('train/actor_lr', self.actor_optimizer.param_groups[0]['lr'], step)
+
 
         self.actor.log(L, step)
 

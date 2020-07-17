@@ -50,7 +50,7 @@ ALL_REGION_AWS_IMAGE_IDS = {
 AWS_IMAGE_ID = ALL_REGION_AWS_IMAGE_IDS[AWS_REGION_NAME]
 
 if USE_GPU:
-    AWS_INSTANCE_TYPE = "p3.2xlarge"
+    AWS_INSTANCE_TYPE = "p2.xlarge"
 else:
     AWS_INSTANCE_TYPE = "c4.4xlarge"
 
@@ -94,6 +94,7 @@ AWS_SECURITY_GROUP_IDS = ALL_REGION_AWS_SECURITY_GROUP_IDS[AWS_REGION_NAME]
 
 FAST_CODE_SYNC_IGNORES = [
     ".git",
+    "data/autobot",
     "data/corl_s3_data",
     "data/videos",
     "data/open_loop_videos",

@@ -13,6 +13,7 @@ SAVE_PATH = './data/videos'
 
 import cv2
 
+
 def generate_video(env, env_name):
     all_videos = []
     for i in range(8):
@@ -50,7 +51,7 @@ def generate_env_state(env_name):
 
 if __name__ == '__main__':
     env_names = ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
-    env_names = ['ClothFlatten']
+    env_names = ['RigidClothDrop']
 
     for env_name in env_names:
         # p = Process(target=generate_env_state, args=(env_name,))
