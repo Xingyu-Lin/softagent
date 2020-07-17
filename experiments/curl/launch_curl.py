@@ -13,10 +13,10 @@ from curl.train import run_task
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
     exp_prefix = '0717_corl_cloth_drop'
-
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
+        'PassWater': 20.0,
         'PourWaterAmount': 20.0,
         'ClothFold': 50.0,
         'ClothFoldCrumpled': 50.0,

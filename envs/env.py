@@ -7,6 +7,7 @@ from gym.spaces import Box
 from softgym.envs.pour_water import PourWaterPosControlEnv
 from softgym.envs.pour_water_amount import PourWaterAmountPosControlEnv
 from softgym.envs.pass_water import PassWater1DEnv
+from softgym.envs.pass_water_torus import PassWater1DTorusEnv
 from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.envs.rope_flatten_new import RopeFlattenNewEnv
 from softgym.envs.rope_alphabet import RopeAlphaBetEnv
@@ -33,6 +34,7 @@ CONTROL_SUITE_ACTION_REPEATS = {'cartpole': 8, 'reacher': 4, 'finger': 2, 'cheet
 SOFTGYM_ENVS = ['PourWaterPosControl-v0']
 
 SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
+                        'PassWaterTorus': PassWater1DTorusEnv,
                        'PourWater': PourWaterPosControlEnv,
                        'ClothFlatten': ClothFlattenEnv,
                        'ClothFold': ClothFoldEnv,
