@@ -57,7 +57,7 @@ def _to_param_val(v):
 def to_slurm_command(params, header, python_command="python", remote_dir='~/',
                      script=osp.join(config.PROJECT_PATH, 'scripts/run_experiment.py'),
                      simg_dir=None, use_gpu=False, modules=None, cuda_module=None, use_singularity=True,
-                     mount_options=None, compile_script=None, wait_compile=None):
+                     mount_options=None, compile_script=None, wait_compile=None, set_egl_gpu=False):
     # TODO Add code for specifying the resource allocation
     # TODO Check if use_gpu can be applied
     """
@@ -83,6 +83,7 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
         command_list.append('set -u')  # throw an error if unset variable referenced
         command_list.append('set -e')  # exit on errors
         command_list.append('srun hostname')
+
         for remote_module in modules:
             command_list.append('module load ' + remote_module)
         if use_gpu:
@@ -98,6 +99,8 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
         sing_prefix = 'singularity exec {} {} {} /bin/bash -c'.format(options, '--nv' if use_gpu else '', simg_dir)
         sing_commands = list()
         sing_commands.append('. ./prepare_1.0.sh')
+        if set_egl_gpu:
+            sing_commands.append('export EGL_GPU=$SLURM_JOB_GRES')
         if compile_script is not None:
             sing_commands.append('time ./' + compile_script)
         if wait_compile is not None:

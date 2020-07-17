@@ -411,6 +411,7 @@ def run_experiment_lite(
             header = header + "\n#SBATCH -e " + os.path.join(remote_dir, data_dir, 'slurm.err') + " # STDERR"
             if simg_dir.find('$') == -1:
                 simg_dir = osp.join(remote_dir, simg_dir)
+            set_egl_gpu=True if mode =='autobot' else False
             command_list = to_slurm_command(
                 task,
                 use_gpu=use_gpu,
@@ -423,7 +424,8 @@ def run_experiment_lite(
                 remote_dir=remote_dir,
                 mount_options=config.REMOTE_MOUNT_OPTION[mode],
                 compile_script=compile_script,
-                wait_compile=wait_compile
+                wait_compile=wait_compile,
+                set_egl_gpu= set_egl_gpu
             )
             if print_command:
                 print("; ".join(command_list))
