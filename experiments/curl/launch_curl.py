@@ -12,7 +12,7 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0716_cloth_flatten'
+    exp_prefix = '0717_corl_cloth_drop'
 
     reward_scales = {
         'PourWater': 20.0,
@@ -34,7 +34,7 @@ def main(mode, debug, dry):
         'PourWater': None,
         'PassWaterTorus': None,
         'PourWaterAmount': None,
-        'ClothFold': None,
+        'ClothFold': (-3, 3),
         'ClothFoldCrumpled': None,
         'ClothFoldDrop': None,
         'ClothFlatten': (-2, 2),
@@ -42,15 +42,15 @@ def main(mode, debug, dry):
         'RopeFlatten': None,
         'RopeFlattenNew': None,
         'RopeAlphaBet': None,
-        'RigidClothFold': None,
+        'RigidClothFold': (-3, 3),
         'RigidClothDrop': None,
     }
 
     vg = VariantGenerator()
 
-    vg.add('env_name', ['ClothFlatten'])
+    vg.add('env_name', ['ClothDrop', 'RigidClothDrop'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['key_point', 'cam_rgb'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb','key_point'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])
@@ -68,7 +68,7 @@ def main(mode, debug, dry):
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
     vg.add('save_model', [True])
-    vg.add('seed', [100, 200, 300, 400, 500])
+    vg.add('seed', [100, 200, 300])
 
     if not debug:
         pass
