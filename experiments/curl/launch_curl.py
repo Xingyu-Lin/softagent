@@ -12,7 +12,7 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0717_corl_cloth_drop'
+    exp_prefix = '0718_corl_rope_curl_lr'
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
@@ -40,7 +40,7 @@ def main(mode, debug, dry):
         'ClothFlatten': (-2, 2),
         'ClothDrop': None,
         'RopeFlatten': None,
-        'RopeFlattenNew': None,
+        'RopeFlattenNew': (-3, 3),
         'RopeAlphaBet': None,
         'RigidClothFold': (-3, 3),
         'RigidClothDrop': None,
@@ -48,15 +48,15 @@ def main(mode, debug, dry):
 
     vg = VariantGenerator()
 
-    vg.add('env_name', ['ClothDrop', 'RigidClothDrop'])
+    vg.add('env_name', ['RopeFlattenNew'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb','key_point'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])
     vg.add('critic_lr', lambda env_kwargs_observation_mode: [3e-4] if env_kwargs_observation_mode == 'cam_rgb' else [1e-3])
     vg.add('actor_lr', lambda critic_lr: [critic_lr])
-    vg.add('lr_decay', [None])
+    vg.add('lr_decay', [0.01])
     vg.add('init_temperature', lambda env_kwargs_observation_mode: [0.1] if env_kwargs_observation_mode == 'cam_rgb' else [0.1])
     vg.add('replay_buffer_capacity', lambda env_kwargs_observation_mode: [100000] if env_kwargs_observation_mode == 'cam_rgb' else [100000])
     vg.add('num_train_steps', lambda env_kwargs_observation_mode: [1000000] if env_kwargs_observation_mode == 'cam_rgb' else [2000000])
@@ -68,7 +68,7 @@ def main(mode, debug, dry):
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
     vg.add('save_model', [True])
-    vg.add('seed', [100, 200, 300])
+    vg.add('seed', [100, 200, 300, 400, 500])
 
     if not debug:
         pass
@@ -119,6 +119,7 @@ def main(mode, debug, dry):
             sub_process_popens.append(cur_popen)
         if debug:
             break
+
 
 if __name__ == '__main__':
     main()
