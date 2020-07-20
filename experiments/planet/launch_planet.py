@@ -10,13 +10,13 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0717_planet_rigid_cloth'
+    exp_prefix = '0719_planet_clothdrop'
     vg = VariantGenerator()
     vg.add('algorithm', ['planet'])
     if debug:
-        vg.add('env_name', ['ClothFlatten', ])
+        vg.add('env_name', ['RopeFlattenNew'])
     else:
-        vg.add('env_name', ['RigidClothDrop', 'RigidClothFold'])
+        vg.add('env_name', ['ClothDrop'])
         # ['ClothDrop', 'PassWater', 'PourWater', 'ClothFlatten', 'RopeFlatten', 'ClothFold', ])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
@@ -28,7 +28,7 @@ def main(mode, debug, dry):
     if debug:
         vg.add('seed', [100])
     else:
-        vg.add('seed', [100, 200, 300, 400])
+        vg.add('seed', [100, 200, 300])
 
     if not debug:
         vg.add('collect_interval', [100])

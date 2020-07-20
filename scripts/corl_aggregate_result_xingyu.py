@@ -37,15 +37,31 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     data_paths = [
-        ('seuss', '0716_planet_cloth'),  # PlaNet, cloth fold, cloth drop, cloth flatten x 9
-        ('seuss', '0715_corl_cem_cloth_flatten_cloth_drop'),  # CEM, cloth flatten x 10
-        ('seuss', '0717_cloth_flatten'),  # Curl, cloth flatten x 12
-        ('seuss', '0717_cloth_fold'),  # Curl, cloth fold x 12
-        ('autobot', '0717_planet_rigid_cloth'),  # PlaNet one of the rigid cloth x 4
-        ('autobot', '0717_corl_cem_cloth_rope '),  # CEM on ropeflatten, cloth fold, cloth fold rigid, cloth drop rigid x 30
-        ('autobot', '0718_corl_rope_curl_lr'),  # Curl, rope x 6
-        ('ec2', '0717-corl-cloth-drop'),  # Curl, cloth drop x 12
+        # CEM
+        ('autobot', '0717_corl_cem_cloth_rope'),  # CEM on ropeflatten,  cloth drop rigid x 20,
+        ('autobot', '0719_corl_cem_cloth_fold'),  # CEM Cloth fold and rigid cloth fold x 20
+        ('seuss', '0715_corl_cem_cloth_flatten_cloth_drop'),  # CEM, cloth flatten x 10, cloth drop x 10
+
+        # PlaNet
+        ('seuss', '0716_planet_cloth'),  # PlaNet, cloth fold, cloth flatten x 6
+        ('seuss', '0719_planet_cloth_fold'),  # Cloth fold, rigid cloth fold x 6
+        ('suess', '0719_planet_clothdrop'),  # cloth drop x 3
+        ('autobot', '0717_planet_rigid_cloth'),  # PlaNet rigid cloth drop x 4
+
+        # CURL
+        ('seuss', '0717_cloth_flatten'),  # Curl, cloth flatten, both state and RGB, 5 seeds. x 10
+        ('autobot', '0719_corl_cloth_fold_lr'),  # Cloth fold and rigid cloth fold x 12
+        ('ec2', '0717-corl-cloth-drop'),  # Curl, cloth drop and rigid cloth drop x 12
+        ('autobot', '0718_corl_rope_curl_lr'),  # Curl, rope, 5 seeds, x 10
+        ('seuss', '0719_corl_curl_rope')  # rope with RGB x 5 seeds
+
     ]
+    # Arxived env:
+    # Saved cloth fold
+    # ('seuss', '0717_cloth_fold'),  # Curl, cloth fold, rigid cloth fold, both state and RGB x 12
+    # ('seuss', '0716_planet_cloth_fold_short') # Planet, saved cloth fold with horizon of 50
+    # ('autobot', '0717_corl_cem_cloth_rope_short') # Saved CEM of fold cloth and rigid fold cloth
+
     local_dir = './data/corl_data/'
     s3_bucket = 'chester-softgym'
     for (mode, data_p) in data_paths:

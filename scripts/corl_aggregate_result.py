@@ -17,7 +17,8 @@ if __name__ == "__main__":
         '0713-CoRL-CEM-PourWater',
         '0715-CoRL-CEM-PassWater-and-Torus',
         '0715-Curl-PassWater-and-Torus',
-        '0717_planet_water'
+        '0717_planet_water',
+        '0719_planet_rope'
     ]
     local_dir = './data/corl_data/'
     for data_p in data_paths:
