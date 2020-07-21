@@ -20,7 +20,7 @@ def export_legend(legend, filename="./data/plots/legend.png"):
 algo_mapping = {
     'planet_cam_rgb': 'RGB (PlaNet)',
     'CURL_key_point': 'Reduced State Oracle (SAC)',
-    'CURL_cam_rgb': 'RGB (SAC-CuRL)',
+    'CURL_cam_rgb': 'RGB (SAC-CURL)',
     'CEM_key_point': 'Dynamics Oracle (CEM)'
 }
 
@@ -35,7 +35,7 @@ def custom_series_splitter(x):
     return algo_mapping[ret]
 
 
-dict_leg2col = {'Reduced State Oracle (SAC)': 2, 'RGB (PlaNet)': 9, 'RGB (SAC-CuRL)': 1, "Dynamics Oracle (CEM)": 0}
+dict_leg2col = {'Reduced State Oracle (SAC)': 2, 'RGB (PlaNet)': 9, 'RGB (SAC-CURL)': 1, "Dynamics Oracle (CEM)": 0}
 
 save_path = './data/plots/'
 
@@ -182,7 +182,8 @@ def plot_all():
                     progresses = selector.where(key, env_name)
                     print(env_name)
                     progresses = [exp.progress.get(plot_key, np.array([np.nan])) for exp in progresses.extract()]
-                    y = np.mean(progresses)
+                    y = np.mean([ele for ele in np.array(progresses).flatten() if not np.isnan(ele)])
+                    # print(y)
                     N = 2000000
                     ax.plot(range(N), np.ones(N) * y, color=color, linewidth=lw)
 
@@ -203,10 +204,14 @@ def plot_all():
             axes.set_ylim(top=1.2)
             if env_name == 'ClothDrop':
                 axes.set_ylim(bottom=0.)
+            if env_name == 'PassWater':
+                axes.set_ylim(bottom=-2)
+            if env_name == 'ClothFold':
+                axes.set_ylim(bottom=-0.5)
             plt.title(env_titles[plot_idx])
-
-            save_name = filter_save_name('learning_curves.png')
-
+        plt.tight_layout()
+        save_name = filter_save_name('learning_curves.png')
+        plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
         # extrally store a legend
         leg = ax.legend(prop={'size': 16}, ncol=6, bbox_to_anchor=(5.02, 1.45))
         leg.get_frame().set_linewidth(0.0)
@@ -234,7 +239,7 @@ def plot_rigid_bar():
     plot_key_planet = 'eval_info_final_normalized_performance'
     plot_ylabel = 'Performance'
     plot_envs = ['PassWaterTorus', 'PassWater', 'RigidClothFold', 'ClothFold', 'RigidClothDrop', 'ClothDrop']
-    env_titles = ['TransportWater-Rigid','TransportWater', 'FoldCloth-Rigid',  'FoldCloth',  'DropCloth-Rigid', 'DropCloth']
+    env_titles = ['TransportWater-Rigid', 'TransportWater', 'FoldCloth-Rigid', 'FoldCloth', 'DropCloth-Rigid', 'DropCloth']
 
     exps_data, plottable_keys, distinct_params = reload_data(data_path)
     group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
@@ -282,11 +287,15 @@ def plot_rigid_bar():
             y = y[:clip_len]
             if len(y) < 1:
                 y = [1]
-            rects = ax.bar(curr_x, np.max(y) - bottom, bar_width, label=legend if plot_idx % 2==0 else "", bottom=bottom, color=color)
+            rects = ax.bar(curr_x, np.max(y) - bottom, bar_width, label=legend if plot_idx % 2 == 0 else "", bottom=bottom, color=color)
             ys.append(np.mean(y[-10:]))
             autolabel(rects, ax, bottom)
             curr_x += bar_width
-
+        ax.annotate('Rigid' if plot_idx % 2 == 0 else 'Deformable',
+                    xy=(curr_x, -0.0),
+                    xytext=(-50, -30),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom')
         ax.set_ylim(top=max(ys) + (max(ys) - bottom) * 0.15)
         ax.set_xlim(left=0., right=9.5)
         ax.spines['top'].set_visible(False)
@@ -319,4 +328,4 @@ def plot_rigid_bar():
 
 if __name__ == '__main__':
     plot_all()
-    plot_rigid_bar()
+    # plot_rigid_bar()

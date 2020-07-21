@@ -48,20 +48,22 @@ def visualize_cem():
     from softgym.envs.cloth_fold import ClothFoldEnv
     from softgym.envs.cloth_drop import ClothDropEnv
     from softgym.envs.rigid_cloth_drop import RigidClothDropEnv
-    env = RigidClothDropEnv(
-        observation_mode='key_point',
+    env = RigidClothFoldEnv(
+        observation_mode='cam_rgb',
         action_mode='picker',
-        num_pieces=1,
+        num_pieces=2,
         render=True,
         headless=False,
         action_repeat=8,
         use_cached_states=False,
         save_cache_states=False,
         num_variations=1,
-        render_mode='cloth'
+        # render_mode='cloth'
     )
     env.reset()
-    for i in range(100000):
+    while (1):
+        pyflex.step(render=True)
+    for i in range(100):
         # pyflex.step(render=True)
         action = env.action_space.sample()
 

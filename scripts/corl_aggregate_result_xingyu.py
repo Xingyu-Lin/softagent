@@ -45,12 +45,13 @@ if __name__ == "__main__":
         # PlaNet
         ('seuss', '0716_planet_cloth'),  # PlaNet, cloth fold, cloth flatten x 6
         ('seuss', '0719_planet_cloth_fold'),  # Cloth fold, rigid cloth fold x 6
-        ('suess', '0719_planet_clothdrop'),  # cloth drop x 3
+        ('seuss', '0719_planet_clothdrop'),  # cloth drop x 3
         ('autobot', '0717_planet_rigid_cloth'),  # PlaNet rigid cloth drop x 4
 
         # CURL
         ('seuss', '0717_cloth_flatten'),  # Curl, cloth flatten, both state and RGB, 5 seeds. x 10
-        ('autobot', '0719_corl_cloth_fold_lr'),  # Cloth fold and rigid cloth fold x 12
+        ('seuss', '0719_corl_cloth_flatten'),  # Cloth flatten, RGB, 3 seeds
+        ('autobot', '0719_corl_cloth_fold_lr'),  # Cloth fold and rigid cloth fold x 12 (alpha)
         ('ec2', '0717-corl-cloth-drop'),  # Curl, cloth drop and rigid cloth drop x 12
         ('autobot', '0718_corl_rope_curl_lr'),  # Curl, rope, 5 seeds, x 10
         ('seuss', '0719_corl_curl_rope')  # rope with RGB x 5 seeds

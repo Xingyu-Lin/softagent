@@ -12,7 +12,7 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0719_corl_cloth_fold_lr'
+    exp_prefix = '0720_corl_cloth_fold_lr'
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
@@ -50,7 +50,7 @@ def main(mode, debug, dry):
 
     vg.add('env_name', ['RigidClothFold', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])
