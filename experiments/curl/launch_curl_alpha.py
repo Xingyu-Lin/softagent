@@ -12,7 +12,7 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0719_corl_curl_rope'
+    exp_prefix = '0719_corl_cloth_fold_lr'
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
@@ -48,20 +48,22 @@ def main(mode, debug, dry):
 
     vg = VariantGenerator()
 
-    vg.add('env_name', ['RopeFlattenNew'])
+    vg.add('env_name', ['RigidClothFold', 'ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])
-    vg.add('critic_lr', lambda env_kwargs_observation_mode: [3e-4] if env_kwargs_observation_mode == 'cam_rgb' else [1e-3])
+
     vg.add('actor_lr', lambda critic_lr: [critic_lr])
-    vg.add('lr_decay', [0.01])
+    vg.add('lr_decay', [None])
     vg.add('init_temperature', lambda env_kwargs_observation_mode: [0.1] if env_kwargs_observation_mode == 'cam_rgb' else [0.1])
     vg.add('replay_buffer_capacity', lambda env_kwargs_observation_mode: [100000] if env_kwargs_observation_mode == 'cam_rgb' else [100000])
     vg.add('num_train_steps', lambda env_kwargs_observation_mode: [1000000] if env_kwargs_observation_mode == 'cam_rgb' else [1000000])
     vg.add('scale_reward', lambda env_name: [reward_scales[env_name]])
     vg.add('clip_obs', lambda env_name, env_kwargs_observation_mode: [clip_obs[env_name]] if env_kwargs_observation_mode == 'key_point' else [None])
+    vg.add('alpha_lr', [2e-5])
+    vg.add('critic_lr', lambda env_kwargs_observation_mode: [1e-4] if env_kwargs_observation_mode == 'cam_rgb' else [5e-4])
     vg.add('batch_size', [128])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])

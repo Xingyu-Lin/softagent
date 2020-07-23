@@ -376,7 +376,6 @@ class CurlSacAgent(object):
         self.critic_optimizer = torch.optim.Adam(
             self.critic.parameters(), lr=critic_lr, betas=(critic_beta, 0.999)
         )
-
         self.log_alpha_optimizer = torch.optim.Adam(
             [self.log_alpha], lr=alpha_lr, betas=(alpha_beta, 0.999)
         )
