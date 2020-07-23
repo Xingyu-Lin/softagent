@@ -29,11 +29,8 @@ def get_spaced_idx(n, m):
 def main():
     load_path = [
         # './data/yufei_seuss_data/PlaNet-0314-all/PlaNet-0314-all/PlaNet-0314-all_2020_03_14_15_06_05_0001',
-        # './data/yufei_seuss_data/PlaNet-0314-all/PlaNet-0314-all/PlaNet-0314-all_2020_03_14_15_06_05_0012',
-        # './data/yufei_seuss_data/PlaNet-0314-all/PlaNet-0314-all/PlaNet-0314-all_2020_03_14_15_06_05_0016',
-        # './data/yufei_seuss_data/PlaNet-0314-all/PlaNet-0314-all/PlaNet-0314-all_2020_03_14_15_06_05_0004',
-        # './data/yufei_seuss_data/PlaNet-0314-all/PlaNet-0314-all/PlaNet-0314-all_2020_03_14_15_06_05_0007',
-        './data/yufei_seuss_data/PlaNet-0314-all/PlaNet-0314-all/PlaNet-0314-all_2020_03_14_15_06_05_0015',
+        './data/corl_data/0717_planet_water/0717_planet_water_2020_07_17_03_05_41_0005',
+        './data/corl_data/0721_TransportTorus/0721_TransportTorus_2020_07_21_16_06_39_0001'
     ]
 
     seed = 0

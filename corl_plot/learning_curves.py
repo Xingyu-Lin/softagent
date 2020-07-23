@@ -327,5 +327,5 @@ def plot_rigid_bar():
 
 
 if __name__ == '__main__':
-    plot_all()
-    # plot_rigid_bar()
+    # plot_all()
+    plot_rigid_bar()
