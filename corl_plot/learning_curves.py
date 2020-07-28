@@ -9,6 +9,24 @@ import os.path as osp
 # cem_policy_std = {'PassWater': 141.91251967433524, 'PourWater': 4.172459790260996, 'RopeFlatten': 28.525632736445466,
 #                   'ClothFlatten': 79.32274875977915, 'ClothDrop': 8.972272014085126, 'ClothFold': 4.671872594912007}
 
+#  Returns tuple of handles, labels for axis ax, after reordering them to conform to the label order `order`, and if unique is True, after removing entries with duplicate labels.
+def reorderLegend(ax=None, order=None, unique=False):
+    if ax is None: ax = plt.gca()
+    handles, labels = ax.get_legend_handles_labels()
+    labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0]))  # sort both labels and handles by labels
+    if order is not None:  # Sort according to a given list (not necessarily complete)
+        keys = dict(zip(order, range(len(order))))
+        labels, handles = zip(*sorted(zip(labels, handles), key=lambda t, keys=keys: keys.get(t[0], np.inf)))
+    if unique:  labels, handles = zip(*unique_everseen(zip(labels, handles), key=labels))  # Keep only the first of each handle
+    ax.legend(handles, labels)
+    return (handles, labels)
+
+
+def unique_everseen(seq, key=None):
+    seen = set()
+    seen_add = seen.add
+    return [x for x, k in zip(seq, key) if not (k in seen or seen_add(k))]
+
 
 def export_legend(legend, filename="./data/plots/legend.png"):
     fig = legend.figure
@@ -21,7 +39,8 @@ algo_mapping = {
     'planet_cam_rgb': 'RGB (PlaNet)',
     'CURL_key_point': 'Reduced State Oracle (SAC)',
     'CURL_cam_rgb': 'RGB (SAC-CURL)',
-    'CEM_key_point': 'Dynamics Oracle (CEM)'
+    'CEM_key_point': 'Dynamics Oracle (CEM)',
+    'CURL_point_cloud': 'Full State Oracle (SAC)'
 }
 
 
@@ -35,7 +54,14 @@ def custom_series_splitter(x):
     return algo_mapping[ret]
 
 
-dict_leg2col = {'Reduced State Oracle (SAC)': 2, 'RGB (PlaNet)': 9, 'RGB (SAC-CURL)': 1, "Dynamics Oracle (CEM)": 0}
+from collections import OrderedDict
+
+dict_leg2col = OrderedDict({"Dynamics Oracle (CEM)": 0,
+                            'Reduced State Oracle (SAC)': 2,
+                            'Full State Oracle (SAC)': 10,
+                            'RGB (SAC-CURL)': 1,
+                            'RGB (PlaNet)': 9,
+                            })
 
 save_path = './data/plots/'
 
@@ -148,7 +174,7 @@ def plot_all():
             # ax.plot(range(max_x), np.ones(max_x) * cem_mean, color=color, linestyle='dashed', linewidth=lw, label='CEM')
 
             key = 'env_name'
-            for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
+            for idx, (selector, legend) in enumerate(zip(reversed(group_selectors), reversed(group_legends))):
                 if len(selector.where(key, env_name).extract()) == 0:
                     continue
 
@@ -213,7 +239,8 @@ def plot_all():
         save_name = filter_save_name('learning_curves.png')
         plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
         # extrally store a legend
-        leg = ax.legend(prop={'size': 16}, ncol=6, bbox_to_anchor=(5.02, 1.45))
+        handles, labels = reorderLegend(ax, list(dict_leg2col.keys()))
+        leg = ax.legend(handles, labels, prop={'size': 16}, ncol=6, bbox_to_anchor=(5.02, 1.45))
         leg.get_frame().set_linewidth(0.0)
         for legobj in leg.legendHandles:
             legobj.set_linewidth(7.0)
@@ -229,7 +256,7 @@ def autolabel(rects, ax, bottom):
                     xytext=(0, 3),  # 3 points vertical offset
                     textcoords="offset points",
                     ha='center', va='bottom',
-                    fontsize=15)
+                    fontsize=20)
 
 
 def plot_rigid_bar():
@@ -238,22 +265,22 @@ def plot_rigid_bar():
     plot_key_curl = 'eval/info_normalized_performance_final'
     plot_key_planet = 'eval_info_final_normalized_performance'
     plot_ylabel = 'Performance'
-    plot_envs = ['PassWaterTorus', 'PassWater', 'RigidClothFold', 'ClothFold', 'RigidClothDrop', 'ClothDrop']
-    env_titles = ['TransportWater-Rigid', 'TransportWater', 'FoldCloth-Rigid', 'FoldCloth', 'DropCloth-Rigid', 'DropCloth']
+    plot_envs = ['TransportTorus', 'PassWater', 'RigidClothFold', 'ClothFold', 'RigidClothDrop', 'ClothDrop']
+    env_titles = ['TransportWater-Rigid', 'Transport', 'FoldCloth-Rigid', 'FoldCloth', 'DropCloth-Rigid', 'DropCloth']
 
     exps_data, plottable_keys, distinct_params = reload_data(data_path)
     group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
     group_selectors, group_legends = filter_legend(group_selectors, group_legends, ['filtered'])
-    bar_width = 1.
+    bar_width = 1.2
 
-    plt.figure(figsize=(21, 5))
+    plt.figure(figsize=(18, 5))
     for plot_idx, env_name in enumerate(plot_envs):
         ax = plt.subplot('13' + str(plot_idx // 2 + 1))
         tmp_env_name = env_name
         upper_bound = 1.0
         bottom = 0.0
         key = 'env_name'
-        curr_x = 1 + bar_width * 4.5 * (plot_idx % 2)
+        curr_x = 1.5 + bar_width * 3.5 * (plot_idx % 2)
 
         # rects = ax.bar(curr_x, upper_bound - bottom, bar_width, label='UpperBound', bottom=bottom, color=color)
         # autolabel(rects, ax, bottom)
@@ -261,7 +288,7 @@ def plot_rigid_bar():
 
         ys = [upper_bound]
         for idx, (selector, legend) in enumerate(zip(group_selectors, group_legends)):
-            if legend == 'Dynamics Oracle (CEM)':
+            if legend in ['Dynamics Oracle (CEM)', 'RGB (PlaNet)', 'Full State Oracle (SAC)']:
                 continue
 
             if len(selector.where(key, tmp_env_name).extract()) == 0:
@@ -292,10 +319,11 @@ def plot_rigid_bar():
             autolabel(rects, ax, bottom)
             curr_x += bar_width
         ax.annotate('Rigid' if plot_idx % 2 == 0 else 'Deformable',
-                    xy=(curr_x, -0.0),
+                    xy=(curr_x-0.5, -0.0),
                     xytext=(-50, -30),  # 3 points vertical offset
                     textcoords="offset points",
-                    ha='center', va='bottom')
+                    ha='center', va='bottom',
+                    fontsize=22)
         ax.set_ylim(top=max(ys) + (max(ys) - bottom) * 0.15)
         ax.set_xlim(left=0., right=9.5)
         ax.spines['top'].set_visible(False)

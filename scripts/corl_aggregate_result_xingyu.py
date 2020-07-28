@@ -39,23 +39,28 @@ if __name__ == "__main__":
     data_paths = [
         # CEM
         ('autobot', '0717_corl_cem_cloth_rope'),  # CEM on ropeflatten,  cloth drop rigid x 20,
-        ('autobot', '0719_corl_cem_cloth_fold'),  # CEM Cloth fold and rigid cloth fold x 20
+        ('autobot', '0719_corl_cem_cloth_fold'),  # CEM Cloth fold x 10
         ('seuss', '0715_corl_cem_cloth_flatten_cloth_drop'),  # CEM, cloth flatten x 10, cloth drop x 10
+        ('autobot', '0720_rigid_cloth_fold_cem'),  # CEM Rigid cloth fold x 10
 
         # PlaNet
         ('seuss', '0716_planet_cloth'),  # PlaNet, cloth fold, cloth flatten x 6
-        ('seuss', '0719_planet_cloth_fold'),  # Cloth fold, rigid cloth fold x 6
+        ('seuss', '0719_planet_cloth_fold'),  # Cloth fold x 3
         ('seuss', '0719_planet_clothdrop'),  # cloth drop x 3
         ('autobot', '0717_planet_rigid_cloth'),  # PlaNet rigid cloth drop x 4
+        ('seuss', '0722_planet_rigid_cloth_fold'),  # Rigid cloth fold (simplified version) x 3
 
         # CURL
         ('seuss', '0717_cloth_flatten'),  # Curl, cloth flatten, both state and RGB, 5 seeds. x 10
         ('seuss', '0719_corl_cloth_flatten'),  # Cloth flatten, RGB, 3 seeds
-        ('autobot', '0719_corl_cloth_fold_lr'),  # Cloth fold and rigid cloth fold x 12 (alpha)
+        ('autobot', '0719_corl_cloth_fold_lr'),  # Cloth fold x 6 (alpha)
+        ('autobot', '0722_rigid_cloth_fold'),  # Rigid cloth fold x 6 (alpha)
         ('ec2', '0717-corl-cloth-drop'),  # Curl, cloth drop and rigid cloth drop x 12
         ('autobot', '0718_corl_rope_curl_lr'),  # Curl, rope, 5 seeds, x 10
-        ('seuss', '0719_corl_curl_rope')  # rope with RGB x 5 seeds
+        ('seuss', '0719_corl_curl_rope'),  # rope with RGB x 5 seeds
 
+        # PointCloud
+        ('autobot', '0722_point_cloud'),
     ]
     # Arxived env:
     # Saved cloth fold

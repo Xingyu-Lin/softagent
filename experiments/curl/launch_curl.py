@@ -12,7 +12,7 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0722_pass_torus'
+    exp_prefix = '0722_point_cloud'
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
@@ -31,6 +31,7 @@ def main(mode, debug, dry):
     }
 
     clip_obs = {
+        'PassWater': None,
         'PourWater': None,
         'PassWaterTorus': None,
         'PourWaterAmount': None,
@@ -47,7 +48,7 @@ def main(mode, debug, dry):
     }
 
     def get_critic_lr(env_name, obs_mode):
-        if env_name in ['ClothFold', 'RigidClothFold', 'PassWaterTorus']:
+        if env_name in ['ClothFold', 'RigidClothFold', 'PassWaterTorus'] or (env_name =='RopeFlattenNew' and obs_mode =='point_cloud'):
             if obs_mode == 'cam_rgb':
                 return 1e-4
             else:
@@ -76,9 +77,9 @@ def main(mode, debug, dry):
 
     vg = VariantGenerator()
 
-    vg.add('env_name', ['PassWaterTorus'])
+    vg.add('env_name', ['PassWater', 'RopeFlattenNew'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['cam_rgb', 'key_point'])
+    vg.add('env_kwargs_observation_mode', ['point_cloud'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])

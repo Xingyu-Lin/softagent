@@ -24,18 +24,21 @@ def get_spaced_idx(n, m):
 # @click.option('--save_dir', type=str, default='data/planet_open_loop_predictions')
 
 
-
-
 def main():
     load_path = [
-        # './data/yufei_seuss_data/PlaNet-0314-all/PlaNet-0314-all/PlaNet-0314-all_2020_03_14_15_06_05_0001',
-        './data/corl_data/0717_planet_water/0717_planet_water_2020_07_17_03_05_41_0005',
-        './data/corl_data/0721_TransportTorus/0721_TransportTorus_2020_07_21_16_06_39_0001'
+        # 'data/corl_data/0717_planet_water/0717_planet_water_2020_07_17_03_05_41_0002', #PourWater
+        'data/corl_data/0716_planet_cloth/0716_planet_cloth_2020_07_16_18_13_13_0004/', # ClothFlatten
+        # './data/corl_data/0723-planet-PassWater/0723-planet-PassWater_2020_07_23_03_11_22_0003',
+        # './data/corl_data/0724-planet-TransportTorus/0724-planet-TransportTorus_2020_07_24_03_04_09_0002/'
+        # './data/corl_data/0722_planet_rigid_cloth_fold/0722_planet_rigid_cloth_fold_2020_07_22_22_37_24_0003/',  # Rigid Cloth Fold
+        # Cloth Fold
+        # 'data/corl_data/0719_planet_cloth_fold/0719_planet_cloth_fold_2020_07_19_02_35_15_0002'
+        # './data/corl_data/0717_planet_rigid_cloth/0717_planet_rigid_cloth_2020_07_17_21_32_45_0001'  # Rigid Cloth Drop
     ]
 
     seed = 0
     n_test_rollouts = 8
-    render = 1
+    render = 0
     save_dir = 'data/planet_open_loop_predictions'
     for path in load_path:
         policy_file = osp.join(path, 'models_550.pth')
@@ -50,11 +53,11 @@ def main():
         print('Load variants from {}'.format(json_file))
         with open(json_file) as f:
             vv = json.load(f)
-        vv['env_kwargs']['headless'] = 1 - render
+        vv['env_kwargs']['headless'] = 1
         vv['saved_models'] = policy_file
 
         env = Env(vv['env_name'], vv['symbolic_env'], vv['seed'], vv['max_episode_length'], vv['action_repeat'], vv['bit_depth'], vv['image_dim'],
-                env_kwargs=vv['env_kwargs'])
+                  env_kwargs=vv['env_kwargs'])
         agent = PlaNetAgent(env, vv, device)
 
         all_rewards, all_frames, all_frames_reconstr = [], [], []
@@ -63,8 +66,8 @@ def main():
             for i in range(n_test_rollouts):
                 observation, total_reward = agent.env.reset(), 0
                 belief, posterior_state, action = torch.zeros(1, vv['belief_size'], device=device), \
-                                                torch.zeros(1, vv['state_size'], device=device), \
-                                                torch.zeros(1, env.action_size, device=device)
+                                                  torch.zeros(1, vv['state_size'], device=device), \
+                                                  torch.zeros(1, env.action_size, device=device)
                 initial_belief, initial_posterior, initial_observation = belief.clone(), posterior_state.clone(), observation.clone()
                 recorded_actions = [action]
                 frames, frames_reconstr = [observation], [observation]
@@ -86,7 +89,7 @@ def main():
                     print('idx: ', idx)
                     if idx <= 5:
                         belief, _, _, _, state, _, _ = agent.transition_model(state, action.unsqueeze(dim=0), belief,
-                                                                            agent.encoder(frames[idx].to(device=agent.device)).unsqueeze(dim=0))
+                                                                              agent.encoder(frames[idx].to(device=agent.device)).unsqueeze(dim=0))
                     else:
                         belief, state, _, _, = agent.transition_model(posterior_state, action.unsqueeze(dim=0), belief)
                     belief, state = belief.squeeze(dim=0), state.squeeze(dim=0)
@@ -100,7 +103,12 @@ def main():
 
                 # Pick key frames
                 num_key_frames = 5
-                key_idx = get_spaced_idx(len(frames[:30]), num_key_frames)
+                if vv['env_name'] in ['RigidClothDrop', 'ClothDrop']:
+                    key_idx = get_spaced_idx(len(frames[:5]), num_key_frames)
+                elif vv['env_name'] in ['RigidClothFold', 'ClothFold']:
+                    key_idx = get_spaced_idx(len(frames[:15]), num_key_frames)
+                else:
+                    key_idx = get_spaced_idx(len(frames[:30]), num_key_frames)
                 frame = torch.cat([frames[idx] for idx in key_idx], dim=0) + 0.5
                 frame_reconstr = torch.cat([frames_reconstr[idx] for idx in key_idx], dim=0) + 0.5
                 image_grid = make_grid(torch.cat([frame, frame_reconstr], dim=0), nrow=num_key_frames, pad_value=0.4706, padding=5)
@@ -109,7 +117,7 @@ def main():
                 # save_image(torch.as_tensor(frame_reconstr), osp.join(save_dir, vv['env_name'] + '_prediction_{}.png'.format(i)))
 
         for idx in [0, 4]:
-            
+
             all_frames_ = all_frames[idx:idx + 4]  # Only take the first 8 episodes to visualize
             all_frames_reconstr_ = all_frames_reconstr[idx:idx + 4]
             video_frames = []
