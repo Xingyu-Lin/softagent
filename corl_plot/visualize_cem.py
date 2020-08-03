@@ -10,23 +10,10 @@ import pickle
 from envs.env import Env
 import json
 import matplotlib
-
-data_folders = [
-    # './data/corl_data/0715_corl_cem_cloth_flatten_cloth_drop/0715_corl_cem_cloth_flatten_cloth_drop_2020_07_15_19_04_01_0005', # ClothFlatten'
-    # './data/corl_data/0715_corl_cem_cloth_flatten_cloth_drop/0715_corl_cem_cloth_flatten_cloth_drop_2020_07_15_19_04_01_0016', # ClothDrop
-    # './data/corl_data/0719_corl_cem_cloth_fold/0719_corl_cem_cloth_fold_2020_07_19_13_27_53_0012/',  # ClothFold
-    # 'data/corl_data/0715-CoRL-CEM-PassWater-and-Torus/0715-CoRL-CEM-PassWater-and-Torus_2020_07_16_02_13_25_0001/', # PassWater
-    # 'data/corl_data/0713-CoRL-CEM-PourWater/0713-CoRL-CEM-PourWater_2020_07_14_02_02_06_0002/' # PourWater: Take the second one
-    # 'data/corl_data/0717_corl_cem_cloth_rope/0717_corl_cem_cloth_rope_2020_07_17_20_59_01_0001/',  # RopeFlattenNew
-
-    # Rigid tasks
-    # 'data/corl_data/0717_corl_cem_cloth_rope/0717_corl_cem_cloth_rope_2020_07_17_20_59_01_0034/', # Rigid Cloth Drop
-    # 'data/corl_data/0720_rigid_cloth_fold_cem/0720_corl_rigid_cloth_fold_2020_07_20_22_39_49_0003/',  # Rigid Cloth Fold
-    # 'data/corl_data/0724-CoRL-CEM-TransportTorus-2/0724-CoRL-CEM-TransportTorus-2_2020_07_24_17_56_15_0009/'  # Rigid transport water
-
-]
+import os
 
 save_dir = './data/cem_trajs'
+save_dir_website = './data/website_gifs/'
 
 visualize_horizon = {
     'ClothFlatten': 20,
@@ -78,7 +65,38 @@ def cem_make_gif(env, env_name, initial_states, action_trajs, configs, save_dir,
     matplotlib.image.imsave(osp.join(save_dir, save_name), grid_imgs)
 
 
+def cem_collect_traj(env, env_name, initial_states, action_trajs, configs, img_size=128):
+    all_frames = []
+    for action_traj, config, initial_state in zip(action_trajs, configs, initial_states):
+        if env_name in visualize_horizon:
+            # action_traj = action_traj[:visualize_horizon[env_name]]
+            action_traj = action_traj
+
+        frames = []
+        env.reset(config=config, initial_state=initial_state)
+        frames.append(env.get_image(img_size, img_size))
+        for action in action_traj:
+            _, reward, _, info = env.step(action, record_continuous_video=True, img_size=img_size)
+            frames.extend(info['flex_env_recorded_frames'])
+        frames = np.array(frames)
+        all_frames.append(frames)
+    return all_frames
+
+
 def visualize_cem():
+    data_folders = [
+        # './data/corl_data/0715_corl_cem_cloth_flatten_cloth_drop/0715_corl_cem_cloth_flatten_cloth_drop_2020_07_15_19_04_01_0005', # ClothFlatten'
+        # './data/corl_data/0715_corl_cem_cloth_flatten_cloth_drop/0715_corl_cem_cloth_flatten_cloth_drop_2020_07_15_19_04_01_0016', # ClothDrop
+        # './data/corl_data/0719_corl_cem_cloth_fold/0719_corl_cem_cloth_fold_2020_07_19_13_27_53_0012/',  # ClothFold
+        # 'data/corl_data/0715-CoRL-CEM-PassWater-and-Torus/0715-CoRL-CEM-PassWater-and-Torus_2020_07_16_02_13_25_0001/', # PassWater
+        # 'data/corl_data/0713-CoRL-CEM-PourWater/0713-CoRL-CEM-PourWater_2020_07_14_02_02_06_0002/' # PourWater: Take the second one
+        # 'data/corl_data/0717_corl_cem_cloth_rope/0717_corl_cem_cloth_rope_2020_07_17_20_59_01_0001/',  # RopeFlattenNew
+
+        # Rigid tasks
+        # 'data/corl_data/0717_corl_cem_cloth_rope/0717_corl_cem_cloth_rope_2020_07_17_20_59_01_0034/', # Rigid Cloth Drop
+        # 'data/corl_data/0720_rigid_cloth_fold_cem/0720_corl_rigid_cloth_fold_2020_07_20_22_39_49_0003/',  # Rigid Cloth Fold
+        # 'data/corl_data/0724-CoRL-CEM-TransportTorus-2/0724-CoRL-CEM-TransportTorus-2_2020_07_24_17_56_15_0009/'  # Rigid transport water
+    ]
     for data_folder in data_folders:
         variant_path = osp.join(data_folder, 'variant.json')
         with open(osp.join(variant_path), 'r') as f:
@@ -92,5 +110,68 @@ def visualize_cem():
         cem_make_gif(env, vv['env_name'], initial_states, action_trajs, configs, save_dir, vv['env_name'] + '.png')
 
 
+def visualize_trajectory():
+    data_folders = [
+        './data/corl_data/0715_corl_cem_cloth_flatten_cloth_drop/',  # ClothFlatten, ClothDrop
+        './data/corl_data/0719_corl_cem_cloth_fold',  # ClothFold
+        'data/corl_data/0715-CoRL-CEM-PassWater-and-Torus/',  # PassWater
+        'data/corl_data/0713-CoRL-CEM-PourWater/',  # PourWater
+        'data/corl_data/0717_corl_cem_cloth_rope/',  # RopeFlattenNew
+
+        # Rigid tasks
+        # 'data/corl_data/0717_corl_cem_cloth_rope/0717_corl_cem_cloth_rope_2020_07_17_20_59_01_0034/', # Rigid Cloth Drop
+        # 'data/corl_data/0720_rigid_cloth_fold_cem/0720_corl_rigid_cloth_fold_2020_07_20_22_39_49_0003/',  # Rigid Cloth Fold
+        # 'data/corl_data/0724-CoRL-CEM-TransportTorus-2/0724-CoRL-CEM-TransportTorus-2_2020_07_24_17_56_15_0009/'  # Rigid transport water
+    ]
+    env_names = ['PassWater', 'PourWater', 'RopeFlattenNew', 'ClothFlatten', 'ClothFold', 'ClothDrop']
+    K = 4
+    all_env_frames = {}
+    envs = {}
+    for env_name in env_names:
+        all_env_frames[env_name] = []
+        envs[env_name] = generate_env(env_name)
+
+    for data_folder in data_folders:
+        for folder in sorted(os.listdir(data_folder)):
+            exp_folder = osp.join(data_folder, folder)
+
+            print('processing...' + exp_folder)
+            variant_path = osp.join(exp_folder, 'variant.json')
+            with open(osp.join(variant_path), 'r') as f:
+                vv = json.load(f)
+
+            if vv['env_name'] not in env_names or len(all_env_frames[vv['env_name']]) >= K:
+                continue
+
+            # Excluding some trajectories
+            if vv['env_name'] == 'ClothFlatten':
+                if exp_folder.endswith('02') or exp_folder.endswith('03'):
+                    print('skipping ' + exp_folder)
+                    continue
+
+            if vv['env_name'] == 'RopeFlattenNew':
+                if exp_folder.endswith('04'):
+                    print('skipping ' + exp_folder)
+                    continue
+
+            env = envs[vv['env_name']]
+            file_path = osp.join(exp_folder, 'cem_traj.pkl')
+            if not os.path.exists(file_path):
+                continue
+            with open(file_path, 'rb') as f:
+                traj_dict = pickle.load(f)
+            initial_states, action_trajs, configs = traj_dict['initial_states'], traj_dict['action_trajs'], traj_dict['configs']
+            frames = cem_collect_traj(env, vv['env_name'], initial_states, action_trajs, configs)
+            all_env_frames[vv['env_name']].extend(frames)
+    for env_name in env_names:
+        if len(all_env_frames[env_name]) == 0:
+            continue
+        frames = np.array(all_env_frames[env_name][:K]).swapaxes(0, 1)
+        frames = np.array([make_grid(frame, nrow=1, pad_value=120, padding=5) for frame in frames])
+        save_numpy_as_gif(frames, osp.join(save_dir_website, env_name + '.gif'))
+        # save_numpy_as_gif(frames, osp.join(save_dir_website, 'debug' + '.gif'))
+
+
 if __name__ == '__main__':
-    visualize_cem()
+    # visualize_cem()
+    visualize_trajectory()
