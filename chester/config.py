@@ -61,6 +61,7 @@ REMOTE_HEADER = dict(seuss="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
 #SBATCH --partition=short
+#SBATCH --exclude=autobot-0-11
 #SBATCH --cpus-per-task=4
 #SBATCH --time=3-12:00:00
 #SBATCH --gres=gpu:1
