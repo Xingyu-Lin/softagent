@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 09/07/2018
 import sys
 import os
 import argparse

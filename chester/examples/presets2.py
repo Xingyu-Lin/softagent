@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 20/07/2018
 preset_names = ['default']
 x_axis = 'Epoch'
 y_axis = 'Success'

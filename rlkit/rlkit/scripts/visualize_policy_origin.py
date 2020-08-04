@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 2019-09-19                                                                                  
 from rlkit.samplers.rollout_functions import multitask_rollout
 from rlkit.torch.pytorch_util import set_gpu_mode
 import argparse

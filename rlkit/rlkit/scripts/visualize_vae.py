@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 2019-09-18
 import argparse
 import torch
 import numpy as np

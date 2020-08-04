@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 24/06/2018
 import os
 import glfw
 from multiprocessing import Process, Queue

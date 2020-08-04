@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 22/07/2018
 set1 = 'identity_ratio+her_clip(dist_behavior and HER)'
 preset_names = [set1]
 FILTERED = 'filtered'

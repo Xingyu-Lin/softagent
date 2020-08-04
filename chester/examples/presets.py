@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 20/06/2018
 preset_names = ['default']
 
 def make_custom_seris_splitter(preset_names):

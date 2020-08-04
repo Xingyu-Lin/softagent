@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 25/03/2018
 import sys
 import argparse
 import os.path as osp

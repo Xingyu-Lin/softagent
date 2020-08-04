@@ -1,5 +1,3 @@
-# Created by Xingyu Lin, 2019-04-09                                                                                  
-
 import os
 import sys
 import copy

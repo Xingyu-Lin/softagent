@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 2019-04-10
 from chester.plotting.cplot import *
 import os.path as osp
 

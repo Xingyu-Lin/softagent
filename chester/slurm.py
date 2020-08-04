@@ -1,4 +1,3 @@
-# Created by Xingyu Lin, 06/07/2018
 import os
 import os.path as osp
 import re
