@@ -35,8 +35,8 @@ CONTROL_SUITE_ACTION_REPEATS = {'cartpole': 8, 'reacher': 4, 'finger': 2, 'cheet
 SOFTGYM_ENVS = ['PourWaterPosControl-v0']
 
 SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
-                        'PassWaterTorus': PassWater1DTorusEnv,
-                        'TransportTorus': TransportTorus1D,
+                       'PassWaterTorus': PassWater1DTorusEnv,
+                       'TransportTorus': TransportTorus1D,
                        'PourWater': PourWaterPosControlEnv,
                        'ClothFlatten': ClothFlattenEnv,
                        'ClothFold': ClothFoldEnv,
@@ -49,6 +49,8 @@ SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
                        'RopeFlattenNew': RopeFlattenNewEnv,
                        'RopeAlphaBet': RopeAlphaBetEnv,
                        'PourWaterAmount': PourWaterAmountPosControlEnv,
+                       'ClothFlattenPPP': ClothFlattenEnv, # Picker pick and place
+                       'ClothFoldPPP': ClothFoldEnv,
                        # ResRL env
                        'Box1D': Box1d}
 

@@ -10,16 +10,18 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0803_cem_cloth_fold_cloth_drop'
+    exp_prefix = '0808_cem_cloth_ppp'
     vg = VariantGenerator()
     cem_plan_horizon = {
         'PassWater': 7,
         'PourWater': 40,
         'PourWaterAmount': 40,
         'ClothFold': 15,
+        'ClothFoldPPP': 15,
         'ClothFoldCrumpled': 30,
         'ClothFoldDrop': 30,
         'ClothFlatten': 15,
+        'ClothFlattenPPP': 15,
         'ClothDrop': 15,
         'RopeFlatten': 15,
         'RopeFlattenNew': 15,
@@ -28,8 +30,7 @@ def main(mode, debug, dry):
         'RigidClothDrop': 15,
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothFold', 'ClothDrop'])
-    # ['PassWater', 'PourWater', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'RopeFlatten'])
+    vg.add('env_name', ['ClothFold', 'ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])

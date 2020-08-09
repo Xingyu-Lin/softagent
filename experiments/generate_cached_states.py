@@ -43,17 +43,15 @@ def generate_env_state(env_name):
     kwargs['use_cached_states'] = False
     kwargs['num_variations'] = 1000
     kwargs['save_cached_states'] = True
-    # kwargs['observation_mode'] = 'key_point'
     # Env wrappter
     env = Env(env_name, False, 100, 200, 1, 8, 128, kwargs)
-    generate_video(env, env_name)
+    return env
 
 
 if __name__ == '__main__':
     env_names = ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
-    env_names = ['ClothFold']
+    env_names = ['ClothFoldCrumpled', 'ClothFoldDrop']
+    envs = [generate_env_state(env_name) for env_name in env_names]
 
-    for env_name in env_names:
-        # p = Process(target=generate_env_state, args=(env_name,))
-        # p.start()
-        generate_env_state(env_name)
+    for (env, env_name) in zip(envs, env_names):
+        generate_video(env, env_name)
