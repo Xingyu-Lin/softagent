@@ -17,11 +17,11 @@ def main(mode, debug, dry):
         'PourWater': 40,
         'PourWaterAmount': 40,
         'ClothFold': 15,
-        'ClothFoldPPP': 15,
+        'ClothFoldPPP': 5,
         'ClothFoldCrumpled': 30,
         'ClothFoldDrop': 30,
         'ClothFlatten': 15,
-        'ClothFlattenPPP': 15,
+        'ClothFlattenPPP': 5,
         'ClothDrop': 15,
         'RopeFlatten': 15,
         'RopeFlattenNew': 15,
@@ -30,7 +30,7 @@ def main(mode, debug, dry):
         'RigidClothDrop': 15,
     }
     vg.add('algorithm', ['CEM'])
-    vg.add('env_name', ['ClothFold', 'ClothFlatten'])
+    vg.add('env_name', ['ClothFlattenPPP', 'ClothFoldPPP'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])

@@ -13,8 +13,8 @@ def render_sawyer_cloth():
         observation_mode='cam_rgb',
         action_mode='sawyer',
         num_picker=2,
-        render=True,
-        headless=False,
+        render=False,
+        headless=True,
         horizon=75,
         action_repeat=8,
         render_mode='cloth',
@@ -34,19 +34,27 @@ def render_sawyer_cloth():
     scene_params = np.array([*config['ClothPos'], *config['ClothSize'], *config['ClothStiff'], 2,
                              *camera_params['pos'][:], *camera_params['angle'][:], camera_params['width'], camera_params['height'], 0.5])
     print("before set scene")
-    pyflex.set_scene(14, scene_params, 0, [0.])
-    for i in range(20):
+    pyflex.set_scene(14, scene_params, 0, [0.925])
+    exit()
+    # states = np.load('test.npy')
+    # pyflex.set_robot_state(states)
+    for i in range(1000):
         pyflex.set_sensor_segment(i % 2 == 0)
-        pyflex.step()
-        rgbd = pyflex.render_sensor()
-        rgbd = np.array(rgbd).reshape(720, 720, 4)
+        pyflex.step(np.ones(8)*0.01, render=False)
+        # rgbd = pyflex.render_sensor()
+        states = pyflex.get_robot_state()
+        # print(np.mean(states))
+
+        # exit()
+        # rgbd = np.array(rgbd).reshape(720, 720, 4)
         # fig, (ax1, ax2) = plt.subplots(1, 2)
         # ax1.imshow(rgbd[::-1, :, :3])
         # ax2.imshow(rgbd[::-1, :, 3])
         # plt.show()
 
+    # np.save('test.npy', states)
     print("after set scene")
-    pyflex.loop()
+    # pyflex.loop()
 
 
 def render_sawyer_rope():
