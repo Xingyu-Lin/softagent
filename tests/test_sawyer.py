@@ -3,9 +3,7 @@ import pyflex
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.envs.pass_water import PassWater1DEnv
 from softgym.envs.rope_flatten import RopeFlattenEnv
-from softgym.utils.normalized_env import normalize
 import cv2
-import matplotlib.pyplot as plt
 
 
 def render_sawyer_cloth():
@@ -20,7 +18,7 @@ def render_sawyer_cloth():
         render_mode='cloth',
         cached_states_path='cloth_fold_test.pkl',
         use_cached_states=True,
-        save_cache_states=False,
+        save_cached_states=False,
         deterministic=True)
     particle_radius = 0.00625
     config = {'ClothPos': [-0.31, -0.6, -0.184], 'ClothSize': [int(0.6 / particle_radius), int(0.368 / particle_radius)],
@@ -67,7 +65,7 @@ def render_sawyer_rope():
         action_repeat=8,
         cached_states_path='rope_test.pkl',
         use_cached_states=False,
-        save_cache_states=True,
+        save_cached_states=True,
         deterministic=True)
     pyflex.loop()
 
@@ -84,7 +82,7 @@ def render_sawyer_fluid():
                          deterministic=True,
                          num_variations=1,
                          use_cached_states=False,
-                         save_cache_states=False,
+                         save_cached_states=False,
                          )
 
     # for i in range(100000):
@@ -118,7 +116,7 @@ if __name__ == '__main__':
     #     #     render_mode='cloth',
     #     #     cached_states_path='cloth_fold_test.pkl',
     #     #     use_cached_states=False,
-    #     #     save_cache_states=False,
+    #     #     save_cached_states=False,
     #     #     deterministic=True)
     #     # PassWater1DEnvNew(observation_mode='cam_rgb',
     #     #                   action_mode='direct',
@@ -132,7 +130,7 @@ if __name__ == '__main__':
     #     #                   num_variations=1,
     #     #                   cached_states_path='cloth_fold_test.pkl',
     #     #                   use_cached_states=False,
-    #     #                   save_cache_states=False,
+    #     #                   save_cached_states=False,
     #     #                   )
     #     config = {'ClothPos': [-0.31, -0.6, -0.184], 'ClothSize': [int(0.6 / particle_radius), int(0.368 / particle_radius)],
     #               'ClothStiff': [0.8, 1, 0.9], 'camera_name': 'default_camera',
@@ -160,7 +158,7 @@ if __name__ == '__main__':
     #         render_mode='cloth',
     #         cached_states_path='cloth_fold_demo_init_states.pkl',
     #         use_cached_states=True,
-    #         save_cache_states=False,
+    #         save_cached_states=False,
     #         deterministic=True,
     #         picker_radius=0.03,
     #         particle_radius=particle_radius)

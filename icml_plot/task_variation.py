@@ -1,7 +1,5 @@
-from softgym.utils.visualization import save_numpy_as_gif
 import click
 import os.path as osp
-import numpy as np
 import torchvision
 import torch
 import os

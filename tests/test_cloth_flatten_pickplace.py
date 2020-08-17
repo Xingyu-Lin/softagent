@@ -1,10 +1,7 @@
-import gym
 import numpy as np
 import pyflex
 from softgym.envs.cloth_flatten import ClothFlattenEnv
-from softgym.utils.visualization import save_numpy_as_gif
 from softgym.utils.visualization import save_numpy_to_gif_matplotlib
-import time
 
 
 def test_picker(num_picker=3, save_dir='./videos', script='manual'):

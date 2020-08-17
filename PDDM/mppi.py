@@ -14,13 +14,9 @@
 
 import numpy as np
 import copy
-import matplotlib.pyplot as plt
-import multiprocessing as mp
-from multiprocessing import Pool
-import os, time
+import time
 
 # my imports
-from PDDM import trajectory_sampler
 
 def get_return(env, actions, init_state):
     '''
@@ -187,8 +183,6 @@ class MPPI(object):
         self.mppi_mean = np.zeros((self.horizon, self.ac_dim))  #start mean at 0
 
 if __name__ == '__main__':
-    import gym
-    import softgym
     import argparse
     from softgym.registered_env import env_arg_dict
     from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS

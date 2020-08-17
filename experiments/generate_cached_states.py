@@ -1,7 +1,5 @@
-from softgym.registered_env import env_arg_dict, SOFTGYM_ENVS
-from softgym.utils.normalized_env import normalize
-from softgym.utils.visualization import save_numpy_as_gif, make_grid
-from multiprocessing import Process
+from softgym.registered_env import env_arg_dict
+from softgym.utils.visualization import save_numpy_as_gif
 import numpy as np
 import os.path as osp
 import torchvision
@@ -10,8 +8,6 @@ import torch
 from envs.env import Env
 
 SAVE_PATH = './data/videos'
-
-import cv2
 
 
 def generate_video(env, env_name):

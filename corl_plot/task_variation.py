@@ -1,15 +1,12 @@
-from softgym.utils.visualization import save_numpy_as_gif
 import click
 import os
 import cv2
 
-from softgym.registered_env import env_arg_dict, SOFTGYM_ENVS
+from softgym.registered_env import env_arg_dict
 import os.path as osp
 import torchvision
 import torch
-import pickle
 from envs.env import Env
-import json
 import pyflex
 
 @click.command()

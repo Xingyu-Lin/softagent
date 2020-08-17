@@ -3,7 +3,7 @@ import os.path as osp
 import time
 
 import numpy as np
-import scipy.misc, cv2
+import cv2
 import skvideo.io
 import torchvision
 import torch

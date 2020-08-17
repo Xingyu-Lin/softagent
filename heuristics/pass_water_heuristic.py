@@ -1,12 +1,6 @@
 from softgym.envs.pass_water import PassWater1DEnv
-from softgym.envs.pass_water_multitask import PassWater1DGoalConditionedEnv
+from softgym.multitask_envs_arxived.pass_water_multitask import PassWater1DGoalConditionedEnv
 import numpy as np
-from matplotlib import pyplot as plt
-import softgym, gym
-from softgym.utils.visualization import save_numpy_as_gif
-import time
-import torchvision, torch
-import cv2
 from softgym.registered_env import  env_arg_dict
 import argparse, sys
 

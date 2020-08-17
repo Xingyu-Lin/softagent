@@ -32,7 +32,7 @@ def test_flex_env():
         headless=False,
         action_repeat=8,
         use_cached_states=False,
-        save_cache_states=True,
+        save_cached_states=True,
         num_variations=2
     )
     env.reset()
@@ -56,7 +56,7 @@ def visualize_cem():
         headless=False,
         action_repeat=8,
         use_cached_states=False,
-        save_cache_states=False,
+        save_cached_states=False,
         num_variations=1,
         # render_mode='cloth'
     )

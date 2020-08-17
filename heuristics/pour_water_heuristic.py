@@ -1,20 +1,9 @@
-import gym
 import numpy as np
-import pyflex
 from softgym.envs.pour_water import PourWaterPosControlEnv
-from softgym.envs.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
-import os, argparse, sys
-import softgym
-from matplotlib import pyplot as plt
-from softgym.utils.visualization import save_numpy_as_gif
-import torchvision
-import torch
-import cv2
+from softgym.multitask_envs_arxived.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
+import argparse, sys
 from matplotlib import pyplot as plt
 from softgym.registered_env import  env_arg_dict
-import os.path as osp
-
-
 
 
 def show(img):
@@ -36,7 +25,7 @@ def run_heuristic(args):
     action_repeat = dic.get('action_repeat', 8)
     horizon = dic['horizon']
     if not args.use_cached_states:
-        dic['save_cache_states'] = False
+        dic['save_cached_states'] = False
         dic['use_cached_states'] = False
         dic['num_variations'] = 20
 

@@ -1,4 +1,3 @@
-from rlkit.samplers.rollout_functions import rollout
 from rlkit.torch.pytorch_util import set_gpu_mode
 import argparse
 import torch

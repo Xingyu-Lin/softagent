@@ -1,6 +1,5 @@
 import time
 from softgym.core.image_env import ImageEnv
-from rlkit.core import logger
 from rlkit.envs.vae_wrapper import temporary_mode
 
 import cv2
@@ -18,11 +17,8 @@ from rlkit.util.io import load_local_or_remote_file
 from rlkit.util.video import dump_video
 from rlkit.core import logger
 from rlkit.launchers.launcher_util import reset_execution_environment, set_gpu_mode, set_seed, setup_logger, save_experiment_data
-from rlkit.launchers import conf
 import __main__ as main
 import torch
-from softgym.envs.pour_water_multitask import PourWaterPosControlGoalConditionedEnv
-from softgym.envs.pass_water_multitask import PassWater1DGoalConditionedEnv
 from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
 from softgym.utils.normalized_env import normalize
 

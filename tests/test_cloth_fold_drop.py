@@ -1,11 +1,4 @@
-from softgym.registered_env import env_arg_dict, SOFTGYM_ENVS
-from softgym.utils.normalized_env import normalize
-from softgym.utils.visualization import save_numpy_as_gif, make_grid
-from multiprocessing import Process
-import numpy as np
-import os.path as osp
-import torchvision
-import torch
+from softgym.registered_env import env_arg_dict
 
 from envs.env import Env
 

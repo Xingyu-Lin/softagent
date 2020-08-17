@@ -1,8 +1,6 @@
-import gym
 import numpy as np
 import pyflex
 from softgym.envs.cloth_fold import ClothFoldEnv
-from softgym.utils.normalized_env import normalize
 import cv2, os
 
 def generate_pick_and_place(sx, sy, ex, ey, zl, zh):
@@ -62,7 +60,7 @@ if __name__ == '__main__':
             render_mode='cloth',
             cached_states_path='cloth_fold_demo_init_states.pkl',
             use_cached_states=False,
-            save_cache_states=False,
+            save_cached_states=False,
             deterministic=True)
         config = {'ClothPos': [-0.31, -0.2, -0.184], 'ClothSize': [int(0.6 / particle_radius), int(0.368 / particle_radius)],
                   'ClothStiff': [0.8, 1, 0.9], 'camera_name': 'default_camera',
@@ -84,7 +82,7 @@ if __name__ == '__main__':
             render_mode='cloth',
             cached_states_path='cloth_fold_demo_init_states.pkl',
             use_cached_states=True,
-            save_cache_states=False,
+            save_cached_states=False,
             deterministic=True,
             picker_radius=0.03,
             particle_radius=particle_radius)

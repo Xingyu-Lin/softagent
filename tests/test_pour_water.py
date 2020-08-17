@@ -1,5 +1,3 @@
-import gym
-import softgym
 from softgym.envs.pour_water import PourWaterPosControlEnv
 from softgym.utils.normalized_env import normalize
 import numpy as np

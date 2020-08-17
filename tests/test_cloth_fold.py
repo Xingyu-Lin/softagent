@@ -1,18 +1,7 @@
-import gym
-import numpy as np
-import pyflex
-from softgym.envs.cloth_fold import ClothFoldEnv
-from softgym.utils.visualization import save_numpy_as_gif
-from softgym.utils.normalized_env import normalize
 from softgym.registered_env import env_arg_dict, SOFTGYM_ENVS
 from softgym.utils.normalized_env import normalize
-from softgym.utils.visualization import save_numpy_as_gif, make_grid
-from multiprocessing import Process
+from softgym.utils.visualization import save_numpy_as_gif
 import numpy as np
-import os.path as osp
-import torchvision
-import torch
-from envs.env import Env
 
 np.set_printoptions(precision=3, suppress=True)
 
