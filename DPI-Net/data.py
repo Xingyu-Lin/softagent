@@ -55,8 +55,8 @@ def combine_stat(stat_0, stat_1):
     mean_1, std_1, n_1 = stat_1[:, 0], stat_1[:, 1], stat_1[:, 2]
 
     mean = (mean_0 * n_0 + mean_1 * n_1) / (n_0 + n_1)
-    std = np.sqrt((std_0**2 * n_0 + std_1**2 * n_1 + \
-                   (mean_0 - mean)**2 * n_0 + (mean_1 - mean)**2 * n_1) / (n_0 + n_1))
+    std = np.sqrt((std_0 ** 2 * n_0 + std_1 ** 2 * n_1 + \
+                   (mean_0 - mean) ** 2 * n_0 + (mean_1 - mean) ** 2 * n_1) / (n_0 + n_1))
     n = n_0 + n_1
 
     return np.stack([mean, std, n], axis=-1)
@@ -111,21 +111,30 @@ def denormalize(data, stat, var=False):
 def rotateByQuat(p, quat):
     R = np.zeros((3, 3))
     a, b, c, d = quat[3], quat[0], quat[1], quat[2]
-    R[0, 0] = a**2 + b**2 - c**2 - d**2
+    R[0, 0] = a ** 2 + b ** 2 - c ** 2 - d ** 2
     R[0, 1] = 2 * b * c - 2 * a * d
     R[0, 2] = 2 * b * d + 2 * a * c
     R[1, 0] = 2 * b * c + 2 * a * d
-    R[1, 1] = a**2 - b**2 + c**2 - d**2
+    R[1, 1] = a ** 2 - b ** 2 + c ** 2 - d ** 2
     R[1, 2] = 2 * c * d - 2 * a * b
     R[2, 0] = 2 * b * d - 2 * a * c
     R[2, 1] = 2 * c * d + 2 * a * b
-    R[2, 2] = a**2 - b**2 - c**2 + d**2
+    R[2, 2] = a ** 2 - b ** 2 - c ** 2 + d ** 2
 
     return np.dot(R, p)
 
 
-def gen_PyFleX(info):
+ENV = None
 
+
+def cached_make_env(env, args):
+    global ENV
+    if ENV is None:
+        ENV = SOFTGYM_CUSTOM_ENVS[env](**args)
+    return ENV
+
+
+def gen_PyFleX(info):
     env, root_num = info['env'], info['root_num']
     thread_idx, data_dir, data_names = info['thread_idx'], info['data_dir'], info['data_names']
     n_rollout, n_instance = info['n_rollout'], info['n_instance']
@@ -134,23 +143,24 @@ def gen_PyFleX(info):
 
     env_idx = info['env_idx']
 
-    np.random.seed(round(time.time() * 1000 + thread_idx) % 2**32) ### NOTE: we might want to fix the seed for reproduction
+    np.random.seed(round(time.time() * 1000 + thread_idx) % 2 ** 32)  ### NOTE: we might want to fix the seed for reproduction
 
     # positions, velocities
-    if env_idx == 5:    # RiceGrip
-        stats = [init_stat(6), init_stat(6)] # Rice env has 6 dims because rest positions are included
+    if env_idx == 5:  # RiceGrip
+        stats = [init_stat(6), init_stat(6)]  # Rice env has 6 dims because rest positions are included
     else:
         stats = [init_stat(3), init_stat(3)]
 
     import pyflex
-    if env not in SOFTGYM_ENVS: 
+    if env not in SOFTGYM_ENVS:
         pyflex.init(False, True, 720, 720)
-    else: ### TODO: generate env with env_id and env_kwargs
+    else:  ### TODO: generate env with env_id and env_kwargs
         tmp_args = copy.deepcopy(env_arg_dicts[env])
         # tmp_args['headless'] = False
         tmp_args['render_mode'] = 'particle'
-        tmp_args['camera_name'] = 'cam_2d'
-        softgym_env = SOFTGYM_CUSTOM_ENVS[env](**tmp_args)
+        tmp_args['camera_name'] = 'default_camera'
+        tmp_args['deterministic'] = True
+        softgym_env = cached_make_env(env, tmp_args)
 
     for i in range(n_rollout):
         print("{} / {}".format(i, n_rollout))
@@ -279,9 +289,9 @@ def gen_PyFleX(info):
             dim_y = rand_int(15, 20)
             dim_z = 3
             x_center = rand_float(-0.2, 0.2)
-            x = x_center - (dim_x-1)/2.*0.055
-            y = 0.055/2. + border + 0.01
-            z = 0. - (dim_z-1)/2.*0.055
+            x = x_center - (dim_x - 1) / 2. * 0.055
+            y = 0.055 / 2. + border + 0.01
+            z = 0. - (dim_z - 1) / 2. * 0.055
             box_dis_x = dim_x * 0.055 + rand_float(0., 0.3)
             box_dis_z = 0.2
 
@@ -343,7 +353,7 @@ def gen_PyFleX(info):
                 store_data(data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
 
         elif env == 'ClothFlatten':
-            softgym_env.reset() # TODO: add task variation!
+            softgym_env.reset()  # TODO: add task variation!
             n_particles = pyflex.get_n_particles()
             n_shapes = pyflex.get_n_shapes()
 
@@ -358,22 +368,26 @@ def gen_PyFleX(info):
             velocities = np.zeros((time_step, n_particles + n_shapes, 3), dtype=np.float32)
             shape_quats = np.zeros((time_step, n_shapes, 4), dtype=np.float32)
 
-            
             positions[0, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
             shape_states = pyflex.get_shape_states().reshape(-1, shape_state_dim)
-            
+
             for k in range(n_shapes):
                 positions[0, n_particles + k] = shape_states[k, :3]
                 shape_quats[0, k] = shape_states[k, 6:10]
 
-            data = [positions[0], velocities[0], shape_quats[0], clusters, [softgym_env.radii]] # NOTE: radii is the sphere radius
+            data = [positions[0], velocities[0], shape_quats[0], clusters, [softgym_env.cloth_particle_radius]]  # NOTE: radii is the sphere radius
             store_data(data_names, data, os.path.join(rollout_dir, str(0) + '.h5'))
 
             for j in range(1, time_step):
                 # print("{} / {} / {}".format(j, i, n_rollout))
                 action = softgym_env.action_space.sample()
+                if j < 20:
+                    action = (0, -0.005, 0, 1, 0, 0, 0, 0)
+                elif j < 40:
+                    action = (0, 0.005, 0, 1,  0, 0, 0, 0)
+                else:
+                    action = (0, 0, 0, 0,  0, 0, 0, 0)
                 softgym_env.step(action)
-
                 positions[j, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
                 shape_states = pyflex.get_shape_states().reshape(-1, shape_state_dim)
 
@@ -387,7 +401,8 @@ def gen_PyFleX(info):
                     velocities[j] = (positions[j] - positions[j - 1]) / dt
 
                 # NOTE: 1) particle + glass wall positions, 2) particle + glass wall velocitys, 3) glass wall rotations, 4) scenen parameters
-                data = [positions[j], velocities[j], shape_quats[j], clusters, [softgym_env.radii]] # NOTE: radii is the sphere radius
+                data = [positions[j], velocities[j], shape_quats[j], clusters,
+                        [softgym_env.cloth_particle_radius]]  # NOTE: radii is the sphere radius
                 # print("store data path: ", os.path.join(rollout_dir, str(j) + '.h5'))
                 store_data(data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
 
@@ -446,7 +461,7 @@ def gen_PyFleX(info):
                 shape_states = calc_shape_states_RiceGrip(j * dt, dt, shape_state_dim, gripper_config)
                 pyflex.set_shape_states(shape_states)
 
-                positions[j, :n_particles, :3] = pyflex.get_rigidGlobalPositions().reshape(-1, 3) # NOTE: fpr 
+                positions[j, :n_particles, :3] = pyflex.get_rigidGlobalPositions().reshape(-1, 3)  # NOTE: fpr
                 positions[j, :n_particles, 3:] = pyflex.get_positions().reshape(-1, 4)[:, :3]
                 shape_states = pyflex.get_shape_states().reshape(-1, shape_state_dim)
 
@@ -549,7 +564,6 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
         if verbose:
             print('root info', root_num, root_sib_radius, root_des_radius, root_pstep)
 
-
         ### clustring the nodes
         # st_time = time.time()
         # kmeans = MiniBatchKMeans(n_clusters=root_num, random_state=0).fit(pos[st:ed, 3:6])
@@ -557,25 +571,25 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
         # clusters = kmeans.labels_
         # centers = kmeans.cluster_centers_
 
-
         ### relations between roots and desendants
         rels, rels_rev = [], []
         node_r_idx.append(np.arange(count_nodes, count_nodes + root_num))
         node_s_idx.append(np.arange(st, ed))
         node_r_idx_rev.append(node_s_idx[-1])
         node_s_idx_rev.append(node_r_idx[-1])
-        pstep.append(1); pstep_rev.append(1)
+        pstep.append(1);
+        pstep_rev.append(1)
 
         if verbose:
             centers = np.zeros((root_num, 3))
             for j in range(root_num):
-                des = np.nonzero(clusters[i][0]==j)[0]
+                des = np.nonzero(clusters[i][0] == j)[0]
                 center = np.mean(pos[st:ed][des, -3:], 0, keepdims=True)
                 centers[j] = center[0]
-                visualize_neighbors(pos[st:ed], center, 0, des)
+                # visualize_neighbors(pos[st:ed], center, 0, des)
 
         for j in range(root_num):
-            desendants = np.nonzero(clusters[i][0]==j)[0]
+            desendants = np.nonzero(clusters[i][0] == j)[0]
             roots = np.ones(desendants.shape[0]) * j
             if verbose:
                 print(roots, desendants)
@@ -586,7 +600,6 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
 
         relations.append(np.concatenate(rels, 0))
         relations_rev.append(np.concatenate(rels_rev, 0))
-
 
         ### relations between roots and roots
         # point_tree = spatial.cKDTree(centers)
@@ -612,13 +625,12 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
 
         relations.append(np.concatenate(rels, 0))
 
-
         ### add to attributes/positions/velocities
         positions = [positions]
         velocities = [velocities]
         attributes = []
         for j in range(root_num):
-            ids = np.nonzero(clusters[i][0]==j)[0]
+            ids = np.nonzero(clusters[i][0] == j)[0]
             if var:
                 positions += [torch.mean(positions[0][st:ed, :][ids], 0, keepdim=True)]
                 velocities += [torch.mean(velocities[0][st:ed, :][ids], 0, keepdim=True)]
@@ -666,7 +678,6 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
 
 
 def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
-
     # Arrangement:
     # particles, shapes, roots
 
@@ -714,7 +725,6 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
     if verbose:
         print("Instance_idx:", instance_idx)
 
-
     ### object attributes
     #   dim 10: [rigid, fluid, root_0, root_1, gripper_0, gripper_1, mass_inv,
     #            clusterStiffness, clusterPlasticThreshold, cluasterPlasticCreep]
@@ -725,15 +735,14 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
         # clusterStiffness, clusterPlasticThreshold, cluasterPlasticCreep
         attr[:, -3:] = scene_params[-3:]
 
-
     ### construct relations
-    Rr_idxs = []        # relation receiver idx list
-    Rs_idxs = []        # relation sender idx list
-    Ras = []            # relation attributes list
-    values = []         # relation value list (should be 1) # NOTE: what is this relation value list? why is it set to be 1?
-    node_r_idxs = []    # list of corresponding receiver node idx
-    node_s_idxs = []    # list of corresponding sender node idx
-    psteps = []         # propagation steps
+    Rr_idxs = []  # relation receiver idx list
+    Rs_idxs = []  # relation sender idx list
+    Ras = []  # relation attributes list
+    values = []  # relation value list (should be 1) # NOTE: what is this relation value list? why is it set to be 1?
+    node_r_idxs = []  # list of corresponding receiver node idx
+    node_s_idxs = []  # list of corresponding sender node idx
+    psteps = []  # propagation steps
 
     ##### add env specific graph components
     rels = []
@@ -759,7 +768,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
         for i in range(n_shapes):
             # object attr:
             # [fluid, wall_0, wall_1, wall_2, wall_3, wall_4]
-            attr[n_particles + i, 1 + i] = 1 
+            attr[n_particles + i, 1 + i] = 1
 
             pos = positions.data.cpu().numpy() if var else positions
             if i == 0:
@@ -782,7 +791,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
             nodes = np.nonzero(dis < 0.1)[0]
 
             wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
-            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)] # np.ones mean: [sender, receiver, value]
+            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]  # np.ones mean: [sender, receiver, value]
             # actually the values are just set to one to fill in a sparse matrix tensor.        
 
     elif args.env == 'ClothFlatten':
@@ -790,7 +799,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
         for i in range(n_shapes):
             # object attr:
             # [fluid, root, sphere_0, sphere_1, sphere_2, sphere_3]
-            attr[n_particles + i, 2 + i] = 1 
+            attr[n_particles + i, 2 + i] = 1
 
             pos = positions.data.cpu().numpy() if var else positions
             sphere_center = pos[n_particles + i, :3]
@@ -798,7 +807,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
             nodes = np.nonzero(dis < 0.1 + sphere_radius)[0]
 
             wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
-            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)] #NOTE: [sender, receiver, value]
+            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]  # NOTE: [sender, receiver, value]
             # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
 
     if verbose and len(rels) > 0:
@@ -850,12 +859,14 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
     if rels.shape[0] > 0:
         if verbose:
             print("Relations neighbor", rels.shape)
-        Rr_idxs.append(torch.LongTensor([rels[:, 0], np.arange(rels.shape[0])])) # NOTE: why with the np.arange(rels.shape): this 
-        Rs_idxs.append(torch.LongTensor([rels[:, 1], np.arange(rels.shape[0])])) # This actually constructing the non-zero entry (row, col) idx for a later sparse matrix with shape (n_receiver, n_rel)
+        Rr_idxs.append(torch.LongTensor([rels[:, 0], np.arange(rels.shape[0])]))  # NOTE: why with the np.arange(rels.shape): this
+        Rs_idxs.append(torch.LongTensor([rels[:, 1], np.arange(
+            rels.shape[0])]))  # This actually constructing the non-zero entry (row, col) idx for a later sparse matrix with shape (n_receiver, n_rel)
         Ra = np.zeros((rels.shape[0], args.relation_dim))  # NOTE: relation_dim is just 1  for all envs
-        Ras.append(torch.FloatTensor(Ra)) # NOTE: why Ras are just 0? So all the attributes are just 0? 
-        values.append(torch.FloatTensor([1] * rels.shape[0])) # NOTE: why values are just 1? the ones are values filled into the sparse receiver-relation matrix. see line 288 at train.py
-        node_r_idxs.append(np.arange(n_particles)) 
+        Ras.append(torch.FloatTensor(Ra))  # NOTE: why Ras are just 0? So all the attributes are just 0?
+        values.append(torch.FloatTensor([1] * rels.shape[
+            0]))  # NOTE: why values are just 1? the ones are values filled into the sparse receiver-relation matrix. see line 288 at train.py
+        node_r_idxs.append(np.arange(n_particles))
         node_s_idxs.append(np.arange(n_particles + n_shapes))
         psteps.append(args.pstep)
 
@@ -871,15 +882,16 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
         if n_root_level > 0:
             attr, positions, velocities, count_nodes, \
             rels, node_r_idx, node_s_idx, pstep = \
-                    make_hierarchy(args.env, attr, positions, velocities, i, st, ed,
-                                   phases_dict, count_nodes, clusters[cnt_clusters], verbose, var)
+                make_hierarchy(args.env, attr, positions, velocities, i, st, ed,
+                               phases_dict, count_nodes, clusters[cnt_clusters], verbose, var)
 
             for j in range(len(rels)):
                 if verbose:
                     print("Relation instance", j, rels[j].shape)
                 Rr_idxs.append(torch.LongTensor([rels[j][:, 0], np.arange(rels[j].shape[0])]))
                 Rs_idxs.append(torch.LongTensor([rels[j][:, 1], np.arange(rels[j].shape[0])]))
-                Ra = np.zeros((rels[j].shape[0], args.relation_dim)); Ra[:, 0] = 1
+                Ra = np.zeros((rels[j].shape[0], args.relation_dim));
+                Ra[:, 0] = 1
                 Ras.append(torch.FloatTensor(Ra))
                 values.append(torch.FloatTensor([1] * rels[j].shape[0]))
                 node_r_idxs.append(node_r_idx[j])
@@ -895,8 +907,8 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
         print("Attr shape (after hierarchy building):", attr.shape)
         print("Object attr:", np.sum(attr, axis=0))
         print("Particle attr:", np.sum(attr[:n_particles], axis=0))
-        print("Shape attr:", np.sum(attr[n_particles:n_particles+n_shapes], axis=0))
-        print("Roots attr:", np.sum(attr[n_particles+n_shapes:], axis=0))
+        print("Shape attr:", np.sum(attr[n_particles:n_particles + n_shapes], axis=0))
+        print("Roots attr:", np.sum(attr[n_particles + n_shapes:], axis=0))
 
     ### normalize data
     data = [positions, velocities]
@@ -945,13 +957,13 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
             print(i, np.min(node_r_idxs[i]), np.max(node_r_idxs[i]), np.min(node_s_idxs[i]), np.max(node_s_idxs[i]))
 
     attr = torch.FloatTensor(attr)
-    relations = [Rr_idxs, Rs_idxs, values, Ras, node_r_idxs, node_s_idxs, psteps] # NOTE: values are just all 1, and Ras are just all 0.
+    relations = [Rr_idxs, Rs_idxs, values, Ras, node_r_idxs, node_s_idxs, psteps]  # NOTE: values are just all 1, and Ras are just all 0.
     # node_r_idxs are just range(num_particles,), node_s_idxs are just range(n_particle + n_shape).
-    if verbose: 
+    if verbose:
         print("Rr_idxs len: ", len(Rr_idxs))
 
-    return attr, state, relations, n_particles, n_shapes, instance_idx # NOTE: attr are just object attributes, e.g, 0 for fluid, 1 for shape.
-        # state = [positions, velocities], relations one line above.
+    return attr, state, relations, n_particles, n_shapes, instance_idx  # NOTE: attr are just object attributes, e.g, 0 for fluid, 1 for shape.
+    # state = [positions, velocities], relations one line above.
 
 
 class PhysicsFleXDataset(Dataset):
@@ -1020,15 +1032,18 @@ class PhysicsFleXDataset(Dataset):
             elif self.args.env == 'FluidShake':
                 info['env_idx'] = 6
             elif self.args.env in SOFTGYM_ENVS:
-                info['env_idx'] = 233 # for Softgym envs we are using the wrapped-over env, no need to use this env_idx.
+                info['env_idx'] = 233  # for Softgym envs we are using the wrapped-over env, no need to use this env_idx.
             else:
                 raise AssertionError("Unsupported env")
 
             infos.append(info)
 
         cores = self.args.num_workers
-        pool = mp.Pool(processes=cores)
-        data = pool.map(gen_PyFleX, infos)
+        data = []
+        for i in range(cores):
+            data.append(gen_PyFleX(infos[i]))
+        # pool = mp.Pool(processes=cores)
+        # data = pool.map(gen_PyFleX, infos) # Note: Stats are returned
 
         print("Training data generated, warpping up stats ...")
 
@@ -1076,12 +1091,11 @@ class PhysicsFleXDataset(Dataset):
         data[1] = np.concatenate([data[1]] + vel_his, 1)
 
         attr, state, relations, n_particles, n_shapes, instance_idx = \
-                prepare_input(data, self.stat, self.args, self.phases_dict, self.verbose)
+            prepare_input(data, self.stat, self.args, self.phases_dict, self.verbose)
 
         ### label
         data_nxt = normalize(load_data(self.data_names, data_nxt_path), self.stat)
 
-        label = torch.FloatTensor(data_nxt[1][:n_particles]) # NOTE: just use velocity at next step as label
+        label = torch.FloatTensor(data_nxt[1][:n_particles])  # NOTE: just use velocity at next step as label
 
         return attr, state, relations, n_particles, n_shapes, instance_idx, label
-

@@ -37,7 +37,7 @@ parser.add_argument('--outf', default='files')
 parser.add_argument('--dataf', default='data')
 parser.add_argument('--num_workers', type=int, default=5)
 parser.add_argument('--gen_data', type=int, default=0)
-parser.add_argument('--gen_stat', type=int, default=0)
+parser.add_argument('--gen_stat', type=int, default=1)
 parser.add_argument('--log_per_iter', type=int, default=200)
 parser.add_argument('--ckp_per_iter', type=int, default=10000)
 parser.add_argument('--eval', type=int, default=0)
@@ -230,7 +230,7 @@ elif args.env == 'ClothFlatten':
     args.n_stages = 4
     args.n_roots = 30
 
-    args.neighbor_radius = 0.08
+    args.neighbor_radius = 0.013
 
     phases_dict["root_num"] = [[args.n_roots]]
     phases_dict["root_sib_radius"] = [[5.0]] # NOTE: not actually used
@@ -344,7 +344,6 @@ for epoch in range(st_epoch, args.n_epoch):
 
         losses = 0.
         for i, data in enumerate(dataloaders[phase]):
-
             attr, state, rels, n_particles, n_shapes, instance_idx, label = data 
             Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
 

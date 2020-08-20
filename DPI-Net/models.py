@@ -213,7 +213,7 @@ class DPINet(nn.Module):
         # print("attr shape: ", attr.shape)
         # print("state shape: ", state.shape)
         # print("Rr shape: ", Rr[0].shape) # sparse matrix of shape (n_receiver, n_rel), with receiver_id entry at each column set to 1.
-        # print("Rs shape: ", Rs[0].shape) 
+        # print("Rs shape: ", Rs[0].shape)
         # print("Ra shape: ", Ra[0].shape)
         # print("n_particles: ", n_particles)
         # print("node_r_idx shape: ", node_r_idx[0].shape)

@@ -236,7 +236,7 @@ elif args.env == 'ClothFlatten':
     args.n_stages = 4
     args.n_roots = 30
 
-    args.neighbor_radius = 0.08
+    args.neighbor_radius = 0.013
 
     phases_dict["root_num"] = [[args.n_roots]]
     phases_dict["root_sib_radius"] = [[5.0]] # not actually used
@@ -518,10 +518,13 @@ for idx in range(len(infos)):
         print("recorded n_particles {} env actual n_particles {}".format(n_particles, pyflex.get_n_particles()))
 
     elif args.env == 'ClothFlatten':
-        import gym, softgym
-        softgym.register_flex_envs()
-        env = gym.make("ClothFlattenSphereControl-v0")
-        env.reset()
+        tmp_args = copy.deepcopy(env_arg_dicts[args.env])
+        tmp_args['headless'] = False
+        tmp_args['render_mode'] = 'particle'
+        tmp_args['camera_name'] = 'default_camera'
+        tmp_args['deterministic'] = True
+        softgym_env = SOFTGYM_CUSTOM_ENVS[args.env](**tmp_args)
+        softgym_env.reset()
 
     for step in range(args.time_step - 1):
         print("ground truth render step: ", step)
@@ -553,7 +556,7 @@ for idx in range(len(infos)):
     if args.env not in SOFTGYM_ENVS:
         pyflex.set_scene(env_idx, scene_params, 0)
     else:
-        softgym_env.reset(config_idx)
+        softgym_env.reset()
         pyflex.pop_box(1)
 
     if args.env == 'RiceGrip':
