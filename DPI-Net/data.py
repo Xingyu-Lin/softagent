@@ -154,12 +154,13 @@ def gen_PyFleX(info):
     import pyflex
     if env not in SOFTGYM_ENVS:
         pyflex.init(False, True, 720, 720)
-    else:  ### TODO: generate env with env_id and env_kwargs
+    else:
         tmp_args = copy.deepcopy(env_arg_dicts[env])
-        # tmp_args['headless'] = False
         tmp_args['render_mode'] = 'particle'
         tmp_args['camera_name'] = 'default_camera'
-        tmp_args['deterministic'] = True
+        tmp_args['deterministic'] = False
+        if env == 'ClothFlatten':
+            tmp_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
         softgym_env = cached_make_env(env, tmp_args)
 
     for i in range(n_rollout):
@@ -378,15 +379,15 @@ def gen_PyFleX(info):
             data = [positions[0], velocities[0], shape_quats[0], clusters, [softgym_env.cloth_particle_radius]]  # NOTE: radii is the sphere radius
             store_data(data_names, data, os.path.join(rollout_dir, str(0) + '.h5'))
 
+            for j in range(20):
+                action = (0, -0.005, 0, 1, 0, 0, 0, 0)
+                softgym_env.step(action)
+
             for j in range(1, time_step):
-                # print("{} / {} / {}".format(j, i, n_rollout))
-                action = softgym_env.action_space.sample()
                 if j < 20:
-                    action = (0, -0.005, 0, 1, 0, 0, 0, 0)
-                elif j < 40:
-                    action = (0, 0.005, 0, 1,  0, 0, 0, 0)
+                    action = (0, 0.005, 0, 1, 0, 0, 0, 0)
                 else:
-                    action = (0, 0, 0, 0,  0, 0, 0, 0)
+                    action = (0, 0, 0, 0, 0, 0, 0, 0)
                 softgym_env.step(action)
                 positions[j, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
                 shape_states = pyflex.get_shape_states().reshape(-1, shape_state_dim)
@@ -706,7 +707,6 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
 
     count_nodes = positions.size(0) if var else positions.shape[0]
     n_particles = count_nodes - n_shapes
-
     if verbose:
         print("positions", positions.shape)
         print("velocities", velocities.shape)
@@ -807,7 +807,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
             nodes = np.nonzero(dis < 0.1 + sphere_radius)[0]
 
             wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
-            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]  # NOTE: [sender, receiver, value]
+            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]  # NOTE: [receiver, sender, value]
             # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
 
     if verbose and len(rels) > 0:
@@ -861,7 +861,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
             print("Relations neighbor", rels.shape)
         Rr_idxs.append(torch.LongTensor([rels[:, 0], np.arange(rels.shape[0])]))  # NOTE: why with the np.arange(rels.shape): this
         Rs_idxs.append(torch.LongTensor([rels[:, 1], np.arange(
-            rels.shape[0])]))  # This actually constructing the non-zero entry (row, col) idx for a later sparse matrix with shape (n_receiver, n_rel)
+            rels.shape[0])]))  # This actually constructs the non-zero entry (row, col) idx for a later sparse matrix with shape (n_receiver, n_rel)
         Ra = np.zeros((rels.shape[0], args.relation_dim))  # NOTE: relation_dim is just 1  for all envs
         Ras.append(torch.FloatTensor(Ra))  # NOTE: why Ras are just 0? So all the attributes are just 0?
         values.append(torch.FloatTensor([1] * rels.shape[
@@ -873,7 +873,7 @@ def prepare_input(data, stat, args, phases_dict, verbose=0, var=False):
     if verbose:
         print('clusters', clusters)
 
-    # add heirarchical relations per instance
+    # add hierarchical relations per instance
     cnt_clusters = 0
     for i in range(len(instance_idx) - 1):
         st, ed = instance_idx[i], instance_idx[i + 1]
@@ -1040,10 +1040,10 @@ class PhysicsFleXDataset(Dataset):
 
         cores = self.args.num_workers
         data = []
-        for i in range(cores):
-            data.append(gen_PyFleX(infos[i]))
-        # pool = mp.Pool(processes=cores)
-        # data = pool.map(gen_PyFleX, infos) # Note: Stats are returned
+        # for i in range(cores):
+        #     data.append(gen_PyFleX(infos[i]))
+        pool = mp.Pool(processes=cores)
+        data = pool.map(gen_PyFleX, infos) # Note: Stats are returned
 
         print("Training data generated, warpping up stats ...")
 

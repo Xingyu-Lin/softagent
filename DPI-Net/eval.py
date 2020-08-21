@@ -28,7 +28,6 @@ from softgym.registered_env import env_arg_dict as env_arg_dicts
 from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
 import copy
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--pstep', type=int, default=2)
 parser.add_argument('--epoch', type=int, default=0)
@@ -231,7 +230,7 @@ elif args.env == 'ClothFlatten':
     args.relation_dim = 1
 
     args.n_instance = 1
-    args.time_step = 100
+    args.time_step = 51
     args.time_step_clip = 0
     args.n_stages = 4
     args.n_roots = 30

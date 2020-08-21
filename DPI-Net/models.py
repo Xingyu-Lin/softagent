@@ -208,8 +208,6 @@ class DPINet(nn.Module):
 
     def forward(self, attr, state, Rr, Rs, Ra, n_particles, node_r_idx, node_s_idx, pstep,
                 instance_idx, phases_dict, verbose=0):
-
-
         # print("attr shape: ", attr.shape)
         # print("state shape: ", state.shape)
         # print("Rr shape: ", Rr[0].shape) # sparse matrix of shape (n_receiver, n_rel), with receiver_id entry at each column set to 1.

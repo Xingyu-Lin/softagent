@@ -225,7 +225,7 @@ elif args.env == 'ClothFlatten':
     args.relation_dim = 1
 
     args.n_instance = 1
-    args.time_step = 100
+    args.time_step = 51
     args.time_step_clip = 0
     args.n_stages = 4
     args.n_roots = 30
@@ -335,6 +335,7 @@ if use_gpu:
 
 st_epoch = args.resume_epoch if args.resume_epoch > 0 else 0
 best_valid_loss = np.inf
+time.sleep(5)
 for epoch in range(st_epoch, args.n_epoch):
 
     phases = ['train', 'valid'] if args.eval == 0 else ['valid']
