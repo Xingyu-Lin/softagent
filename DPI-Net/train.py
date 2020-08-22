@@ -17,8 +17,8 @@ from torch.utils.data import Dataset, DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from models import DPINet
-from data import PhysicsFleXDataset, collate_fn
-
+from data import collate_fn
+from graph import ClothDataset
 from utils import count_parameters
 
 
@@ -209,7 +209,7 @@ elif args.env == 'PassWater':
     args.outf = 'dump_PassWater/' + args.outf
 
 elif args.env == 'ClothFlatten':
-    args.n_rollout = 1000
+    args.n_rollout = 100
 
     # object states:
     # [x, y, z, xdot, ydot, zdot]
@@ -232,7 +232,7 @@ elif args.env == 'ClothFlatten':
 
     args.neighbor_radius = 0.013
 
-    phases_dict["root_num"] = [[args.n_roots]]
+    phases_dict["root_num"] = args.n_roots
     phases_dict["root_sib_radius"] = [[5.0]] # NOTE: not actually used
     phases_dict["root_des_radius"] = [[0.2]] #  NOTE: not actually used
     phases_dict["root_pstep"] = [[args.pstep]]
@@ -288,14 +288,15 @@ os.system('mkdir -p ' + args.outf)
 os.system('mkdir -p ' + args.dataf)
 
 # generate data
-datasets = {phase: PhysicsFleXDataset(
-    args, phase, phases_dict, args.verbose_data) for phase in ['train', 'valid']}
-
+if args.env =='ClothFlatten':
+    datasets = {phase: ClothDataset(args, phase, phases_dict) for phase in ['train', 'valid']}
+else:
+    raise NotImplementedError
 
 
 for phase in ['train', 'valid']:
     if args.gen_data:
-        datasets[phase].gen_data(args.env)
+        datasets[phase].create_dataset()
     else:
         datasets[phase].load_data(args.env)
 

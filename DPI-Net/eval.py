@@ -484,7 +484,6 @@ for idx in range(len(infos)):
     ##### render for the ground truth
     import time
     print("ground truth rendering!")
-    time.sleep(5)
     if args.env not in SOFTGYM_ENVS:
         pyflex.set_scene(env_idx, scene_params, 0)
 
@@ -518,13 +517,13 @@ for idx in range(len(infos)):
 
     elif args.env == 'ClothFlatten':
         tmp_args = copy.deepcopy(env_arg_dicts[args.env])
-        tmp_args['headless'] = False
+        tmp_args['headless'] = True
         tmp_args['render_mode'] = 'particle'
         tmp_args['camera_name'] = 'default_camera'
+        tmp_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
         tmp_args['deterministic'] = True
         softgym_env = SOFTGYM_CUSTOM_ENVS[args.env](**tmp_args)
         softgym_env.reset()
-
     for step in range(args.time_step - 1):
         print("ground truth render step: ", step)
        
