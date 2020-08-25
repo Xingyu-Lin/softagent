@@ -21,13 +21,12 @@ from data import collate_fn
 from graph import ClothDataset
 from utils import count_parameters
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--pstep', type=int, default=2)
 parser.add_argument('--n_rollout', type=int, default=0)
 parser.add_argument('--time_step', type=int, default=0)
 parser.add_argument('--time_step_clip', type=int, default=0)
-parser.add_argument('--dt', type=float, default=1./60.)
+parser.add_argument('--dt', type=float, default=1. / 60.)
 parser.add_argument('--nf_relation', type=int, default=300)
 parser.add_argument('--nf_particle', type=int, default=200)
 parser.add_argument('--nf_effect', type=int, default=200)
@@ -44,7 +43,7 @@ parser.add_argument('--eval', type=int, default=0)
 parser.add_argument('--verbose_data', type=int, default=0)
 parser.add_argument('--verbose_model', type=int, default=0)
 
-parser.add_argument('--n_instance', type=int, default=0) ### an instance is an object. E.g. for fluid shake, instance is water + glass.
+parser.add_argument('--n_instance', type=int, default=0)  ### an instance is an object. E.g. for fluid shake, instance is water + glass.
 parser.add_argument('--n_stages', type=int, default=0)
 parser.add_argument('--n_his', type=int, default=0)
 
@@ -71,10 +70,12 @@ parser.add_argument('--position_dim', type=int, default=0)
 # relation attr:
 parser.add_argument('--relation_dim', type=int, default=0)
 
+# Graph construction
+parser.add_argument('--gt_edge', type=bool, default=1)
+
 args = parser.parse_args()
 
 phases_dict = dict()
-
 
 if args.env == 'FluidFall':
     args.n_rollout = 3000
@@ -141,7 +142,7 @@ elif args.env == 'BoxBath':
     args.outf = 'dump_BoxBath/' + args.outf
 
 elif args.env == 'FluidShake':
-    args.n_rollout = 20 # 2000
+    args.n_rollout = 20  # 2000
 
     # object states:
     # [x, y, z, xdot, ydot, zdot]
@@ -175,7 +176,7 @@ elif args.env == 'FluidShake':
     args.outf = 'dump_FluidShake/' + args.outf
 
 elif args.env == 'PassWater':
-    args.n_rollout = 100 # 2000
+    args.n_rollout = 100  # 2000
 
     # object states:
     # [x, y, z, xdot, ydot, zdot]
@@ -218,7 +219,7 @@ elif args.env == 'ClothFlatten':
 
     # object attr:
     # [cloth, root, sphere 0 - 3]
-    args.attr_dim = 6
+    args.attr_dim = 4
 
     # relation attr:
     # [none]
@@ -233,10 +234,10 @@ elif args.env == 'ClothFlatten':
     args.neighbor_radius = 0.013
 
     phases_dict["root_num"] = args.n_roots
-    phases_dict["root_sib_radius"] = [[5.0]] # NOTE: not actually used
-    phases_dict["root_des_radius"] = [[0.2]] #  NOTE: not actually used
+    phases_dict["root_sib_radius"] = [[5.0]]  # NOTE: not actually used
+    phases_dict["root_des_radius"] = [[0.2]]  # NOTE: not actually used
     phases_dict["root_pstep"] = [[args.pstep]]
-    phases_dict["instance"] = ["fluid"] # NOTE: not actually used
+    phases_dict["instance"] = ["fluid"]  # NOTE: not actually used
     phases_dict["material"] = ["fluid"]
 
     args.outf = 'dump_ClothFlatten/' + args.outf
@@ -249,7 +250,7 @@ elif args.env == 'RiceGrip':
     # [rest_x, rest_y, rest_z, rest_xdot, rest_ydot, rest_zdot,
     #  x, y, z, xdot, ydot, zdot, quat.x, quat.y, quat.z, quat.w]
     args.state_dim = 16 + 6 * args.n_his
-    args.position_dim = 6 # NOTE: why rice grip state dim is 6?
+    args.position_dim = 6  # NOTE: why rice grip state dim is 6?
 
     # object attr:
     # [fluid, root, gripper_0, gripper_1,
@@ -280,7 +281,6 @@ elif args.env == 'RiceGrip':
 else:
     raise AssertionError("Unsupported env")
 
-
 args.outf = args.outf + '_' + args.env
 args.dataf = 'data/' + args.dataf + '_' + args.env
 
@@ -288,11 +288,10 @@ os.system('mkdir -p ' + args.outf)
 os.system('mkdir -p ' + args.dataf)
 
 # generate data
-if args.env =='ClothFlatten':
+if args.env == 'ClothFlatten':
     datasets = {phase: ClothDataset(args, phase, phases_dict) for phase in ['train', 'valid']}
 else:
     raise NotImplementedError
-
 
 for phase in ['train', 'valid']:
     if args.gen_data:
@@ -311,7 +310,6 @@ dataloaders = {x: torch.utils.data.DataLoader(
     for x in ['train', 'valid']}
 
 print("dataloaders generate done!")
-
 
 # define propagation network
 model = DPINet(args, datasets['train'].stat, phases_dict, residual=True, use_gpu=use_gpu)
@@ -342,30 +340,29 @@ for epoch in range(st_epoch, args.n_epoch):
     phases = ['train', 'valid'] if args.eval == 0 else ['valid']
     for phase in phases:
 
-        model.train(phase=='train')
+        model.train(phase == 'train')
 
         losses = 0.
         for i, data in enumerate(dataloaders[phase]):
-            attr, state, rels, n_particles, n_shapes, instance_idx, label = data 
+            attr, state, rels, n_particles, n_shapes, instance_idx, label = data
             Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
 
             Rr, Rs = [], []
-            
+
             # print("rels[0] len: ", len(rels[0]))
             for j in range(len(rels[0])):
-                Rr_idx, Rs_idx, values = rels[0][j], rels[1][j], rels[2][j] # NOTE: values are all just 1
+                Rr_idx, Rs_idx, values = rels[0][j], rels[1][j], rels[2][j]  # NOTE: values are all just 1
                 # print("node_r_idx[j].shape[0]: ", node_r_idx[j].shape[0])
                 # print("Ra[j].size(0): ", Ra[j].size(0))
-                Rr.append(torch.sparse.FloatTensor( # NOTE: Ra = np.zeros((rels.shape[0], args.relation_dim)), relation_dim is just 1
+                Rr.append(torch.sparse.FloatTensor(  # NOTE: Ra = np.zeros((rels.shape[0], args.relation_dim)), relation_dim is just 1
                     Rr_idx, values, torch.Size([node_r_idx[j].shape[0], Ra[j].size(0)])))
                 Rs.append(torch.sparse.FloatTensor(
                     Rs_idx, values, torch.Size([node_s_idx[j].shape[0], Ra[j].size(0)])))
                 # NOTE: this is a matrix of size (n_receiver, n_rel). in each column (relationship), the receiver idx row is set to be 1.
 
-
             data = [attr, state, Rr, Rs, Ra, label]
 
-            with torch.set_grad_enabled(phase=='train'):
+            with torch.set_grad_enabled(phase == 'train'):
                 if use_gpu:
                     for d in range(len(data)):
                         if type(data[d]) == list:
@@ -425,7 +422,6 @@ for epoch in range(st_epoch, args.n_epoch):
 
         if phase == 'valid':
             scheduler.step(losses)
-            if(losses < best_valid_loss):
+            if (losses < best_valid_loss):
                 best_valid_loss = losses
                 torch.save(model.state_dict(), '%s/net_best.pth' % (args.outf))
-

@@ -548,7 +548,7 @@ def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, var
 
 def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, count_nodes, clusters, verbose=0, var=False):
     order = 2
-    n_root_level = len(phases_dict["root_num"][idx])
+    n_root_level = 1
     attr, relations, node_r_idx, node_s_idx, pstep = [attr], [], [], [], []
 
     relations_rev, node_r_idx_rev, node_s_idx_rev, pstep_rev = [], [], [], []
@@ -557,7 +557,7 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
     vel = velocities.data.cpu().numpy() if var else velocities
 
     for i in range(n_root_level):
-        root_num = phases_dict["root_num"][idx][i]
+        root_num = phases_dict["root_num"]
         root_sib_radius = phases_dict["root_sib_radius"][idx][i]
         root_des_radius = phases_dict["root_des_radius"][idx][i]
         root_pstep = phases_dict["root_pstep"][idx][i]

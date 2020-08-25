@@ -61,6 +61,7 @@ class PhysicsFleXDataset(Dataset):
         env_args = copy.deepcopy(env_arg_dicts[self.env_name])
         env_args['render_mode'] = 'particle'
         env_args['camera_name'] = 'default_camera'
+        env_args['action_repeat'] = 1
         if self.env_name == 'ClothFlatten':
             env_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
         return SOFTGYM_ENVS[self.env_name](**env_args)
@@ -93,7 +94,7 @@ class PhysicsFleXDataset(Dataset):
 
         print("stats warmed done!")
 
-    def load_data(self):
+    def load_data(self, name):
         self.stat = load_data(self.data_names[:2], self.stat_path)
         for i in range(len(self.stat)):
             self.stat[i] = self.stat[i][-3:, :]
@@ -135,20 +136,19 @@ class PhysicsFleXDataset(Dataset):
 
             positions = np.zeros((self.time_step, n_particles + n_shapes, 3), dtype=np.float32)
             velocities = np.zeros((self.time_step, n_particles + n_shapes, 3), dtype=np.float32)
-            shape_quats = np.zeros((self.time_step, n_shapes, 4), dtype=np.float32)
 
             positions[0, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
+            velocities[0, :n_particles] = pyflex.get_velocities().reshape(-1, 3)
             shape_states = pyflex.get_shape_states().reshape(-1, 14)
-
             for k in range(n_shapes):
                 positions[0, n_particles + k] = shape_states[k, :3]
-                shape_quats[0, k] = shape_states[k, 6:10]
-
-            data = [positions[0], velocities[0], shape_quats[0], clusters, [env.cloth_particle_radius]]
+                velocities[0, n_particles + k] = (0, 0, 0)
+            config = env.get_current_config()
+            cloth_xdim, cloth_ydim = config['ClothSize']
+            data = [positions[0], velocities[0], clusters, [env.cloth_particle_radius, cloth_xdim, cloth_ydim]]
             store_data(self.data_names, data, os.path.join(rollout_dir, str(0) + '.h5'))
 
             for j in range(self.time_step):
-                positions[j, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
                 action = self._collect_policy(env, j)
                 env.step(action)
                 positions[j, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
@@ -156,7 +156,6 @@ class PhysicsFleXDataset(Dataset):
 
                 for k in range(n_shapes):
                     positions[j, n_particles + k] = shape_states[k, :3]
-                    shape_quats[j, k] = shape_states[k, 6:10]
 
                 # NOTE: velocity is not directly using particle velocity in Pyflex
                 # the main benefit of computing velocity in this way is that we can get the velocity of the shape.
@@ -164,7 +163,8 @@ class PhysicsFleXDataset(Dataset):
                     velocities[j] = (positions[j] - positions[j - 1]) / self.dt
 
                 # NOTE: 1) particle + glass wall positions, 2) particle + glass wall velocitys, 3) glass wall rotations, 4) scenen parameters
-                data = [positions[j], velocities[j], shape_quats[j], clusters, [env.cloth_particle_radius]]  # NOTE: radii is the sphere radius
+                data = [positions[j], velocities[j], clusters,
+                        [env.cloth_particle_radius, cloth_xdim, cloth_ydim]]  # NOTE: radii is the sphere radius
                 store_data(self.data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
 
             # change dtype for more accurate stat calculation
@@ -221,7 +221,7 @@ class PhysicsFleXDataset(Dataset):
 class ClothDataset(PhysicsFleXDataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.data_names = ['positions', 'velocities', 'shape_quats', 'clusters', 'scene_params']
+        self.data_names = ['positions', 'velocities', 'clusters', 'scene_params']
 
     def _prepare_policy(self, env):
         """ Doing something after env reset but before collecting any data"""
@@ -237,13 +237,51 @@ class ClothDataset(PhysicsFleXDataset):
             action = (0, 0, 0, 0, 0, 0, 0, 0)
         return action
 
+    def _get_gt_neighbor(self, cloth_xdim, cloth_ydim):
+        # Connect cloth particles based on the ground-truth edges
+        # Cloth index looks like the following (For Flex 1.0):
+        # 0, 1, ..., cloth_xdim -1
+        # ...
+        # cloth_xdim * (cloth_ydim -1 ), ..., cloth_xdim * cloth_ydim -1
+        cloth_xdim, cloth_ydim = int(cloth_xdim), int(cloth_ydim)
+        rels = []
+        # Vectorized version
+        all_idx = np.arange(cloth_xdim * cloth_ydim).reshape([cloth_ydim, cloth_xdim])
+
+        # Horizontal connections
+        idx_s = all_idx[:, :-1].reshape(-1, 1)
+        idx_r = idx_s + 1
+        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+
+        # Vertical connections
+        idx_s = all_idx[:-1, :].reshape(-1, 1)
+        idx_r = idx_s + cloth_xdim
+        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+
+        # Diagonal connections
+        idx_s = all_idx[:-1, :-1].reshape(-1, 1)
+        idx_r = idx_s + 1 + cloth_xdim
+        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+
+        rels = np.vstack(rels)
+        return rels
+
+        # Horizontal connections
+        # for i in range(cloth_ydim):
+        #     for j in range(cloth_xdim - 1):
+        #         rels.append([i * cloth_xdim + j, i * cloth_xdim + j + 1, 1])
+        # Vertical connections
+        # for i in range(cloth_ydim - 1):
+        #     for j in range(cloth_xdim):
+        #         rels.append([i * cloth_ydim + j, (i + 1) * cloth_ydim + j, 1])
+
     def _construct_graph(self, data, stat, args, phases_dict, var):
         # Arrangement:
         # particles, shapes, roots
 
-        positions, velocities, shape_quats, clusters, scene_params = data
-        n_shapes = shape_quats.size(0) if var else shape_quats.shape[0]
-        sphere_radius = scene_params[0]
+        positions, velocities, clusters, scene_params = data
+        n_shapes = 2
+        sphere_radius, cloth_xdim, cloth_ydim = scene_params
 
         count_nodes = positions.size(0) if var else positions.shape[0]
         n_particles = count_nodes - n_shapes
@@ -270,7 +308,7 @@ class ClothDataset(PhysicsFleXDataset):
         ##### add env specific graph components
         rels = []
 
-        # connect each cloth particle to the sphere particle if their distance is smaller than 0.1
+        # connect each cloth particle to the sphere particle if their distance is smaller than a certain threshold
         for i in range(n_shapes):
             # object attr:
             # [fluid, root, sphere_0, sphere_1, sphere_2, sphere_3]
@@ -279,29 +317,32 @@ class ClothDataset(PhysicsFleXDataset):
             pos = positions.data.cpu().numpy() if var else positions
             sphere_center = pos[n_particles + i, :3]
             dis = np.sqrt(np.sum((pos[:n_particles, :3] - sphere_center) ** 2))
-            nodes = np.nonzero(dis < 0.1 + sphere_radius)[0]
+            nodes = np.nonzero(dis < 0.05 + sphere_radius)[0]  # picker radius is 0.05
 
             wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
             rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]  # NOTE: [receiver, sender, value]
             # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
 
         ##### add relations between leaf particles
-        for i in range(len(instance_idx) - 1):
-            st, ed = instance_idx[i], instance_idx[i + 1]
-            # FluidShake object attr:
-            # [fluid, wall_0, wall_1, wall_2, wall_3, wall_4]
-            if phases_dict['material'][i] == 'fluid':
-                attr[st:ed, 0] = 1
-                queries = np.arange(st, ed)
-                anchors = np.arange(n_particles)
-            else:
-                raise AssertionError("Unsupported materials")
+        if args.gt_edge:
+            rels += [self._get_gt_neighbor(cloth_xdim, cloth_ydim)]
+        else:
+            for i in range(len(instance_idx) - 1):
+                st, ed = instance_idx[i], instance_idx[i + 1]
+                # FluidShake object attr:
+                # [fluid, wall_0, wall_1, wall_2, wall_3, wall_4]
+                if phases_dict['material'][i] == 'fluid':
+                    attr[st:ed, 0] = 1
+                    queries = np.arange(st, ed)
+                    anchors = np.arange(n_particles)
+                else:
+                    raise AssertionError("Unsupported materials")
 
-            # st_time = time.time()
-            pos = positions
-            pos = pos[:, -3:]
-            rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
-            # print("Time on neighbor search", time.time() - st_time)
+                # st_time = time.time()
+                pos = positions
+                pos = pos[:, -3:]
+                rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
+                # print("Time on neighbor search", time.time() - st_time)
 
         rels = np.concatenate(rels, 0)
         if rels.shape[0] > 0:
@@ -320,7 +361,7 @@ class ClothDataset(PhysicsFleXDataset):
         cnt_clusters = 0
         for i in range(len(instance_idx) - 1):
             st, ed = instance_idx[i], instance_idx[i + 1]
-            n_root_level = len(phases_dict["root_num"][i])
+            n_root_level = 1
 
             if n_root_level > 0:
                 attr, positions, velocities, count_nodes, \
