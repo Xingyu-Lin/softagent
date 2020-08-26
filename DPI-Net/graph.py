@@ -61,7 +61,7 @@ class PhysicsFleXDataset(Dataset):
         env_args = copy.deepcopy(env_arg_dicts[self.env_name])
         env_args['render_mode'] = 'particle'
         env_args['camera_name'] = 'default_camera'
-        env_args['action_repeat'] = 1
+        env_args['action_repeat'] = 2
         if self.env_name == 'ClothFlatten':
             env_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
         return SOFTGYM_ENVS[self.env_name](**env_args)
@@ -145,7 +145,8 @@ class PhysicsFleXDataset(Dataset):
                 velocities[0, n_particles + k] = (0, 0, 0)
             config = env.get_current_config()
             cloth_xdim, cloth_ydim = config['ClothSize']
-            data = [positions[0], velocities[0], clusters, [env.cloth_particle_radius, cloth_xdim, cloth_ydim]]
+            config_id = env.current_config_id
+            data = [positions[0], velocities[0], clusters, [env.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id]]
             store_data(self.data_names, data, os.path.join(rollout_dir, str(0) + '.h5'))
 
             for j in range(self.time_step):
@@ -164,7 +165,7 @@ class PhysicsFleXDataset(Dataset):
 
                 # NOTE: 1) particle + glass wall positions, 2) particle + glass wall velocitys, 3) glass wall rotations, 4) scenen parameters
                 data = [positions[j], velocities[j], clusters,
-                        [env.cloth_particle_radius, cloth_xdim, cloth_ydim]]  # NOTE: radii is the sphere radius
+                        [env.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id]]  # NOTE: radii is the sphere radius
                 store_data(self.data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
 
             # change dtype for more accurate stat calculation
@@ -281,7 +282,7 @@ class ClothDataset(PhysicsFleXDataset):
 
         positions, velocities, clusters, scene_params = data
         n_shapes = 2
-        sphere_radius, cloth_xdim, cloth_ydim = scene_params
+        sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
 
         count_nodes = positions.size(0) if var else positions.shape[0]
         n_particles = count_nodes - n_shapes

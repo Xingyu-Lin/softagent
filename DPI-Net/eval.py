@@ -223,7 +223,7 @@ elif args.env == 'ClothFlatten':
 
     # object attr:
     # [cloth, root, sphere 0 - 3]
-    args.attr_dim = 6
+    args.attr_dim = 4
 
     # relation attr:
     # [none]
