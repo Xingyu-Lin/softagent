@@ -35,9 +35,9 @@ def generate_video(env, env_name):
 
 def generate_env_state(env_name):
     kwargs = env_arg_dict[env_name]
-    kwargs['headless'] = False
+    kwargs['headless'] = True
     kwargs['use_cached_states'] = False
-    kwargs['num_variations'] = 5
+    kwargs['num_variations'] = 1000
     kwargs['save_cached_states'] = True
     # Env wrappter
     env = Env(env_name, False, 100, 200, 1, 8, 128, kwargs)
@@ -46,7 +46,7 @@ def generate_env_state(env_name):
 
 if __name__ == '__main__':
     env_names = ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
-    env_names = ['ClothFold']
+    env_names = ['ClothFlatten']
     envs = [generate_env_state(env_name) for env_name in env_names]
 
     for (env, env_name) in zip(envs, env_names):

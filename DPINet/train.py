@@ -210,8 +210,6 @@ elif args.env == 'PassWater':
     args.outf = 'dump_PassWater/' + args.outf
 
 elif args.env == 'ClothFlatten':
-    args.n_rollout = 100
-
     # object states:
     # [x, y, z, xdot, ydot, zdot]
     args.state_dim = 6

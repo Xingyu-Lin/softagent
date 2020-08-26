@@ -10,6 +10,7 @@ import pyflex
 
 parser = argparse.ArgumentParser()
 parser.add_argument('data_folder', type=str, default='data/temp_ClothFlatten/train/')
+parser.add_argument('--model_file', default=None)
 parser.add_argument('--n_rollout', type=int, default=5)
 
 
@@ -55,7 +56,10 @@ def visualize(env, n_shape, traj_pos, config_id):
         pyflex.step(render=True)
 
 
-def main(data_folder, n_rollout):
+def get_model_prediction(initial_pos):
+    raise NotImplementedError
+
+def main(data_folder, n_rollout, model_file=None):
     env_name = 'ClothFlatten'
     n_shape = 2
     env = create_env(env_name)
@@ -65,6 +69,9 @@ def main(data_folder, n_rollout):
         traj_folder = osp.join(data_folder, str(traj_id))
         traj_pos, config_id = parse_trajectory(traj_folder)
         visualize(env, n_shape, traj_pos, config_id)
+        if model_file is not None:
+            predicted_traj_pos = get_model_prediction(traj_pos[0])
+            visualize(env, n_shape, predicted_traj_pos, config_id)
 
 
 if __name__ == '__main__':

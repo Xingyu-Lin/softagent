@@ -17,9 +17,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 
-from utils import rand_float, rand_int
-from utils import sample_control_RiceGrip, calc_shape_states_RiceGrip
-from utils import calc_box_init_FluidShake, calc_shape_states_FluidShake
+from DPINet.utils import rand_float, rand_int, sample_control_RiceGrip, calc_shape_states_RiceGrip, calc_box_init_FluidShake, calc_shape_states_FluidShake
 from softgym.registered_env import env_arg_dict as env_arg_dicts
 from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
 import copy
@@ -548,7 +546,7 @@ def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, var
 
 def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, count_nodes, clusters, verbose=0, var=False):
     order = 2
-    n_root_level = 1
+    n_root_level = len(phases_dict["root_num"][idx])
     attr, relations, node_r_idx, node_s_idx, pstep = [attr], [], [], [], []
 
     relations_rev, node_r_idx_rev, node_s_idx_rev, pstep_rev = [], [], [], []
@@ -557,7 +555,7 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
     vel = velocities.data.cpu().numpy() if var else velocities
 
     for i in range(n_root_level):
-        root_num = phases_dict["root_num"]
+        root_num = phases_dict["root_num"][idx][i]
         root_sib_radius = phases_dict["root_sib_radius"][idx][i]
         root_des_radius = phases_dict["root_des_radius"][idx][i]
         root_pstep = phases_dict["root_pstep"][idx][i]
@@ -978,7 +976,14 @@ class PhysicsFleXDataset(Dataset):
 
         os.system('mkdir -p ' + self.data_dir)
 
-        self.data_names = ['positions', 'velocities', 'shape_quats', 'clusters', 'scene_params']
+        if args.env == 'RiceGrip' or args.env == 'ClothFlatten':
+            self.data_names = ['positions', 'velocities', 'shape_quats', 'clusters', 'scene_params']
+        elif args.env == 'FluidShake' or args.env == 'PassWater':
+            self.data_names = ['positions', 'velocities', 'shape_quats', 'scene_params']
+        elif args.env == 'BoxBath':
+            self.data_names = ['positions', 'velocities', 'clusters']
+        elif args.env == 'FluidFall':
+            self.data_names = ['positions', 'velocities']
 
         ratio = self.args.train_valid_ratio
         if phase == 'train':

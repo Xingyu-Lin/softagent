@@ -15,11 +15,17 @@ def run_heuristic(mode='visual'):
     num_picker = 2
     env_name = 'ClothFlatten' if mode != 'visual' else 'ClothManipulate'
     dic = env_arg_dict[env_name]
-    dic['headless'] = True
+    dic['headless'] = False
     action_repeat = dic.get('action_repeat', 8)
     horizon = dic['horizon']
     print("env name {} action repeat {} horizon {}".format(env_name, action_repeat, horizon))
     env = ClothFlattenEnv(**dic) if mode != 'visual' else ClothManipulateEnv(**dic)
+    env.reset()
+    print(env.get_current_config())
+    import pyflex
+    pos = pyflex.get_positions().reshape(-1, 4)
+    print(pos.shape)
+    exit()
 
     imgs = []
     returns = []

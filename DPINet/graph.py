@@ -17,16 +17,14 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 
-from utils import rand_float, rand_int, query_yes_no
-from utils import sample_control_RiceGrip, calc_shape_states_RiceGrip
-from utils import calc_box_init_FluidShake, calc_shape_states_FluidShake
-from softgym.registered_env import env_arg_dict as env_arg_dicts
+from DPINet.utils import rand_float, rand_int, sample_control_RiceGrip, calc_shape_states_RiceGrip, calc_box_init_FluidShake, calc_shape_states_FluidShake
+from softgym.registered_env import env_arg_dict
 from softgym.registered_env import SOFTGYM_ENVS
 import copy
 
 import pyflex
 
-from data_loader import store_data, load_data, init_stat, combine_stat, normalize, find_relations_neighbor, make_hierarchy
+from DPINet.data_loader import store_data, load_data, init_stat, combine_stat, normalize, find_relations_neighbor, make_hierarchy
 
 
 class PhysicsFleXDataset(Dataset):
@@ -37,7 +35,7 @@ class PhysicsFleXDataset(Dataset):
         self.args = args
         self.phases_dict = phases_dict
         self.phase = phase
-        self.env_name = args.env
+        self.env_name = args.env_name
         self.root_num = phases_dict['root_num']
         self.num_workers = args.num_workers
         self.data_dir = os.path.join(self.args.dataf, phase)
@@ -58,7 +56,7 @@ class PhysicsFleXDataset(Dataset):
             raise AssertionError("Unknown phase")
 
     def create_env(self):
-        env_args = copy.deepcopy(env_arg_dicts[self.env_name])
+        env_args = copy.deepcopy(env_arg_dict[self.env_name])
         env_args['render_mode'] = 'particle'
         env_args['camera_name'] = 'default_camera'
         env_args['action_repeat'] = 2
@@ -327,23 +325,24 @@ class ClothDataset(PhysicsFleXDataset):
         ##### add relations between leaf particles
         if args.gt_edge:
             rels += [self._get_gt_neighbor(cloth_xdim, cloth_ydim)]
-        else:
-            for i in range(len(instance_idx) - 1):
-                st, ed = instance_idx[i], instance_idx[i + 1]
-                # FluidShake object attr:
-                # [fluid, wall_0, wall_1, wall_2, wall_3, wall_4]
-                if phases_dict['material'][i] == 'fluid':
-                    attr[st:ed, 0] = 1
-                    queries = np.arange(st, ed)
-                    anchors = np.arange(n_particles)
-                else:
-                    raise AssertionError("Unsupported materials")
 
-                # st_time = time.time()
-                pos = positions
-                pos = pos[:, -3:]
-                rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
-                # print("Time on neighbor search", time.time() - st_time)
+        # Neighboring based connections
+        for i in range(len(instance_idx) - 1):
+            st, ed = instance_idx[i], instance_idx[i + 1]
+            # FluidShake object attr:
+            # [fluid, wall_0, wall_1, wall_2, wall_3, wall_4]
+            if phases_dict['material'][i] == 'fluid':
+                attr[st:ed, 0] = 1
+                queries = np.arange(st, ed)
+                anchors = np.arange(n_particles)
+            else:
+                raise AssertionError("Unsupported materials")
+
+            # st_time = time.time()
+            pos = positions
+            pos = pos[:, -3:]
+            rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
+            # print("Time on neighbor search", time.time() - st_time)
 
         rels = np.concatenate(rels, 0)
         if rels.shape[0] > 0:

@@ -9,9 +9,9 @@ from softgym.envs.pour_water_amount import PourWaterAmountPosControlEnv
 from softgym.envs.pass_water import PassWater1DEnv
 from softgym.envs.pass_water_torus import PassWater1DTorusEnv
 from softgym.envs.transport_torus import TransportTorus1D
-from softgym.envs.rope_flatten import RopeFlattenEnv
+# from softgym.envs.rope_flatten import RopeFlattenEnv
 from softgym.envs.rope_flatten_new import RopeFlattenNewEnv
-from softgym.envs.rope_alphabet import RopeAlphaBetEnv
+# from softgym.envs.rope_alphabet import RopeAlphaBetEnv
 from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.envs.cloth_drop import ClothDropEnv
@@ -45,9 +45,9 @@ SOFTGYM_CUSTOM_ENVS = {'PassWater': PassWater1DEnv,
                        'ClothDrop': ClothDropEnv,
                        'RigidClothFold': RigidClothFoldEnv,
                        'RigidClothDrop': RigidClothDropEnv,
-                       'RopeFlatten': RopeFlattenEnv,
+                       # 'RopeFlatten': RopeFlattenEnv,
                        'RopeFlattenNew': RopeFlattenNewEnv,
-                       'RopeAlphaBet': RopeAlphaBetEnv,
+                       # 'RopeAlphaBet': RopeAlphaBetEnv,
                        'PourWaterAmount': PourWaterAmountPosControlEnv,
                        'ClothFlattenPPP': ClothFlattenEnv, # Picker pick and place
                        'ClothFoldPPP': ClothFoldEnv,
