@@ -118,16 +118,9 @@ def train(args):
         raise NotImplementedError
 
     for phase in ['train', 'valid']:
-        datasets[phase].load_data(args.env)
-
-    for phase in ['train', 'valid']:
-        if args.gen_data:
-            datasets[phase].create_dataset()
-        else:
-            datasets[phase].load_data(args.env)
-
+        datasets[phase].load_data(args.env_name)
+    print("Dataset loaded from", args.dataf)
     use_gpu = torch.cuda.is_available()
-    print("data generate done!")
 
     dataloaders = {x: torch.utils.data.DataLoader(
         datasets[x], batch_size=args.batch_size,
@@ -136,15 +129,14 @@ def train(args):
         collate_fn=collate_fn)
         for x in ['train', 'valid']}
 
-    print("dataloaders generate done!")
-
     # define propagation network
     model = DPINet(args, datasets['train'].stat, args.phases_dict, residual=True, use_gpu=use_gpu)
 
     print("Number of parameters: %d" % count_parameters(model))
+    logdir = logger.get_dir()
 
     if args.resume_epoch > 0 or args.resume_iter > 0:
-        model_path = os.path.join(args.outf, 'net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
+        model_path = os.path.join(logdir, 'net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
         print("Loading saved ckp from %s" % model_path)
         model.load_state_dict(torch.load(model_path))
 
@@ -161,7 +153,6 @@ def train(args):
 
     st_epoch = args.resume_epoch if args.resume_epoch > 0 else 0
     best_valid_loss = np.inf
-    time.sleep(5)
     for epoch in range(st_epoch, args.n_epoch):
 
         phases = ['train', 'valid'] if args.eval == 0 else ['valid']
@@ -211,7 +202,7 @@ def train(args):
                     predicted = model(
                         attr, state, Rr, Rs, Ra, n_particles,
                         node_r_idx, node_s_idx, pstep,
-                        instance_idx, phases_dict, args.verbose_model)
+                        instance_idx, args.phases_dict, args.verbose_model)
                     # print('Time forward', time.time() - st_time)
 
                     # print(predicted)
@@ -241,7 +232,7 @@ def train(args):
                            n_relations, np.sqrt(loss.item()), losses / (i + 1)))
 
                 if phase == 'train' and i > 0 and i % args.ckp_per_iter == 0:
-                    torch.save(model.state_dict(), '%s/net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i))
+                    torch.save(model.state_dict(), '%s/net_epoch_%d_iter_%d.pth' % (logdir, epoch, i))
 
             losses /= len(dataloaders[phase])
             print('%s [%d/%d] Loss: %.4f, Best valid: %.4f' %
@@ -251,7 +242,7 @@ def train(args):
                 scheduler.step(losses)
                 if (losses < best_valid_loss):
                     best_valid_loss = losses
-                    torch.save(model.state_dict(), '%s/net_best.pth' % (args.outf))
+                    torch.save(model.state_dict(), '%s/net_best.pth' % (logdir))
 
 
 def run_task(vv, log_dir, exp_name):

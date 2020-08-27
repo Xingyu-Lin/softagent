@@ -120,11 +120,11 @@ class DPINet(nn.Module):
         self.args = args
 
         state_dim = args.state_dim
-        attr_dim = args.attr_dim # NOTE: object = (state, obj_attr)
-        relation_dim = args.relation_dim # NOTE: relation = (obj_receive, obj_send, relation_attri)
-        nf_particle = args.nf_particle # NOTE: hidden layers for particle encoder network
-        nf_relation = args.nf_relation # NOTE: hidden layers for relation encoder network
-        nf_effect = args.nf_effect # NOTE: hidden layers for propagation network
+        attr_dim = args.attr_dim  # NOTE: object = (state, obj_attr)
+        relation_dim = args.relation_dim  # NOTE: relation = (obj_receive, obj_send, relation_attri)
+        nf_particle = args.nf_particle  # NOTE: hidden layers for particle encoder network
+        nf_relation = args.nf_relation  # NOTE: hidden layers for relation encoder network
+        nf_effect = args.nf_effect  # NOTE: hidden layers for propagation network
 
         self.nf_effect = args.nf_effect
 
@@ -152,9 +152,9 @@ class DPINet(nn.Module):
         for i in range(args.n_stages):
             print("particle encoder input size: ", attr_dim + state_dim * 2)
             self.particle_encoder_list.append(
-                ParticleEncoder(attr_dim + state_dim * 2, nf_particle, nf_effect)) 
-                # NOTE: reason for state_dim*2: 1 is the original state, another is offset to the center of mass
-                # (which is non-zero for rigid and zero for fluid) 
+                ParticleEncoder(attr_dim + state_dim * 2, nf_particle, nf_effect))
+            # NOTE: reason for state_dim*2: 1 is the original state, another is offset to the center of mass
+            # (which is non-zero for rigid and zero for fluid)
 
         # (1) sender attr (2) receiver attr (3) state receiver (4) state sender (5) relation attr
         self.relation_encoder_list = nn.ModuleList()
@@ -177,8 +177,8 @@ class DPINet(nn.Module):
 
         # (1) set particle effect
         self.rigid_particle_predictor = ParticlePredictor(nf_effect, nf_effect, 7)  # predict rigid motion
-        self.fluid_particle_predictor = ParticlePredictor(nf_effect, nf_effect, args.position_dim) # NOTE: I thought label is velocity??
-            # but anyway, in all the cases position_dim = velocity_dim (check for RiceGrip)
+        self.fluid_particle_predictor = ParticlePredictor(nf_effect, nf_effect, args.position_dim)  # NOTE: I thought label is velocity??
+        # but anyway, in all the cases position_dim = velocity_dim (check for RiceGrip)
 
     def rotation_matrix_from_quaternion(self, params):
         # params dim - 4: w, x, y, z
@@ -200,9 +200,9 @@ class DPINet(nn.Module):
         w, x, y, z = params[0].view(1, 1), params[1].view(1, 1), params[2].view(1, 1), params[3].view(1, 1)
 
         rot = torch.cat((
-            torch.cat((one-y*y*2-z*z*2, x*y*2+z*w*2, x*z*2-y*w*2), 1),
-            torch.cat((x*y*2-z*w*2, one-x*x*2-z*z*2, y*z*2+x*w*2), 1),
-            torch.cat((x*z*2+y*w*2, y*z*2-x*w*2, one-x*x*2-y*y*2), 1)), 0)
+            torch.cat((one - y * y * 2 - z * z * 2, x * y * 2 + z * w * 2, x * z * 2 - y * w * 2), 1),
+            torch.cat((x * y * 2 - z * w * 2, one - x * x * 2 - z * z * 2, y * z * 2 + x * w * 2), 1),
+            torch.cat((x * z * 2 + y * w * 2, y * z * 2 - x * w * 2, one - x * x * 2 - y * y * 2), 1)), 0)
 
         return rot
 
@@ -246,25 +246,25 @@ class DPINet(nn.Module):
         for s in range(n_stage):
             if verbose:
                 print("=== Stage", s)
-            Rrp = Rr[s].t() # transpose, then has shape (n_rel, n_receiver)
+            Rrp = Rr[s].t()  # transpose, then has shape (n_rel, n_receiver)
             Rsp = Rs[s].t()
 
             # receiver_attr, sender_attr
             attr_r = attr[node_r_idx[s]]
             attr_s = attr[node_s_idx[s]]
-            attr_r_rel = Rrp.mm(attr_r) # NOTE: use matrix multiplication to extract the receiver's attribute
+            attr_r_rel = Rrp.mm(attr_r)  # NOTE: use matrix multiplication to extract the receiver's attribute
             attr_s_rel = Rsp.mm(attr_s)
 
             # receiver_state, sender_state
             state_r = state[node_r_idx[s]]
-            state_s = state[node_s_idx[s]] 
-            state_r_rel = Rrp.mm(state_r) # NOTE: again use matrix multiplication to extract the receiver's state
+            state_s = state[node_s_idx[s]]
+            state_r_rel = Rrp.mm(state_r)  # NOTE: again use matrix multiplication to extract the receiver's state
             state_s_rel = Rsp.mm(state_s)
             # state_diff = state_r_rel - state_s_rel  # NOTE: state_diff is actually never used
 
             # particle encode
             if verbose:
-                print('attr_r', attr_r.shape, 'state_r', state_r.shape) # NOTE: the attr has concated the offset to the mass center
+                print('attr_r', attr_r.shape, 'state_r', state_r.shape)  # NOTE: the attr has concated the offset to the mass center
             particle_encode = self.particle_encoder_list[s](torch.cat([attr_r, state_r], 1))
 
             # calculate relation encoding
@@ -282,7 +282,7 @@ class DPINet(nn.Module):
                 effect_p_r = particle_effect[node_r_idx[s]]
                 effect_p_s = particle_effect[node_s_idx[s]]
 
-                receiver_effect = Rrp.mm(effect_p_r) # Rrp: (n_rel, n_receiver), where each row is (0, 0, ..., 1, ..., 0), 1 at receiver idx
+                receiver_effect = Rrp.mm(effect_p_r)  # Rrp: (n_rel, n_receiver), where each row is (0, 0, ..., 1, ..., 0), 1 at receiver idx
                 sender_effect = Rsp.mm(effect_p_s)
 
                 # calculate relation effect
@@ -292,7 +292,7 @@ class DPINet(nn.Module):
                     print("relation effect:", effect_rel.size())
 
                 # calculate particle effect by aggregating relation effect
-                effect_p_r_agg = Rr[s].mm(effect_rel) # (n_receiver, n_rel) x (n_rel, nf_effect) -> (n_receiver, nf_effect)
+                effect_p_r_agg = Rr[s].mm(effect_rel)  # (n_receiver, n_rel) x (n_rel, nf_effect) -> (n_receiver, nf_effect)
                 # NOTE: this is correct. The first row of Rr[s] encodes in which rels the first particle is receiver.
 
                 # calculate particle effect
@@ -330,4 +330,3 @@ class DPINet(nn.Module):
             print("pred:", pred.size())
 
         return pred
-

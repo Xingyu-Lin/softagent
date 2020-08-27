@@ -29,7 +29,7 @@ env_configs = \
                 material=["fluid"]
 
             ),
-            n_rollout=100,
+            n_rollout=1000,
             dataf='./data/dataset/ClothFlatten/'
         )
     }

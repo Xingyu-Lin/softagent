@@ -17,7 +17,8 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 
-from DPINet.utils import rand_float, rand_int, sample_control_RiceGrip, calc_shape_states_RiceGrip, calc_box_init_FluidShake, calc_shape_states_FluidShake
+from DPINet.utils import rand_float, rand_int, sample_control_RiceGrip, calc_shape_states_RiceGrip, calc_box_init_FluidShake, \
+    calc_shape_states_FluidShake
 from softgym.registered_env import env_arg_dict
 from softgym.registered_env import SOFTGYM_ENVS
 import copy
@@ -216,6 +217,14 @@ class PhysicsFleXDataset(Dataset):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
+    def construct_graph(self, data):
+        return self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
+
+    def obtain_graph(self, data_path):
+        data = load_data(self.data_names, data_path)
+        attr, state, relations, n_particles, n_shapes, instance_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
+        return attr, state, relations, n_particles, n_shapes, instance_idx, data
+
 
 class ClothDataset(PhysicsFleXDataset):
     def __init__(self, *args, **kwargs):
@@ -230,10 +239,10 @@ class ClothDataset(PhysicsFleXDataset):
 
     def _collect_policy(self, env, timestep):
         """ Policy for collecting data"""
-        if timestep < 20:
+        if timestep < 30:
             action = (0, 0.005, 0, 1, 0, 0, 0, 0)
         else:
-            action = (0, 0, 0, 0, 0, 0, 0, 0)
+            action = (0, 0, 0, 1, 0, 0, 0, 0)
         return action
 
     def _get_gt_neighbor(self, cloth_xdim, cloth_ydim):
