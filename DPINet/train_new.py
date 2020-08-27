@@ -227,9 +227,14 @@ def train(args):
                     n_relations = 0
                     for j in range(len(Ra)):
                         n_relations += Ra[j].size(0)
-                    print('%s [%d/%d][%d/%d] n_relations: %d, Loss: %.6f, Agg: %.6f' %
-                          (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
-                           n_relations, np.sqrt(loss.item()), losses / (i + 1)))
+                    # print('%s [%d/%d][%d/%d] n_relations: %d, Loss: %.6f, Agg: %.6f' %
+                    #       (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
+                    #        n_relations, np.sqrt(loss.item()), losses / (i + 1)))
+                    logger.record_tabular('train/epoch', epoch)
+                    logger.record_tabular('train/steps', i)
+                    logger.record_tabular('train/loss', np.sqrt(loss.item()))
+                    logger.record_tabular('train/agg_loss', losses / (i + 1))
+                    logger.dump_tabular()
 
                 if phase == 'train' and i > 0 and i % args.ckp_per_iter == 0:
                     torch.save(model.state_dict(), '%s/net_epoch_%d_iter_%d.pth' % (logdir, epoch, i))

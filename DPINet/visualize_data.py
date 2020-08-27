@@ -31,7 +31,7 @@ def create_env(env_name):
     env_args['render_mode'] = 'particle'
     env_args['camera_name'] = 'default_camera'
     env_args['action_repeat'] = 2
-    env_args['headless'] = True
+    env_args['headless'] = False
     if env_name == 'ClothFlatten':
         env_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
     return SOFTGYM_ENVS[env_name](**env_args)
@@ -68,7 +68,6 @@ def visualize(env, n_shape, traj_pos, config_id):
         p[:, :3] = particle_pos
         pyflex.set_positions(p)
         set_shape_pos(shape_pos)
-        pyflex.step()
         frames.append(env.get_image(720, 720))
     return frames
 
