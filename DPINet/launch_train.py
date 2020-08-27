@@ -15,7 +15,7 @@ def main(mode, debug, dry):
     vg = VariantGenerator()
 
     vg.add('env_name', ['ClothFlatten'])
-    vg.add('gen_data', [True])
+    vg.add('gen_data', [False])
     vg.add('seed', [100])
     if not debug:
         pass

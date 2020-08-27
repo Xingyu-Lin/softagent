@@ -328,7 +328,7 @@ class ClothDataset(PhysicsFleXDataset):
             nodes = np.nonzero(dis < 0.05 + sphere_radius)[0]  # picker radius is 0.05
 
             wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
-            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]  # NOTE: [receiver, sender, value]
+            rels += [np.stack([nodes, wall, np.zeros(nodes.shape[0])], axis=1)]  # Different attributes for cloth edges
             # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
 
         ##### add relations between leaf particles
