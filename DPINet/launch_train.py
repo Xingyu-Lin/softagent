@@ -16,8 +16,9 @@ def main(mode, debug, dry):
 
     vg.add('env_name', ['ClothFlatten'])
     vg.add('gen_data', [False])
-    vg.add('use_hierarchy', [True])
-    vg.add('use_edge_attr', [True])
+    vg.add('training', [True])
+    vg.add('use_hierarchy', [True, False])
+    vg.add('use_edge_attr', [True, False])
     vg.add('seed', [100])
     if not debug:
         pass

@@ -30,6 +30,6 @@ env_configs = \
 
             ),
             n_rollout=1000,
-            dataf='./data/dataset/ClothFlatten/'
+            dataf='./datasets/ClothFlatten/'
         )
     }

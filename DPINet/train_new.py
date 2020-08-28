@@ -230,8 +230,8 @@ def train(args):
                     # print('%s [%d/%d][%d/%d] n_relations: %d, Loss: %.6f, Agg: %.6f' %
                     #       (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
                     #        n_relations, np.sqrt(loss.item()), losses / (i + 1)))
-                    logger.record_tabular('train/epoch', epoch)
-                    logger.record_tabular('train/steps', i)
+                    logger.record_tabular('train/_epoch', epoch)
+                    logger.record_tabular('train/_steps', i)
                     logger.record_tabular('train/loss', np.sqrt(loss.item()))
                     logger.record_tabular('train/agg_loss', losses / (i + 1))
                     logger.dump_tabular()
@@ -277,5 +277,5 @@ def run_task(vv, log_dir, exp_name):
 
     if vv['gen_data']:
         generate_dataset(args)
-    else:
+    if vv['training']:
         train(args)

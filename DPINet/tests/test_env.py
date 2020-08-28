@@ -7,6 +7,7 @@ from softgym.utils.normalized_env import normalize
 from softgym.utils.visualization import save_numpy_as_gif
 import pyflex
 
+
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     # ['PassWater', 'PourWater', 'PourWaterAmount', 'RopeFlattenNew', 'ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
@@ -40,5 +41,7 @@ def main():
         env.step(action)
     while (1):
         pyflex.step(render=True)
+
+
 if __name__ == '__main__':
     main()

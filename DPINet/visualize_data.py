@@ -20,7 +20,7 @@ from softgym.utils.visualization import save_numpy_as_gif
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_file', default=None)
-parser.add_argument('--data_folder', type=str, default='data/dataset/ClothFlatten/train')
+parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten/train')
 parser.add_argument('--env_name', type=str, default='ClothFlatten')
 parser.add_argument('--n_rollout', type=int, default=5)
 parser.add_argument('--save_folder', type=str, default='./dpi_visualization')
