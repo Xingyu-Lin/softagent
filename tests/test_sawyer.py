@@ -2,9 +2,9 @@ import numpy as np
 import pyflex
 from softgym.envs.cloth_fold import ClothFoldEnv
 from softgym.envs.pass_water import PassWater1DEnv
-from softgym.envs.rope_flatten import RopeFlattenEnv
+# from softgym.envs.rope_flatten import RopeFlattenEnv
 import cv2
-
+import matplotlib.pyplot as plt
 
 def render_sawyer_cloth():
     env = ClothFoldEnv(
@@ -39,16 +39,16 @@ def render_sawyer_cloth():
     for i in range(1000):
         pyflex.set_sensor_segment(i % 2 == 0)
         pyflex.step(np.ones(8)*0.01, render=False)
-        # rgbd = pyflex.render_sensor()
+        rgbd = pyflex.render_sensor()
         states = pyflex.get_robot_state()
         # print(np.mean(states))
 
         # exit()
-        # rgbd = np.array(rgbd).reshape(720, 720, 4)
-        # fig, (ax1, ax2) = plt.subplots(1, 2)
-        # ax1.imshow(rgbd[::-1, :, :3])
-        # ax2.imshow(rgbd[::-1, :, 3])
-        # plt.show()
+        rgbd = np.array(rgbd).reshape(720, 720, 4)
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.imshow(rgbd[::-1, :, :3])
+        ax2.imshow(rgbd[::-1, :, 3])
+        plt.show()
 
     # np.save('test.npy', states)
     print("after set scene")

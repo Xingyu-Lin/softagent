@@ -328,7 +328,7 @@ class ClothDataset(PhysicsFleXDataset):
             nodes = np.nonzero(dis < 0.05 + sphere_radius)[0]  # picker radius is 0.05
 
             wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
-            rels += [np.stack([nodes, wall, np.ones(nodes.shape[0])], axis=1)]  # NOTE: [receiver, sender, value]
+            rels += [np.stack([nodes, wall, np.zeros(nodes.shape[0])], axis=1)]  # Different attributes for cloth edges
             # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
 
         ##### add relations between leaf particles
@@ -366,30 +366,31 @@ class ClothDataset(PhysicsFleXDataset):
             node_s_idxs.append(np.arange(n_particles + n_shapes))
             psteps.append(args.pstep)
 
-        # add hierarchical relations per instance
-        cnt_clusters = 0
-        for i in range(len(instance_idx) - 1):
-            st, ed = instance_idx[i], instance_idx[i + 1]
-            n_root_level = 1
+        if self.args.use_hierarchy:
+            # add hierarchical relations per instance
+            cnt_clusters = 0
+            for i in range(len(instance_idx) - 1):
+                st, ed = instance_idx[i], instance_idx[i + 1]
+                n_root_level = 1
 
-            if n_root_level > 0:
-                attr, positions, velocities, count_nodes, \
-                rels, node_r_idx, node_s_idx, pstep = \
-                    make_hierarchy(args.env, attr, positions, velocities, i, st, ed,
-                                   phases_dict, count_nodes, clusters[cnt_clusters], 0, var)
+                if n_root_level > 0:
+                    attr, positions, velocities, count_nodes, \
+                    rels, node_r_idx, node_s_idx, pstep = \
+                        make_hierarchy(args.env, attr, positions, velocities, i, st, ed,
+                                       phases_dict, count_nodes, clusters[cnt_clusters], 0, var)
 
-                for j in range(len(rels)):
-                    Rr_idxs.append(torch.LongTensor([rels[j][:, 0], np.arange(rels[j].shape[0])]))
-                    Rs_idxs.append(torch.LongTensor([rels[j][:, 1], np.arange(rels[j].shape[0])]))
-                    Ra = np.zeros((rels[j].shape[0], args.relation_dim));
-                    Ra[:, 0] = 1
-                    Ras.append(torch.FloatTensor(Ra))
-                    values.append(torch.FloatTensor([1] * rels[j].shape[0]))
-                    node_r_idxs.append(node_r_idx[j])
-                    node_s_idxs.append(node_s_idx[j])
-                    psteps.append(pstep[j])
+                    for j in range(len(rels)):
+                        Rr_idxs.append(torch.LongTensor([rels[j][:, 0], np.arange(rels[j].shape[0])]))
+                        Rs_idxs.append(torch.LongTensor([rels[j][:, 1], np.arange(rels[j].shape[0])]))
+                        Ra = np.zeros((rels[j].shape[0], args.relation_dim));
+                        Ra[:, 0] = 1
+                        Ras.append(torch.FloatTensor(Ra))
+                        values.append(torch.FloatTensor([1] * rels[j].shape[0]))
+                        node_r_idxs.append(node_r_idx[j])
+                        node_s_idxs.append(node_s_idx[j])
+                        psteps.append(pstep[j])
 
-                cnt_clusters += 1
+                    cnt_clusters += 1
 
         ### normalize data
         data = [positions, velocities]
