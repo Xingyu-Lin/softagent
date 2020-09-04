@@ -271,7 +271,13 @@ class ClothDataset(PhysicsFleXDataset):
         idx_r = idx_s + 1 + cloth_xdim
         rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
 
-        rels = np.vstack(rels)
+        idx_s = all_idx[1:, :-1].reshape(-1, 1)
+        idx_r = idx_s + 1 - cloth_xdim
+        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+
+        rels = np.vstack(rels)  # Directed edges only
+        rels_reversed = rels[:, [1, 0, 2]]
+        rels = np.vstack([rels, rels_reversed])  # Bi-directional edges
         return rels
 
         # Horizontal connections
@@ -332,8 +338,27 @@ class ClothDataset(PhysicsFleXDataset):
             # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
 
         ##### add relations between leaf particles
+
         if args.gt_edge:
             rels += [self._get_gt_neighbor(cloth_xdim, cloth_ydim)]
+
+        if False:
+            gt_edge = self._get_gt_neighbor(cloth_xdim, cloth_ydim)
+            pos = positions[:200]
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+            for i in range(len(gt_edge)):
+                s = int(gt_edge[i][0])
+                r = int(gt_edge[i][1])
+                if s < 200 and r < 200:
+                    # print([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]])
+                    ax.plot([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]], c='r')
+            ax.scatter(pos[:, 0], pos[:, 1], pos[:, 2], c='g', s=20)
+            ax.set_aspect('equal')
+
+            plt.show()
 
         # Neighboring based connections
         for i in range(len(instance_idx) - 1):

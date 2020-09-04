@@ -46,7 +46,7 @@ def generate_env_state(env_name):
 
 if __name__ == '__main__':
     env_names = ['ClothFold', 'ClothFlatten', 'ClothDrop', 'ClothFoldCrumpled', 'ClothFoldDrop']
-    env_names = ['ClothFlatten']
+    env_names = ['ClothFold']
     envs = [generate_env_state(env_name) for env_name in env_names]
 
     for (env, env_name) in zip(envs, env_names):

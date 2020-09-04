@@ -12,7 +12,7 @@ from curl.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0722_point_cloud'
+    exp_prefix = '0903_reproduce'
     reward_scales = {
         'PourWater': 20.0,
         'PassWaterTorus': 20.0,
@@ -77,9 +77,9 @@ def main(mode, debug, dry):
 
     vg = VariantGenerator()
 
-    vg.add('env_name', ['PassWater', 'RopeFlattenNew'])
+    vg.add('env_name', ['ClothFold'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['point_cloud'])
+    vg.add('env_kwargs_observation_mode', ['key_point'])
 
     vg.add('algorithm', ['CURL'])
     vg.add('alpha_fixed', [False])
@@ -96,7 +96,7 @@ def main(mode, debug, dry):
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
-    vg.add('save_model', [True])
+    vg.add('save_model', [False])
     vg.add('seed', [100, 200, 300])
 
     if not debug:
