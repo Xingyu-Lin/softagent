@@ -164,7 +164,8 @@ def train(args):
             for i, data in enumerate(dataloaders[phase]):
                 attr, state, rels, n_particles, n_shapes, instance_idx, label = data
                 Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
-
+                # for r in Ra:
+                #     print(r.sum(axis=0))
                 Rr, Rs = [], []
 
                 # print("rels[0] len: ", len(rels[0]))
@@ -197,7 +198,6 @@ def train(args):
                                 data[d] = Variable(data[d])
 
                     attr, state, Rr, Rs, Ra, label = data
-
                     # st_time = time.time()
                     predicted = model(
                         attr, state, Rr, Rs, Ra, n_particles,

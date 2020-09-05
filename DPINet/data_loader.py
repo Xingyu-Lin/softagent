@@ -17,12 +17,14 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 
-from DPINet.utils import rand_float, rand_int, sample_control_RiceGrip, calc_shape_states_RiceGrip, calc_box_init_FluidShake, calc_shape_states_FluidShake
+from DPINet.utils import rand_float, rand_int, sample_control_RiceGrip, calc_shape_states_RiceGrip, calc_box_init_FluidShake, \
+    calc_shape_states_FluidShake
 from softgym.registered_env import env_arg_dict as env_arg_dicts
 from softgym.registered_env import SOFTGYM_ENVS as SOFTGYM_CUSTOM_ENVS
 import copy
 
 SOFTGYM_ENVS = SOFTGYM_CUSTOM_ENVS.keys()
+
 
 def collate_fn(data):
     return data[0]
@@ -511,7 +513,7 @@ def visualize_neighbors(anchors, queries, idx, neighbors):
     plt.show()
 
 
-def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, var=False):
+def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, relation_dim, var=False):
     '''
     For points in query_idx, find all points in anchor_idx such that their distances are 
     smaller than radius.
@@ -530,17 +532,17 @@ def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, var
     '''
 
     relations = []
+    edge_attr = np.zeros((1, relation_dim))  # [0, 0, 1]
+    edge_attr[0, 2] = 1
     for i in range(len(neighbors)):
         count_neighbors = len(neighbors[i])
         if count_neighbors == 0:
             continue
 
-        receiver = np.ones(count_neighbors, dtype=np.int) * query_idx[i]
-        sender = np.array(anchor_idx[neighbors[i]])
-
+        receiver = np.ones([count_neighbors, 1], dtype=np.int) * query_idx[i]
+        sender = np.array(anchor_idx[neighbors[i]])[:, None]
         # receiver, sender, relation_type
-        relations.append(np.stack([receiver, sender, np.ones(count_neighbors)], axis=1))
-
+        relations.append(np.hstack([receiver, sender, np.tile(edge_attr, [count_neighbors, 1])]))
     return relations
 
 
@@ -576,7 +578,7 @@ def make_hierarchy(env, attr, positions, velocities, idx, st, ed, phases_dict, c
         node_s_idx.append(np.arange(st, ed))
         node_r_idx_rev.append(node_s_idx[-1])
         node_s_idx_rev.append(node_r_idx[-1])
-        pstep.append(1);
+        pstep.append(1)
         pstep_rev.append(1)
 
         if verbose:
@@ -1034,7 +1036,7 @@ class PhysicsFleXDataset(Dataset):
         # for i in range(cores):
         #     data.append(gen_PyFleX(infos[i]))
         pool = mp.Pool(processes=cores)
-        data = pool.map(gen_PyFleX, infos) # Note: Stats are returned
+        data = pool.map(gen_PyFleX, infos)  # Note: Stats are returned
 
         print("Training data generated, warpping up stats ...")
 

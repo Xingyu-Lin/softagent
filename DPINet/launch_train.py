@@ -5,6 +5,7 @@ import socket
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from DPINet.train_new import run_task
 
+
 @click.command()
 @click.argument('mode', type=str, default='local')
 @click.option('--debug/--no-debug', default=True)
@@ -17,8 +18,8 @@ def main(mode, debug, dry):
     vg.add('env_name', ['ClothFlatten'])
     vg.add('gen_data', [False])
     vg.add('training', [True])
-    vg.add('use_hierarchy', [False])
-    vg.add('use_edge_attr', [True, False])
+    vg.add('use_hierarchy', [False, True])
+    vg.add('neighbor_radius', [0.08, 0.00])
     vg.add('seed', [100])
     if not debug:
         pass

@@ -6,12 +6,12 @@ env_configs = \
             state_dim=6,
             position_dim=3,
             # object attr:
-            # [cloth, root, sphere 0 - 1]
-            attr_dim=4,
+            # [cloth, root, sphere]
+            attr_dim=3,
 
             # relation attr:
             # [none]
-            relation_dim=1,
+            relation_dim=3,
 
             n_instance=1,
             time_step=51,
@@ -19,7 +19,7 @@ env_configs = \
             n_stages=4,
             n_roots=30,
 
-            neighbor_radius=0.013,
+            neighbor_radius=0.008,
             phases_dict=dict(
                 root_num=30,
                 root_sib_radius=[[5.0]],  # NOTE: not actually used

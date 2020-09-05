@@ -245,7 +245,7 @@ class ClothDataset(PhysicsFleXDataset):
             action = (0, 0, 0, 1, 0, 0, 0, 0)
         return action
 
-    def _get_gt_neighbor(self, cloth_xdim, cloth_ydim):
+    def _get_gt_neighbor(self, cloth_xdim, cloth_ydim, relation_dim):
         # Connect cloth particles based on the ground-truth edges
         # Cloth index looks like the following (For Flex 1.0):
         # 0, 1, ..., cloth_xdim -1
@@ -256,27 +256,31 @@ class ClothDataset(PhysicsFleXDataset):
         # Vectorized version
         all_idx = np.arange(cloth_xdim * cloth_ydim).reshape([cloth_ydim, cloth_xdim])
 
+        edge_attr = np.zeros((1, relation_dim))  # [0, 1, 0]
+        edge_attr[0, 1] = 1
+
         # Horizontal connections
         idx_s = all_idx[:, :-1].reshape(-1, 1)
         idx_r = idx_s + 1
-        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+        rels.append(np.hstack([idx_s, idx_r, np.tile(edge_attr, [len(idx_s), 1])]))
 
         # Vertical connections
         idx_s = all_idx[:-1, :].reshape(-1, 1)
         idx_r = idx_s + cloth_xdim
-        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+        rels.append(np.hstack([idx_s, idx_r, np.tile(edge_attr, [len(idx_s), 1])]))
 
         # Diagonal connections
         idx_s = all_idx[:-1, :-1].reshape(-1, 1)
         idx_r = idx_s + 1 + cloth_xdim
-        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+        rels.append(np.hstack([idx_s, idx_r, np.tile(edge_attr, [len(idx_s), 1])]))
 
         idx_s = all_idx[1:, :-1].reshape(-1, 1)
         idx_r = idx_s + 1 - cloth_xdim
-        rels.append(np.hstack([idx_s, idx_r, np.ones([len(idx_s), 1])]))
+        rels.append(np.hstack([idx_s, idx_r, np.tile(edge_attr, [len(idx_s), 1])]))
 
         rels = np.vstack(rels)  # Directed edges only
-        rels_reversed = rels[:, [1, 0, 2]]
+        rels_reversed = rels.copy()
+        rels_reversed[:, :2] = rels[:, [1, 0]]
         rels = np.vstack([rels, rels_reversed])  # Bi-directional edges
         return rels
 
@@ -320,13 +324,19 @@ class ClothDataset(PhysicsFleXDataset):
         psteps = []  # propagation steps
 
         ##### add env specific graph components
+        ## Edge attributes:
+        # [1, 0, 0] Hierarchical edges. Under a different stages so use the same attribute encoding to save memory
+        # [1, 0, 0] Shape edges
+        # [0, 1, 0] Mesh edges
+        # [0, 0, 1] Distance based neighbor
+
         rels = []
 
         # connect each cloth particle to the sphere particle if their distance is smaller than a certain threshold
         for i in range(n_shapes):
             # object attr:
             # [fluid, root, sphere_0, sphere_1, sphere_2, sphere_3]
-            attr[n_particles + i, 2 + i] = 1
+            attr[n_particles + i, 2] = 1
 
             pos = positions.data.cpu().numpy() if var else positions
             sphere_center = pos[n_particles + i, :3]
@@ -334,16 +344,18 @@ class ClothDataset(PhysicsFleXDataset):
             nodes = np.nonzero(dis < 0.05 + sphere_radius)[0]  # picker radius is 0.05
 
             wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
-            rels += [np.stack([nodes, wall, np.zeros(nodes.shape[0])], axis=1)]  # Different attributes for cloth edges
-            # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
-
+            if nodes.shape[0]>0:
+                shape_edge_attr = np.zeros([nodes.shape[0], args.relation_dim])
+                shape_edge_attr[:, 0] = 1
+                # print(nodes.shape, wall.shape, shape_edge_attr.shape)
+                rels += [np.stack([nodes, wall, *shape_edge_attr], axis=1)]  # Different attributes for cloth edges
+                # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
         ##### add relations between leaf particles
-
         if args.gt_edge:
-            rels += [self._get_gt_neighbor(cloth_xdim, cloth_ydim)]
+            rels += [self._get_gt_neighbor(cloth_xdim, cloth_ydim, args.relation_dim)]
 
         if False:
-            gt_edge = self._get_gt_neighbor(cloth_xdim, cloth_ydim)
+            gt_edge = self._get_gt_neighbor(cloth_xdim, cloth_ydim, args.relation_dim)
             pos = positions[:200]
             import matplotlib.pyplot as plt
             fig = plt.figure()
@@ -375,7 +387,7 @@ class ClothDataset(PhysicsFleXDataset):
             # st_time = time.time()
             pos = positions
             pos = pos[:, -3:]
-            rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, var)
+            rels += find_relations_neighbor(pos, queries, anchors, args.neighbor_radius, 2, args.relation_dim, var)
             # print("Time on neighbor search", time.time() - st_time)
 
         rels = np.concatenate(rels, 0)
@@ -383,7 +395,8 @@ class ClothDataset(PhysicsFleXDataset):
             Rr_idxs.append(torch.LongTensor([rels[:, 0], np.arange(rels.shape[0])]))  # NOTE: why with the np.arange(rels.shape): this
             Rs_idxs.append(torch.LongTensor([rels[:, 1], np.arange(rels.shape[
                                                                        0])]))  # This actually constructs the non-zero entry (row, col) idx for a later sparse matrix with shape (n_receiver, n_rel)
-            Ra = np.zeros((rels.shape[0], args.relation_dim))  # NOTE: relation_dim is just 1  for all envs
+            # Ra = np.zeros((rels.shape[0], args.relation_dim))  # NOTE: relation_dim is just 1  for all envs
+            Ra = rels[:, 2:]
             Ras.append(torch.FloatTensor(Ra))  # NOTE: why Ras are just 0? So all the attributes are just 0?
             values.append(torch.FloatTensor([1] * rels.shape[
                 0]))  # NOTE: why values are just 1? the ones are values filled into the sparse receiver-relation matrix. see line 288 at train.py
