@@ -11,7 +11,7 @@ env_configs = \
 
             # relation attr:
             # [none]
-            relation_dim=3,
+            # relation_dim=3, # Determined by the launch file
 
             n_instance=1,
             time_step=51,

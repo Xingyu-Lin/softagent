@@ -11,16 +11,20 @@ from DPINet.train_new import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0905_cloth_flatten'
+    exp_prefix = '0908_cloth_edge'
 
     vg = VariantGenerator()
 
     vg.add('env_name', ['ClothFlatten'])
     vg.add('gen_data', [False])
     vg.add('training', [True])
-    vg.add('use_hierarchy', [False, True])
-    vg.add('neighbor_radius', [0.008, 0.00])
+    vg.add('use_hierarchy', [True])
+    vg.add('neighbor_radius', [0.013])
+    vg.add('edge_type', ['cloth_edge', 'eight_neighbor'])
+    vg.add('relation_dim', lambda edge_type: [3] if edge_type == 'eight_neighbor' else [5])
+    vg.add('pstep', [2])
     vg.add('seed', [100])
+
     if not debug:
         pass
     else:
