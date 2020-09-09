@@ -532,8 +532,8 @@ def find_relations_neighbor(positions, query_idx, anchor_idx, radius, order, rel
     '''
 
     relations = []
-    edge_attr = np.zeros((1, relation_dim))  # [0, 0, 1]
-    edge_attr[0, 2] = 1
+    edge_attr = np.zeros((1, relation_dim))  # [0, 1, 0]
+    edge_attr[0, 1] = 1
     for i in range(len(neighbors)):
         count_neighbors = len(neighbors[i])
         if count_neighbors == 0:
