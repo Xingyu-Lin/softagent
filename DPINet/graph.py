@@ -206,6 +206,8 @@ class PhysicsFleXDataset(Dataset):
         data_nxt = normalize(load_data(self.data_names, data_nxt_path), self.stat)
 
         label = torch.FloatTensor(data_nxt[1][:n_particles])  # NOTE: just use velocity at next step as label
+        if self.args.noise_level > 0:
+            state += torch.empty_like(state).normal_(mean=0, std=self.args.noise_level)
 
         return attr, state, relations, n_particles, n_shapes, instance_idx, label
 
