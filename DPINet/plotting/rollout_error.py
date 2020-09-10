@@ -2,8 +2,7 @@ import time
 import argparse
 import os
 import os.path as osp
-from graph import load_data
-from data import load_data, prepare_input, normalize, denormalize
+from DPINet.data import load_data, prepare_input, normalize, denormalize
 import copy
 from softgym.registered_env import env_arg_dict as env_arg_dicts
 from softgym.registered_env import SOFTGYM_ENVS
@@ -17,13 +16,22 @@ from DPINet.models import DPINet
 from DPINet.graph import ClothDataset
 
 from softgym.utils.visualization import save_numpy_as_gif
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_file', default=None)
-parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten/train')
+parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten')
 parser.add_argument('--env_name', type=str, default='ClothFlatten')
-parser.add_argument('--n_rollout', type=int, default=5)
+parser.add_argument('--n_rollout', type=int, default=10)
 parser.add_argument('--save_folder', type=str, default='./dpi_visualization')
+
+model_paths = [
+    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0001/',
+    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0002/',
+    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0003/',
+    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0004/',
+    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0005/'
+]
 
 
 def create_env(env_name):
@@ -72,13 +80,13 @@ def visualize(env, n_shape, traj_pos, config_id):
     return frames
 
 
-def get_model_prediction(args, stat, traj_path, initial_pos, vels, datasets, model):
+def get_model_prediction(args, stage, stat, traj_path, initial_pos, vels, datasets, model):
     pos_trajs = [initial_pos]
     for i in range(args.time_step):
         if i == 0:
-            attr, state, rels, n_particles, n_shapes, instance_idx, data = datasets['train'].obtain_graph(osp.join(traj_path, str(i) + '.h5'))
+            attr, state, rels, n_particles, n_shapes, instance_idx, data = datasets[stage].obtain_graph(osp.join(traj_path, str(i) + '.h5'))
         else:
-            attr, state, rels, n_particles, n_shapes, instance_idx = datasets['train'].construct_graph(data)
+            attr, state, rels, n_particles, n_shapes, instance_idx = datasets[stage].construct_graph(data)
 
         Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
 
@@ -118,10 +126,10 @@ def get_model_prediction(args, stat, traj_path, initial_pos, vels, datasets, mod
         data_cpu[1][:, :3] = predicted_vel
         data = data_cpu
 
-    return pos_trajs
+    return pos_trajs[:-1]
 
 
-def prepare_model(model_path):
+def prepare_args(model_path):
     variant_path = osp.join(osp.dirname(model_path), 'variant.json')
     with open(variant_path, 'r') as f:
         vv = json.load(f)
@@ -136,7 +144,11 @@ def prepare_model(model_path):
         return args
 
     args = vv_to_args(vv)
+    return args
 
+
+def prepare_data(model_path):
+    args = prepare_args(model_path)
     if args.env_name == 'ClothFlatten':
         datasets = {phase: ClothDataset(args, phase, args.phases_dict) for phase in ['train', 'valid']}
     else:
@@ -146,7 +158,6 @@ def prepare_model(model_path):
         datasets[phase].load_data(args.env_name)
 
     print("Dataset loaded from", args.dataf)
-    use_gpu = torch.cuda.is_available()
 
     dataloaders = {x: torch.utils.data.DataLoader(
         datasets[x], batch_size=args.batch_size,
@@ -155,41 +166,58 @@ def prepare_model(model_path):
         collate_fn=collate_fn)
         for x in ['train', 'valid']}
 
-    # define propagation network
-    model = DPINet(args, datasets['train'].stat, args.phases_dict, residual=True, use_gpu=use_gpu)
-
-    model.load_state_dict(torch.load(model_path))
-
-    if use_gpu:
-        model = model.cuda()
-
     stat_path = os.path.join(args.dataf, 'stat.h5')
     stat = load_data(['positions', 'velocities'], stat_path)
     for i in range(len(stat)):
         stat[i] = stat[i][-args.position_dim:, :]
+    return datasets, stat
 
-    return args, datasets, model, stat
+
+def prepare_model(model_path, dataset, stage):
+    args = prepare_args(model_path)
+    use_gpu = torch.cuda.is_available()
+    # define propagation network
+    model = DPINet(args, dataset[stage].stat, args.phases_dict, residual=True, use_gpu=use_gpu)
+    model.load_state_dict(torch.load(model_path))
+
+    if use_gpu:
+        model = model.cuda()
+    return args, model
 
 
-def main(data_folder, n_rollout, save_folder=None, model_file=None):
+def main(data_folder, n_rollout, save_folder=None, stage='train'):
+    data_folder = osp.join(data_folder, stage)
     env_name = 'ClothFlatten'
     n_shape = 2
     env = create_env(env_name)
-    if model_file is not None:
-        args, datasets, model, stats = prepare_model(model_file)
-    for idx, traj_id in enumerate(os.listdir(data_folder)):
-        if idx > n_rollout:
-            break
-        traj_folder = osp.join(data_folder, str(traj_id))
-        traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
-        frames_gt = visualize(env, n_shape, traj_pos, config_id)
-        if model_file is not None:
-            predicted_traj_pos = get_model_prediction(args, stats, traj_folder, traj_pos[0], traj_vel, datasets, model)
-            frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
-            combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
-            save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
+    datasets, stats = prepare_data(model_paths[0])
+    model_losses = {}
+    for model_path in model_paths:
+        model_file = osp.join(model_path, 'net_best.pth')
+        args, model = prepare_model(model_file, datasets, stage)
+        losses = []
+        for idx, traj_id in enumerate(os.listdir(data_folder)):
+            if idx > n_rollout:
+                break
+            traj_folder = osp.join(data_folder, str(traj_id))
+
+            traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
+            predicted_traj_pos = get_model_prediction(args, stage, stats, traj_folder, traj_pos[0], traj_vel, datasets, model)
+            # predicted_traj_pos = np.random.random(np.array(traj_pos).shape)
+            # frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
+            # combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
+            # save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
+            losses.append(np.mean((np.array(traj_pos) - np.array(predicted_traj_pos)) ** 2, axis=(1, 2)))
+        model_losses[str(args.noise_level)] = np.mean(np.array(losses), axis=0)
+
+    plt.figure()
+    for k, v in model_losses.items():
+        plt.plot(range(len(v)), v, label=k)
+    plt.legend()
+    print('Saving to {}'.format(osp.join(save_folder, 'rollout_error_{}.png'.format(stage))))
+    plt.savefig(osp.join(save_folder, 'rollout_error_{}.png'.format(stage)))
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    main(args.data_folder, args.n_rollout, args.save_folder, args.model_file)
+    main(args.data_folder, args.n_rollout, args.save_folder, stage='valid')
