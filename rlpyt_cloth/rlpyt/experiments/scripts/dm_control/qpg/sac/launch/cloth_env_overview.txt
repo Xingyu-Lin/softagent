@@ -1,0 +1,6 @@
+Cloth_v0: The agent can actuate all four corners at the same time
+Cloth_v7: The agent picks both the location and force, location on a 1x1 grid which is then mapped to the nearest joint
+Cloth_v8: The environment picks a random joint to activate, which is incorporated in to the state observation
+
+cloth_sim_state: new cloth environment, state observations + random joint position to perturb
+cloth_sim: new cloth environment, pixel observations + perturb random point on image
