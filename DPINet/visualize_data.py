@@ -158,9 +158,6 @@ def prepare_model(model_path):
     # define propagation network
     model = DPINet(args, datasets['train'].stat, args.phases_dict, residual=True, use_gpu=use_gpu)
 
-    # if args.resume_epoch > 0 or args.resume_iter > 0:
-    #     model_path = os.path.join(logdir, 'net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
-    #     print("Loading saved ckp from %s" % model_path)
     model.load_state_dict(torch.load(model_path))
 
     if use_gpu:
