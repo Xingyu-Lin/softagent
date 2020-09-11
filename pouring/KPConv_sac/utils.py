@@ -251,25 +251,38 @@ class ReplayBufferPointCloud():
 
         obses = []
         next_obses = []
+        obs_features = []
+        next_obs_features = []
         for idx in idxs:
             obs = self.obses[idx]
             next_obs = self.next_obses[idx]
-            obs_subsampled = grid_subsampling(obs[:, :3], sampleDl=self.config.first_subsampling_dl)
-            next_obs_subsampled = grid_subsampling(next_obs[:, :3], sampleDl=self.config.first_subsampling_dl)
+            
+            obs_ = obs[:, :3]
+            next_obs_ = next_obs[:, :3]
+            obs_feature = obs[:, 3:]
+            next_obs_feature = next_obs[:, 3:]
+            
+            obs_subsampled, obs_feature_subsampled = grid_subsampling(obs_, features=obs_feature, sampleDl=self.config.first_subsampling_dl)
+            next_obs_subsampled, next_obs_feature_subsampled = grid_subsampling(next_obs_, features=next_obs_feature, sampleDl=self.config.first_subsampling_dl)
+            
             obses.append(obs_subsampled)
             next_obses.append(next_obs_subsampled)
+            obs_features.append(obs_feature_subsampled)
+            next_obs_features.append(next_obs_feature_subsampled)
         
 
         ###################
         # Concatenate batch
         ###################
         input_lists = []
-        for tp_list in [obses, next_obses]:
-            stacked_points = np.concatenate(tp_list, axis=0)
-            stack_lengths = np.array([tp.shape[0] for tp in tp_list], dtype=np.int32)
+        for tp_list in [(obses, obs_features), (next_obses, next_obs_features)]:
+            points_list, features_list = tp_list
+            stacked_points = np.concatenate(points_list, axis=0)
+            stack_lengths = np.array([tp.shape[0] for tp in points_list], dtype=np.int32)
 
             # Input features
-            stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
+            # stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
+            stacked_features = np.concatenate(features_list, axis=0)
 
             #######################
             # Create network inputs
@@ -487,18 +500,25 @@ class PointCloudCustomBatch:
 
 
 def preprocess_single_obs(obs, config):
-    obs_subsampled = grid_subsampling(obs[:, :3], sampleDl=config.first_subsampling_dl)
+    obs_ = obs[:, :3]
+    feature = obs[:, 3:]
+    # print(obs.shape)
+    # print(feature.shape)
+    obs_subsampled, feature_subsampled = grid_subsampling(obs_, features=feature, sampleDl=config.first_subsampling_dl)
 
     tp_list = [obs_subsampled]
     stacked_points = np.concatenate(tp_list, axis=0)
     stack_lengths = np.array([tp.shape[0] for tp in tp_list], dtype=np.int32)
+    
     # Input features
-    stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
+    tf_list = [feature_subsampled]
+    # stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
+    stacked_features = np.concatenate(tf_list, axis=0)
 
     input_list = classification_inputs(config, 
-                                                stacked_points,
-                                                stacked_features,
-                                                stack_lengths)
+                                        stacked_points,
+                                        stacked_features,
+                                        stack_lengths)
 
     obs_batch = PointCloudCustomBatch(input_list)
     return obs_batch

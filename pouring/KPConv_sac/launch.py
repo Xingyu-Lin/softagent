@@ -98,18 +98,17 @@ def main(mode, debug, dry):
     vg.add('clip_obs', lambda env_name, env_kwargs_observation_mode: [clip_obs[env_name]] if env_kwargs_observation_mode == 'key_point' else [None])
     vg.add('batch_size', [128])
     vg.add('KPConv_config_final_hidden_dim', [256])
-    vg.add('KPConv_config_first_subsampling_dl', [0.03, 0.04])
+    vg.add('KPConv_config_first_subsampling_dl', [0.04])
     vg.add('KPConv_deform', [True, False])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
     vg.add('save_model', [False])
-    vg.add('seed', [100, 200])
 
     if not debug:
-        pass
+        vg.add('seed', [100, 200])
     else:
-        pass
+        vg.add('seed', [200])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))
