@@ -30,7 +30,7 @@ class SAC(RlAlgorithm):
             discount=0.99,
             batch_size=256,
             min_steps_learn=int(1e4),
-            replay_size=int(1e6),
+            replay_size=int(6e5),
             replay_ratio=256,  # data_consumption / data_generation
             target_update_tau=0.005,  # tau=1 for hard update.
             target_update_interval=1,  # interval=1000 for hard update.
@@ -69,6 +69,7 @@ class SAC(RlAlgorithm):
             f"updates per iteration.")
         self.min_itr_learn = self.min_steps_learn // sampler_bs
         agent.give_min_itr_learn(self.min_itr_learn)
+        print('batch_spec:', batch_spec, '\n\n')
         self.initialize_replay_buffer(examples, batch_spec)
         self.optim_initialize(rank)
 

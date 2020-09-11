@@ -13,7 +13,6 @@ def build_samples_buffer(agent, EnvCls, env_kwargs, batch_spec, bootstrap_value=
     """Recommended to step/reset agent and env in subprocess, so it doesn't
     affect settings in master before forking workers (e.g. torch num_threads
     (MKL) may be set at first forward computation.)"""
-
     if examples is None:
         if subprocess:
             mgr = mp.Manager()
@@ -24,7 +23,6 @@ def build_samples_buffer(agent, EnvCls, env_kwargs, batch_spec, bootstrap_value=
             w.join()
         else:
             raise Exception('Unsupported, subprocess must be True')
-
     T, B = batch_spec
     all_action = buffer_from_example(examples["action"], (T + 1, B), agent_shared)
     action = all_action[1:]
