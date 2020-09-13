@@ -54,6 +54,7 @@ def build_samples_buffer(agent, EnvCls, env_kwargs, batch_spec, bootstrap_value=
     samples_pyt = torchify_buffer(samples_np)
     return samples_pyt, samples_np, examples
 
+from softgym.envs.qpg_wrapper import QpgWrapper
 
 def get_example_outputs(agent, EnvCls, env_kwargs, examples, subprocess=False):
     """Do this in a sub-process to avoid setup conflict in master/workers (e.g.
@@ -62,6 +63,8 @@ def get_example_outputs(agent, EnvCls, env_kwargs, examples, subprocess=False):
         import torch
         torch.set_num_threads(1)  # Some fix to prevent MKL hang.
     env = EnvCls(**env_kwargs)
+    if not hasattr(env, 'spaces'):
+        env = QpgWrapper(env)
     o = env.reset()
     a = env.action_space.sample()
     o, r, d, env_info = env.step(a)

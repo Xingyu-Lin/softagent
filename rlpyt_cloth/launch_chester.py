@@ -3,15 +3,6 @@ import click
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from softgym.registered_env import env_arg_dict
 from rlpyt_cloth.rlpyt.experiments.scripts.dm_control.qpg.sac.train.softgym_sac import run_task
-from rlpyt.utils.launching.affinity import encode_affinity
-from rlpyt.utils.launching.exp_launcher import run_experiments
-from rlpyt.utils.launching.variant import make_variants, VariantLevel
-
-affinity_code = encode_affinity(
-    n_cpu_core=20,
-    n_gpu=1,
-    contexts_per_gpu=1,
-)
 
 @click.command()
 @click.argument('mode', type=str, default='local')
@@ -21,14 +12,15 @@ def main(mode, debug, dry):
     exp_prefix = '0911_qpg_cloth'
     vg = VariantGenerator()
     vg.add('algorithm', ['qpg'])
-    vg.add('env_name', ['ClothFlattenPPP', 'ClothFoldPPP'])
+    vg.add('env_name', ['ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
-    vg.add('env_kwargs_render', [False])
-    vg.add('env_kwargs_observation_mode', ['key_point'])
+    vg.add('env_kwargs_render', [True])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
+    vg.add('env_kwargs_num_picker', [1])
+    vg.add('env_kwargs_action_repeat', [1])
+    vg.add('env_kwargs_action_mode', ['picker_qpg'])
     vg.add('env_kwargs_reward_type', lambda env_name: ['index', 'bigraph'] if env_name == 'RopeAlphaBet' else [None])  # only for ropealphabet
-
-    vg.add('affinity_code', [affinity_code])
     vg.add('config_key', ['sac_pixels_cloth_corner_softgym'])
     vg.add('random_location', [True])
     vg.add('sac_module', ['sac_v2'])

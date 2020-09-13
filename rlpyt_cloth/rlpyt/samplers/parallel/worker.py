@@ -1,4 +1,3 @@
-
 import psutil
 import time
 import torch
@@ -6,6 +5,7 @@ import torch
 from rlpyt.utils.collections import AttrDict
 from rlpyt.utils.logging import logger
 from rlpyt.utils.seed import set_seed
+from softgym.envs.qpg_wrapper import QpgWrapper
 
 
 def initialize_worker(rank, seed=None, cpu=None, torch_threads=None):
@@ -20,7 +20,7 @@ def initialize_worker(rank, seed=None, cpu=None, torch_threads=None):
         cpu_affin = "UNAVAILABLE MacOS"
     log_str += f", CPU affinity {cpu_affin}"
     torch_threads = (1 if torch_threads is None and cpu is not None else
-        torch_threads)  # Default to 1 to avoid possible MKL hang.
+                     torch_threads)  # Default to 1 to avoid possible MKL hang.
     if torch_threads is not None:
         torch.set_num_threads(torch_threads)
     log_str += f", Torch threads {torch.get_num_threads()}"
@@ -36,6 +36,16 @@ def sampling_process(common_kwargs, worker_kwargs):
     c, w = AttrDict(**common_kwargs), AttrDict(**worker_kwargs)
     initialize_worker(w.rank, w.seed, w.cpus, c.torch_threads)
     envs = [c.EnvCls(**c.env_kwargs) for _ in range(w.n_envs)]
+
+    if not hasattr(envs[0], 'spaces'):
+        envs = [QpgWrapper(env) for env in envs]
+
+    # print('envs:', len(envs))
+    # [env.reset() for env in envs]
+    # for i in range(1000):
+    #     print(i)
+    #     action =envs[0].action_space.sample()
+    #     [env.step(action) for env in envs]
     collector = c.CollectorCls(
         rank=w.rank,
         envs=envs,
@@ -48,11 +58,12 @@ def sampling_process(common_kwargs, worker_kwargs):
         global_B=c.get("global_B", 1),
         env_ranks=w.get("env_ranks", None),
     )
-    agent_inputs, traj_infos = collector.start_envs(c.max_decorrelation_steps)
-    collector.start_agent()
+
 
     if c.get("eval_n_envs", 0) > 0:
         eval_envs = [c.EnvCls(**c.eval_env_kwargs) for _ in range(c.eval_n_envs)]
+        if not hasattr(eval_envs[0], 'spaces'):
+            eval_envs = [QpgWrapper(env) for env in eval_envs]
         eval_collector = c.eval_CollectorCls(
             rank=w.rank,
             envs=eval_envs,
@@ -65,6 +76,9 @@ def sampling_process(common_kwargs, worker_kwargs):
         )
     else:
         eval_envs = list()
+
+    agent_inputs, traj_infos = collector.start_envs(c.max_decorrelation_steps)
+    collector.start_agent()
 
     ctrl = c.ctrl
     ctrl.barrier_out.wait()

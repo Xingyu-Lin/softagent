@@ -22,6 +22,6 @@ if __name__ == '__main__':
     o = env.reset()
     for i in range(50):
         action = env.action_space.sample()
-        env.step(action)
+        obs, reward, terminal, info = env.step(action)
         img = env.render()
         cv_render(img)

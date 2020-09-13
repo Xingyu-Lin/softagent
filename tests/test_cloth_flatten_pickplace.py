@@ -4,7 +4,7 @@ from softgym.envs.cloth_flatten import ClothFlattenEnv
 from softgym.utils.visualization import save_numpy_to_gif_matplotlib
 
 
-def test_picker(num_picker=3, save_dir='./videos', script='manual'):
+def test_picker(num_picker=2, save_dir='./videos', script='manual'):
     env = ClothFlattenEnv(
         observation_mode='key_point',
         action_mode='pickerpickplace',
@@ -20,15 +20,16 @@ def test_picker(num_picker=3, save_dir='./videos', script='manual'):
         env.reset()
         for i in range(20):
             print('step: ', i)
-            action = np.zeros((num_picker, 6))
-          
-            first_particle_pos = pyflex.get_positions()[:3]
-            last_particle_pos = pyflex.get_positions()[-4:-1]
-
-            action[0, :3] = first_particle_pos
-            action[1, :3] = last_particle_pos
-            action[0, 3:] = np.array([-2, 0.05, -2])
-            action[1, 3:] = np.array([2, 0.05, 1])
+            action = env.action_space.sample()
+            # action = np.zeros((num_picker, 6))
+            #
+            # first_particle_pos = pyflex.get_positions()[:3]
+            # last_particle_pos = pyflex.get_positions()[-4:-1]
+            #
+            # action[0, :3] = first_particle_pos
+            # action[1, :3] = last_particle_pos
+            # action[0, 3:] = np.array([-2, 0.05, -2])
+            # action[1, 3:] = np.array([2, 0.05, 1])
 
             img = env.render(mode='rgb_array')
             env.step(action)
@@ -52,7 +53,7 @@ def test_random(env, N=5):
 
 
 if __name__ == '__main__':
-    test_picker(num_picker=2, script='manual')
+    test_picker(num_picker=1, script='manual')
     # test_picker(num_picker=2, script='random')
 
     # env = ClothFlattenPointControlEnv(
