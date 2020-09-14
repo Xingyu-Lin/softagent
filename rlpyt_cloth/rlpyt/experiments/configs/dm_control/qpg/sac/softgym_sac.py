@@ -39,8 +39,8 @@ config = dict(
         batch_T=1,
         batch_B=16,
         max_decorrelation_steps=0,
-        eval_n_envs=10,
-        eval_max_steps=20000,
+        eval_n_envs=16,
+        eval_max_steps=5000,
         eval_max_trajectories=50,
     ),
     env=dict(

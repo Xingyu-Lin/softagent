@@ -4,8 +4,8 @@ from rlpyt.samplers.buffer import build_samples_buffer
 from rlpyt.utils.logging import logger
 from rlpyt.samplers.parallel.cpu.collectors import CpuResetCollector
 from rlpyt.samplers.serial.collectors import SerialEvalCollector
-
-
+from softgym.envs.qpg_wrapper import QpgWrapper
+from rlpyt.samplers.buffer import get_example_outputs
 class SerialSampler(BaseSampler):
     """Uses same functionality as ParallelSampler but does not fork worker
     processes; can be easier for debugging (e.g. breakpoint() in master).  Use
@@ -29,17 +29,21 @@ class SerialSampler(BaseSampler):
             ):
         B = self.batch_spec.B
         envs = [self.EnvCls(**self.env_kwargs) for _ in range(B)]
+        if not hasattr(envs[0], 'spaces'):
+            envs = [QpgWrapper(env) for env in envs]
+
         global_B = B * world_size
         env_ranks = list(range(rank * B, (rank + 1) * B))
         agent.initialize(envs[0].spaces, share_memory=False,
             global_B=global_B, env_ranks=env_ranks)
-
         envs[0].reset()
         envs[0].step(envs[0].action_space.sample())
+        examples = {}
+        get_example_outputs(agent, self.EnvCls, self.env_kwargs, examples, subprocess=False, env =envs[0])
 
         samples_pyt, samples_np, examples = build_samples_buffer(agent, self.EnvCls, self.env_kwargs,
             self.batch_spec, bootstrap_value, agent_shared=False,
-            env_shared=False, subprocess=True)
+            env_shared=False, subprocess=True, examples = examples)
         if traj_info_kwargs:
             for k, v in traj_info_kwargs.items():
                 setattr(self.TrajInfoCls, "_" + k, v)  # Avoid passing at init.
@@ -54,8 +58,7 @@ class SerialSampler(BaseSampler):
             env_ranks=env_ranks,  # Might get applied redundantly to agent.
         )
         if self.eval_n_envs > 0:  # May do evaluation.
-            eval_envs = [self.EnvCls(**self.eval_env_kwargs)
-                for _ in range(self.eval_n_envs)]
+            eval_envs = envs
             eval_CollectorCls = self.eval_CollectorCls or SerialEvalCollector
             self.eval_collector = eval_CollectorCls(
                 envs=eval_envs,

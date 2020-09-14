@@ -61,7 +61,8 @@ def sampling_process(common_kwargs, worker_kwargs):
 
 
     if c.get("eval_n_envs", 0) > 0:
-        eval_envs = [c.EnvCls(**c.eval_env_kwargs) for _ in range(c.eval_n_envs)]
+        # eval_envs = [c.EnvCls(**c.eval_env_kwargs) for _ in range(c.eval_n_envs)]
+        eval_envs = envs
         if not hasattr(eval_envs[0], 'spaces'):
             eval_envs = [QpgWrapper(env) for env in eval_envs]
         eval_collector = c.eval_CollectorCls(

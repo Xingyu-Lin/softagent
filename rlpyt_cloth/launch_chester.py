@@ -9,7 +9,7 @@ from rlpyt_cloth.rlpyt.experiments.scripts.dm_control.qpg.sac.train.softgym_sac 
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0911_qpg_cloth'
+    exp_prefix = '0913_qpg_cloth'
     vg = VariantGenerator()
     vg.add('algorithm', ['qpg'])
     vg.add('env_name', ['ClothFlatten'])

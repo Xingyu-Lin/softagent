@@ -94,7 +94,7 @@ class ParallelSamplerBase(BaseSampler):
                 time.sleep(EVAL_TRAJ_CHECK)
                 traj_infos.extend(drain_queue(self.eval_traj_infos_queue,
                                               guard_sentinel=True))
-                print('{}/{}'.format(traj_infos, self.eval_max_trajectories))
+                # print('{}/{}'.format(traj_infos, self.eval_max_trajectories))
                 if len(traj_infos) >= self.eval_max_trajectories:
                     self.sync.stop_eval.value = True
                     logger.log("Evaluation reached max num trajectories "

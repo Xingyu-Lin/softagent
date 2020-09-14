@@ -9,13 +9,12 @@ import numpy as np
 
 from rlpyt.envs.dm_control_env import DMControlEnv
 from rlpyt.samplers.serial.sampler import SerialSampler
-
+from softgym.registered_env import SOFTGYM_ENVS, env_arg_dict, ClothFlattenEnv
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('snapshot_dir', type=str)
     args = parser.parse_args()
-
     snapshot_file = join(args.snapshot_dir, 'params.pkl')
     config_file = join(args.snapshot_dir, 'params.json')
 
@@ -39,9 +38,9 @@ def main():
 
     agent = SacAgent(**config["agent"])
     sampler = SerialSampler(
-        EnvCls=DMControlEnv,
-        env_kwargs=config["env"],
-        eval_env_kwargs=config["env"],
+        EnvCls=SOFTGYM_ENVS[config['env_name']],
+        env_kwargs=config["env_kwargs"],
+        eval_env_kwargs=config["env_kwargs"],
         **config["sampler"]
     )
     sampler.initialize(agent)

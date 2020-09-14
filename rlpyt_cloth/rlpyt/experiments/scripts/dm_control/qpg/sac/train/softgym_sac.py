@@ -49,16 +49,17 @@ def run_task(vv, log_dir, exp_name):
     slot_affinity_code = encode_affinity(
         n_cpu_core=20,
         n_gpu=2,
-        cpu_per_run=2,
-        cpu_per_worker=2,
-        n_socket=1,
+        # cpu_per_run=20,
+        # cpu_per_worker=20,
+        n_socket=2,
         run_slot=0,
         set_affinity=True,  # it can help to restrict workers to individual CPUs
     )
-    # slot_affinity_code = '0slt_20cpu_1gpu_36hto_1skt'
+    # slot_affinity_code = '0slt_20cpu_2gpu_36hto_2skt'
 
     # slot_affinity_code = vv['affinity_code']
     affinity = affinity_from_code(slot_affinity_code)
+    # exit()
     # affinity['all_cpus'] = (0,)
     # affinity['master_cpus'] = (0,)
     # affinity['workers_cpus'] = (0,)
@@ -80,8 +81,8 @@ def run_task(vv, log_dir, exp_name):
     # obs = env.reset()
     # for i in range(50):
     #     action = env.action_space.sample()
-    #     location = env.sample_location(obs)
-    #     action[:2] = location
+    #     # location = env.sample_location(obs)
+    #     # action[:2] = location
     #     obs, _, _, _ = env.step(action)
 
     sac_module = 'rlpyt.algos.qpg.{}'.format(config['sac_module'])
