@@ -151,12 +151,15 @@ class SacAgent(BaseAgent):
         threshold = 0.2
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
-
         if self._max_q_eval_mode == 'none':
             mean, log_std = self.model(*model_inputs)
             dist_info = DistInfoStd(mean=mean, log_std=log_std)
             action = self.distribution.sample(dist_info)
             agent_info = AgentInfo(dist_info=dist_info)
+            # if len(action.shape) == 2:
+            #     action[:, :2] = observation.location[: ,:2]
+            # else:
+            #     action[:2] = observation.location[:2]
             action, agent_info = buffer_to((action, agent_info), device="cpu")
             return AgentStep(action=action, agent_info=agent_info)
         else:
@@ -198,8 +201,14 @@ class SacAgent(BaseAgent):
                 locations = np.tile(locations, (1, 50)) / 63
             elif self._max_q_eval_mode == 'pixel_cloth':
                 image = observation[0].squeeze(0).cpu().numpy()
-                locations = np.transpose(np.where(np.any(image < 100, axis=-1))).astype('float32')
-                locations = np.tile(locations, (1, 50)) / 63
+
+                location_orange = np.transpose(np.where(np.any(image < 50, axis=-1)))
+                location_pink = np.transpose(np.where(np.logical_and(image[:, :, 0] > 160, image[:, :, 1] < 180)))
+                locations = np.vstack([location_orange, location_pink])
+                locations = locations / (image.shape[-1] - 1) * 2. - 1.
+
+                locations = np.array([locations[:, 1], locations[:, 0]]).transpose()  # Revert location into uv coordinate
+                locations = np.tile(locations, (1, 50))
             else:
                 raise Exception()
 
@@ -223,7 +232,6 @@ class SacAgent(BaseAgent):
                                   for observation_q_i in observation_qs_i]
             aug_observation_qs = [MaxQInput(*aug_observation_q)
                                   for aug_observation_q in aug_observation_qs]
-
             mean, log_std = self.model.forward_output(aug_observation_pi)#, prev_action, prev_reward)
 
             qs = [q.forward_output(aug_obs, mean) for q, aug_obs

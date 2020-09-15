@@ -31,12 +31,12 @@ class SerialSampler(BaseSampler):
         envs = [self.EnvCls(**self.env_kwargs) for _ in range(B)]
         if not hasattr(envs[0], 'spaces'):
             envs = [QpgWrapper(env) for env in envs]
-
+        self.envs = envs
         global_B = B * world_size
         env_ranks = list(range(rank * B, (rank + 1) * B))
         agent.initialize(envs[0].spaces, share_memory=False,
             global_B=global_B, env_ranks=env_ranks)
-        envs[0].reset()
+        obs = envs[0].reset()
         envs[0].step(envs[0].action_space.sample())
         examples = {}
         get_example_outputs(agent, self.EnvCls, self.env_kwargs, examples, subprocess=False, env =envs[0])

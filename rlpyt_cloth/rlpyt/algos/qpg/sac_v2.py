@@ -69,7 +69,7 @@ class SAC(RlAlgorithm):
             f"updates per iteration.")
         self.min_itr_learn = self.min_steps_learn // sampler_bs
         agent.give_min_itr_learn(self.min_itr_learn)
-        print('batch_spec:', batch_spec, '\n\n')
+        # print('batch_spec:', batch_spec, '\n\n')
         self.initialize_replay_buffer(examples, batch_spec)
         self.optim_initialize(rank)
 
