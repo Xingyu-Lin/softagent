@@ -10,7 +10,7 @@ from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
 
 from rlpyt.experiments.configs.dm_control.qpg.sac.softgym_sac import configs
-from softgym.registered_env import SOFTGYM_ENVS, env_arg_dict, ClothFlattenEnv
+from softgym.registered_env import SOFTGYM_ENVS, env_arg_dict, ClothFlattenEnv, ClothFoldEnv
 from softgym.envs.qpg_wrapper import QpgWrapper
 
 import cv2 as cv
@@ -47,8 +47,8 @@ def run_task(vv, log_dir, exp_name):
     config_key = vv['config_key']
     # Original experiments: slot_affinity_code ='0slt_20cpu_1gpu_36hto_1skt'
     slot_affinity_code = encode_affinity(
-        n_cpu_core=20,
-        n_gpu=2,
+        n_cpu_core=16,
+        n_gpu=1,
         # cpu_per_run=20,
         # cpu_per_worker=20,
         n_socket=2,

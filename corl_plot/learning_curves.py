@@ -38,6 +38,7 @@ algo_mapping = {
     'planet_cam_rgb': 'RGB (PlaNet)',
     'CURL_key_point': 'Reduced State Oracle (SAC)',
     'CURL_cam_rgb': 'RGB (SAC-CURL)',
+    'DrQ_cam_rgb': 'RGB (SAC-DrQ)',
     'CEM_key_point': 'Dynamics Oracle (CEM)',
     'CURL_point_cloud': 'Full State Oracle (SAC)'
 }
@@ -59,6 +60,7 @@ dict_leg2col = OrderedDict({"Dynamics Oracle (CEM)": 0,
                             'Reduced State Oracle (SAC)': 2,
                             'Full State Oracle (SAC)': 10,
                             'RGB (SAC-CURL)': 1,
+                            'RGB (SAC-DrQ)': 16,
                             'RGB (PlaNet)': 9,
                             })
 
@@ -149,6 +151,7 @@ def filter_nan(xs, *args):
 def plot_all():
     data_path = [
         './data/corl_data/',
+        './data/corl_rebuttal'
     ]
 
     plot_keys_curl = ['eval/info_normalized_performance_final']
@@ -318,7 +321,7 @@ def plot_rigid_bar():
             autolabel(rects, ax, bottom)
             curr_x += bar_width
         ax.annotate('Rigid' if plot_idx % 2 == 0 else 'Deformable',
-                    xy=(curr_x-0.5, -0.0),
+                    xy=(curr_x - 0.5, -0.0),
                     xytext=(-50, -30),  # 3 points vertical offset
                     textcoords="offset points",
                     ha='center', va='bottom',
@@ -353,6 +356,112 @@ def plot_rigid_bar():
     export_legend(leg, osp.join(save_path, 'bar_legend.png'))
 
 
+def plot_qpg():
+    data_path = [
+        './data/corl_data/',
+        './data/corl_rebuttal/'
+    ]
+
+    plot_keys_curl = ['eval/info_normalized_performance_final']
+    plot_keys_planet = ['eval_info_final_normalized_performance']
+    plot_ylabels = ['Performance']
+    plot_envs = ['ClothFlatten']
+    env_titles = ['SpreadCloth']
+
+    exps_data, plottable_keys, distinct_params = reload_data(data_path)
+    group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
+    group_selectors, group_legends = filter_legend(group_selectors, group_legends, ['filtered'])
+
+    for (plot_key_curl, plot_key_planet, plot_ylabel) in zip(plot_keys_curl, plot_keys_planet, plot_ylabels):
+        fig = plt.figure(figsize=(8, 5))
+        plotted_lines = []
+        for plot_idx, env_name in enumerate(plot_envs):
+            ax = plt.subplot('11' + str(plot_idx + 1))
+
+            lw = 3.5
+
+            # color = core.color_defaults[dict_leg2col["CEM"]]
+            # ax.plot(range(max_x), np.ones(max_x) * cem_mean, color=color, linestyle='dashed', linewidth=lw, label='CEM')
+
+            key = 'env_name'
+            for idx, (selector, legend) in enumerate(zip(reversed(group_selectors), reversed(group_legends))):
+                if len(selector.where(key, env_name).extract()) == 0:
+                    continue
+
+                env_horizon = selector.where(key, env_name).extract()[0].params["env_kwargs"]["horizon"]
+                color = core.color_defaults[dict_leg2col[legend]]
+
+                shade = 'median'
+                y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, env_name), plot_key_curl, shade_type=shade, )
+                if len(y) <= 1:  # Hack
+                    y, y_lower, y_upper = get_shaded_curve_filter(selector.where(key, env_name), plot_key_planet, shade_type='median')
+
+                x, _, _ = get_shaded_curve_filter(selector.where(key, env_name), 'train/episode', average=False)
+                if len(x) <= 1:  # Hack
+                    x, _, _ = get_shaded_curve_filter(selector.where(key, env_name), 'num_steps', average=False)
+                else:
+                    x = [ele * env_horizon for ele in x]
+
+                y, [y_lower, y_upper, x] = filter_nan(y, y_lower, y_upper, x)
+
+                plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=lw))
+                ax.fill_between(x, y_lower, y_upper, interpolate=True, facecolor=color, linewidth=0.0,
+                                alpha=0.2)
+
+                # # record the longest x
+                # if x[-1] > max_x:
+                #     max_x = x[-1]
+                #     max_x_list = x
+
+                if legend == 'Dynamics Oracle (CEM)':
+                    plot_key = 'info_final_normalized_performance'
+                    progresses = selector.where(key, env_name)
+                    print(env_name)
+                    progresses = [exp.progress.get(plot_key, np.array([np.nan])) for exp in progresses.extract()]
+                    y = np.mean([ele for ele in np.array(progresses).flatten() if not np.isnan(ele)])
+                    # print(y)
+                    N = 2000000
+                    ax.plot(range(N), np.ones(N) * y, color=color, linewidth=lw)
+            # Plot QPG
+            color = core.color_defaults[12]
+            N = 2000000
+            ax.plot(range(N), np.ones(N) * 0.31, color=color, linewidth=lw, label='Wu et al. 20')
+
+            # def y_fmt(x, y):
+            #     return str((np.round(x / 1000000.0, 1))) + 'M'
+            # ax.xaxis.set_major_formatter(tick.FuncFormatter(y_fmt))
+            ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
+            ax.grid(True)
+            if plot_idx + 1 > 3:
+                ax.set_xlabel('Timesteps')
+
+            if plot_idx == 0 or plot_idx == 3:  # only plot y-label for the left-most sub figures
+                ax.set_ylabel(plot_ylabel)
+            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+            axes = plt.gca()
+
+            axes.set_xlim(left=0, right=1000000)
+            axes.set_ylim(top=1.2)
+            if env_name == 'ClothDrop':
+                axes.set_ylim(bottom=0.)
+            if env_name == 'PassWater':
+                axes.set_ylim(bottom=-2)
+            if env_name == 'ClothFold':
+                axes.set_ylim(bottom=-0.5)
+            plt.title(env_titles[plot_idx])
+        plt.tight_layout()
+        save_name = filter_save_name('qpg.png')
+        plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
+        # extrally store a legend
+        handles, labels = reorderLegend(ax, list(dict_leg2col.keys()))
+        leg = ax.legend(handles, labels, prop={'size': 12}, ncol=1, bbox_to_anchor=(5.02, 1.45))
+        leg.get_frame().set_linewidth(0.0)
+        for legobj in leg.legendHandles:
+            legobj.set_linewidth(7.0)
+        export_legend(leg, osp.join(save_path, 'legend_qpg.png'))
+
+
 if __name__ == '__main__':
     # plot_all()
-    plot_rigid_bar()
+    # plot_rigid_bar()
+    plot_qpg()

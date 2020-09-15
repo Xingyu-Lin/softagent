@@ -12,7 +12,7 @@ def main(mode, debug, dry):
     exp_prefix = '0914_qpg_cloth'
     vg = VariantGenerator()
     vg.add('algorithm', ['qpg'])
-    vg.add('env_name', ['ClothFlatten'])
+    vg.add('env_name', ['ClothFold', 'ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [True])
