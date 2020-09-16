@@ -372,6 +372,8 @@ def plot_qpg():
     group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
     group_selectors, group_legends = filter_legend(group_selectors, group_legends, ['filtered'])
 
+    bar_width = 1.
+
     for (plot_key_curl, plot_key_planet, plot_ylabel) in zip(plot_keys_curl, plot_keys_planet, plot_ylabels):
         fig = plt.figure(figsize=(8, 5))
         plotted_lines = []
@@ -384,6 +386,7 @@ def plot_qpg():
             # ax.plot(range(max_x), np.ones(max_x) * cem_mean, color=color, linestyle='dashed', linewidth=lw, label='CEM')
 
             key = 'env_name'
+            curr_x = 1.
             for idx, (selector, legend) in enumerate(zip(reversed(group_selectors), reversed(group_legends))):
                 if len(selector.where(key, env_name).extract()) == 0:
                     continue
@@ -404,62 +407,52 @@ def plot_qpg():
 
                 y, [y_lower, y_upper, x] = filter_nan(y, y_lower, y_upper, x)
 
-                plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=lw))
-                ax.fill_between(x, y_lower, y_upper, interpolate=True, facecolor=color, linewidth=0.0,
-                                alpha=0.2)
-
-                # # record the longest x
-                # if x[-1] > max_x:
-                #     max_x = x[-1]
-                #     max_x_list = x
+                # plotted_lines.append(ax.plot(x, y, color=color, label=legend, linewidth=lw))
+                # ax.fill_between(x, y_lower, y_upper, interpolate=True, facecolor=color, linewidth=0.0,
 
                 if legend == 'Dynamics Oracle (CEM)':
                     plot_key = 'info_final_normalized_performance'
                     progresses = selector.where(key, env_name)
-                    print(env_name)
                     progresses = [exp.progress.get(plot_key, np.array([np.nan])) for exp in progresses.extract()]
                     y = np.mean([ele for ele in np.array(progresses).flatten() if not np.isnan(ele)])
-                    # print(y)
-                    N = 2000000
-                    ax.plot(range(N), np.ones(N) * y, color=color, linewidth=lw)
+                    bar_height = np.max(y)
+                else:
+                    bar_height = np.max(y)
+                rects = ax.bar(curr_x, bar_height, bar_width, label=legend, color=color)
+                autolabel(rects, ax, 0.)
+                curr_x += bar_width
+
             # Plot QPG
             color = core.color_defaults[12]
-            N = 2000000
-            ax.plot(range(N), np.ones(N) * 0.31, color=color, linewidth=lw, label='Wu et al. 20')
+            rects = ax.bar(curr_x, 0.3154, bar_width, label='Wu et al. 20', color=color)
+            autolabel(rects, ax, 0.)
+            curr_x += bar_width
 
-            # def y_fmt(x, y):
-            #     return str((np.round(x / 1000000.0, 1))) + 'M'
-            # ax.xaxis.set_major_formatter(tick.FuncFormatter(y_fmt))
-            ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
-            ax.grid(True)
-            if plot_idx + 1 > 3:
-                ax.set_xlabel('Timesteps')
-
-            if plot_idx == 0 or plot_idx == 3:  # only plot y-label for the left-most sub figures
-                ax.set_ylabel(plot_ylabel)
-            # ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
             axes = plt.gca()
-
-            axes.set_xlim(left=0, right=1000000)
-            axes.set_ylim(top=1.2)
-            if env_name == 'ClothDrop':
-                axes.set_ylim(bottom=0.)
-            if env_name == 'PassWater':
-                axes.set_ylim(bottom=-2)
-            if env_name == 'ClothFold':
-                axes.set_ylim(bottom=-0.5)
+            ax.set_ylim(top=1.)
+            ax.set_xlim(left=0., right=8.5)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            plt.tick_params(
+                axis='x',  # changes apply to the x-axis
+                which='both',  # both major and minor ticks are affected
+                bottom=False,  # ticks along the bottom edge are off
+                top=False,  # ticks along the top edge are off
+                labelbottom=False)  # labels along the bottom edge are off
             plt.title(env_titles[plot_idx])
+            plt.ylabel('Normalized Performance')
         plt.tight_layout()
         save_name = filter_save_name('qpg.png')
-        plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
-        # extrally store a legend
-        handles, labels = reorderLegend(ax, list(dict_leg2col.keys()))
-        leg = ax.legend(handles, labels, prop={'size': 12}, ncol=1, bbox_to_anchor=(5.02, 1.45))
-        leg.get_frame().set_linewidth(0.0)
-        for legobj in leg.legendHandles:
-            legobj.set_linewidth(7.0)
-        export_legend(leg, osp.join(save_path, 'legend_qpg.png'))
 
+        # extrally store a legend
+        # handles, labels = reorderLegend(ax, list(dict_leg2col.keys()))
+        # leg = ax.legend(handles, labels, prop={'size': 4}, ncol=1)
+        # leg.get_frame().set_linewidth(1.0)
+        # for legobj in leg.legendHandles:
+        #     legobj.set_linewidth(1.0)
+        ax.legend(prop={'size': 12})
+        plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
+        # export_legend(leg, osp.join(save_path, 'legend_qpg.png'))
 
 if __name__ == '__main__':
     # plot_all()

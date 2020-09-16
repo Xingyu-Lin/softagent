@@ -29,8 +29,9 @@ class SerialSampler(BaseSampler):
             ):
         B = self.batch_spec.B
         envs = [self.EnvCls(**self.env_kwargs) for _ in range(B)]
+        maxq = self.env_kwargs['maxq'] if 'maxq' in self.env_kwargs else False
         if not hasattr(envs[0], 'spaces'):
-            envs = [QpgWrapper(env) for env in envs]
+            envs = [QpgWrapper(env, maxq=maxq) for env in envs]
         self.envs = envs
         global_B = B * world_size
         env_ranks = list(range(rank * B, (rank + 1) * B))
