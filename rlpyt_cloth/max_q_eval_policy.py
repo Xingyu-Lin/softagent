@@ -18,7 +18,7 @@ def main():
     parser.add_argument('snapshot_dir', type=str)
     parser.add_argument('max_q_eval_mode', type=str)
     parser.add_argument('--vis', type=bool, default=0)
-    parser.add_argument('--save_folder', type=str, default='../data/qpg_visualization')
+    parser.add_argument('--save_folder', type=str, default='./data/qpg_visualization')
     args = parser.parse_args()
 
     snapshot_file = join(args.snapshot_dir, 'params.pkl')
@@ -51,6 +51,7 @@ def main():
         eval_env_kwargs=config["env_kwargs"],
         **config["sampler"]
     )
+
     sampler.initialize(agent)
     agent.load_state_dict(agent_state_dict)
 
@@ -76,7 +77,7 @@ def main():
             all_video_frames[i] = np.vstack([all_video_frames[i], np.tile(all_video_frames[i][-1][None], [pad_length, 1,1, 1])])
         all_video_frames = np.array(all_video_frames).swapaxes(0, 1)
         grid_image = np.array([make_grid(frame, 1, 4) for frame in all_video_frames])
-        save_numpy_as_gif(grid_image, osp.join(args.save_folder, 'vis.gif'))
+        save_numpy_as_gif(grid_image, osp.join(args.save_folder, 'vis_{}.gif'.format(config['env_name'])))
         for i in range(6):
             traj_infos = sampler.evaluate_agent(0, include_observations=True)
             all_traj_infos.extend(traj_infos)
@@ -92,7 +93,7 @@ def main():
 
     all_performance = np.array([[info.normalized_performance for info in traj_info.env_infos] for traj_info in traj_infos])
     all_steps = np.array([[info.total_steps for info in traj_info.env_infos] for traj_info in traj_infos])
-    with open(osp.join(args.save_folder, 'qpg_traj.npy'), 'wb') as f:
+    with open(osp.join(args.save_folder, 'qpg_traj_{}.npy'.format(config['env_name'])), 'wb') as f:
         np.save(f, all_performance)
         np.save(f, all_steps)
 

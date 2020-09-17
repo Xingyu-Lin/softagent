@@ -365,15 +365,17 @@ def plot_qpg():
     plot_keys_curl = ['eval/info_normalized_performance_final']
     plot_keys_planet = ['eval_info_final_normalized_performance']
     plot_ylabels = ['Performance']
-    plot_envs = ['ClothFlatten']
-    env_titles = ['SpreadCloth']
+    # plot_envs = ['ClothFlatten']
+    # env_titles = ['SpreadCloth']
+
+    plot_envs = ['ClothFold']
+    env_titles = ['FoldCloth']
 
     exps_data, plottable_keys, distinct_params = reload_data(data_path)
     group_selectors, group_legends = get_group_selectors(exps_data, custom_series_splitter)
     group_selectors, group_legends = filter_legend(group_selectors, group_legends, ['filtered'])
 
     bar_width = 1.
-
     for (plot_key_curl, plot_key_planet, plot_ylabel) in zip(plot_keys_curl, plot_keys_planet, plot_ylabels):
         fig = plt.figure(figsize=(8, 5))
         plotted_lines = []
@@ -423,13 +425,19 @@ def plot_qpg():
                 curr_x += bar_width
 
             # Plot QPG
+            if env_name == 'ClothFlatten:':
+                bar_height = 0.3154
+            elif env_name == 'ClothFold':
+                bar_height = -0.48
             color = core.color_defaults[12]
-            rects = ax.bar(curr_x, 0.3154, bar_width, label='Wu et al. 20', color=color)
+            rects = ax.bar(curr_x, bar_height, bar_width, label='Wu et al. 20', color=color)
             autolabel(rects, ax, 0.)
             curr_x += bar_width
 
             axes = plt.gca()
             ax.set_ylim(top=1.)
+            if env_name =='ClothFold':
+                ax.set_ylim(bottom=-0.6)
             ax.set_xlim(left=0., right=8.5)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
@@ -450,9 +458,10 @@ def plot_qpg():
         # leg.get_frame().set_linewidth(1.0)
         # for legobj in leg.legendHandles:
         #     legobj.set_linewidth(1.0)
-        ax.legend(prop={'size': 12})
+        ax.legend(prop={'size': 10}, loc='upper center')
         plt.savefig(osp.join(save_path, save_name), bbox_inches='tight')
         # export_legend(leg, osp.join(save_path, 'legend_qpg.png'))
+
 
 if __name__ == '__main__':
     # plot_all()
