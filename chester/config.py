@@ -59,12 +59,11 @@ REMOTE_HEADER = dict(seuss="""
 """.strip(), autobot="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
-#SBATCH --partition=long
-#SBATCH --exclude=autobot-0-11
-#SBATCH --cpus-per-task=5
-#SBATCH --time=7-12:00:00
+#SBATCH --partition=long 
+#SBATCH --cpus-per-task=32
+#SBATCH --time=3-12:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=40G
+#SBATCH --mem=60G
 """.strip())
 
 # location of the singularity file related to the project

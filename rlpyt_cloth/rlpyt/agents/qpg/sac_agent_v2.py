@@ -18,7 +18,6 @@ from rlpyt.models.utils import update_state_dict
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import repeat, batched_index_select
 
-
 MIN_LOG_STD = -20
 MAX_LOG_STD = 2
 
@@ -28,22 +27,22 @@ i = 0
 
 MaxQInput = None
 
-class SacAgent(BaseAgent):
 
+class SacAgent(BaseAgent):
     shared_pi_model = None
 
     def __init__(
-            self,
-            ModelCls=PiMlpModel,  # Pi model.
-            QModelCls=QofMuMlpModel,
-            model_kwargs=None,  # Pi model.
-            q_model_kwargs=None,
-            initial_model_state_dict=None,  # Pi model.
-            action_squash=1,  # Max magnitude (or None).
-            pretrain_std=0.75,  # High value to make near uniform sampling.
-            max_q_eval_mode='none',
-            n_qs=2,
-            ):
+      self,
+      ModelCls=PiMlpModel,  # Pi model.
+      QModelCls=QofMuMlpModel,
+      model_kwargs=None,  # Pi model.
+      q_model_kwargs=None,
+      initial_model_state_dict=None,  # Pi model.
+      action_squash=1,  # Max magnitude (or None).
+      pretrain_std=0.75,  # High value to make near uniform sampling.
+      max_q_eval_mode='none',
+      n_qs=2,
+    ):
         self._max_q_eval_mode = max_q_eval_mode
         if isinstance(ModelCls, str):
             ModelCls = eval(ModelCls)
@@ -55,7 +54,7 @@ class SacAgent(BaseAgent):
         if q_model_kwargs is None:
             q_model_kwargs = dict(hidden_sizes=[256, 256])
         super().__init__(ModelCls=ModelCls, model_kwargs=model_kwargs,
-            initial_model_state_dict=initial_model_state_dict)  # For async setup.
+                         initial_model_state_dict=initial_model_state_dict)  # For async setup.
         save__init__args(locals())
         self.min_itr_learn = 0  # Get from algo.
 
@@ -66,11 +65,11 @@ class SacAgent(BaseAgent):
         Models = namedtuple("Models", ["pi"] + [f"q{i}" for i in range(self.n_qs)])
 
     def initialize(self, env_spaces, share_memory=False,
-            global_B=1, env_ranks=None):
+                   global_B=1, env_ranks=None):
         _initial_model_state_dict = self.initial_model_state_dict
         self.initial_model_state_dict = None
         super().initialize(env_spaces, share_memory,
-            global_B=global_B, env_ranks=env_ranks)
+                           global_B=global_B, env_ranks=env_ranks)
         self.initial_model_state_dict = _initial_model_state_dict
         self.q_models = [self.QModelCls(**self.env_model_kwargs, **self.q_model_kwargs)
                          for _ in range(self.n_qs)]
@@ -115,19 +114,19 @@ class SacAgent(BaseAgent):
 
     def q(self, observation, prev_action, prev_reward, action):
         model_inputs = buffer_to((observation, prev_action, prev_reward,
-            action), device=self.device)
+                                  action), device=self.device)
         qs = [q(*model_inputs) for q in self.q_models]
         return [q.cpu() for q in qs]
 
     def target_q(self, observation, prev_action, prev_reward, action):
         model_inputs = buffer_to((observation, prev_action, prev_reward,
-            action), device=self.device)
+                                  action), device=self.device)
         qs = [target_q(*model_inputs) for target_q in self.target_q_models]
         return [q.cpu() for q in qs]
 
     def pi(self, observation, prev_action, prev_reward):
         model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+                                 device=self.device)
         mean, log_std = self.model(*model_inputs)
         dist_info = DistInfoStd(mean=mean, log_std=log_std)
         action, log_pi = self.distribution.sample_loglikelihood(dist_info)
@@ -136,12 +135,12 @@ class SacAgent(BaseAgent):
 
     def target_v(self, observation, prev_action, prev_reward):
         model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
+                                 device=self.device)
 
         next_actions, next_log_pis, _ = self.pi(*model_inputs)
 
         qs = self.target_q(observation, prev_action, prev_reward, next_actions)
-        min_next_q = torch.min(torch.stack(qs, dim=0), dim=0)[0]
+        min_next_q = torch.max(torch.stack(qs, dim=0), dim=0)[0]
 
         target_v = min_next_q - self.log_alpha.exp().detach().cpu() * next_log_pis
         return target_v.cpu()
@@ -150,19 +149,23 @@ class SacAgent(BaseAgent):
     def step(self, observation, prev_action, prev_reward):
         threshold = 0.2
         model_inputs = buffer_to((observation, prev_action, prev_reward),
-            device=self.device)
-
+                                 device=self.device)
         if self._max_q_eval_mode == 'none':
             mean, log_std = self.model(*model_inputs)
             dist_info = DistInfoStd(mean=mean, log_std=log_std)
             action = self.distribution.sample(dist_info)
             agent_info = AgentInfo(dist_info=dist_info)
+            # if len(action.shape) == 2:
+            #     action[:, :2] = observation.location[: ,:2]
+            # else:
+            #     action[:2] = observation.location[:2]
             action, agent_info = buffer_to((action, agent_info), device="cpu")
             return AgentStep(action=action, agent_info=agent_info)
         else:
             global MaxQInput
             observation, prev_action, prev_reward = model_inputs
-            fields = observation._fields
+            fields = ('location', 'pixels')  # Hardcode
+
             if 'position' in fields:
                 no_batch = len(observation.position.shape) == 1
             else:
@@ -184,7 +187,7 @@ class SacAgent(BaseAgent):
                 locations = np.tile(locations, (1, 50)) / 24
             elif self._max_q_eval_mode == 'state_cloth_corner':
                 locations = np.array([[1, 0, 0, 0], [0, 1, 0, 0],
-                                     [0, 0, 1, 0], [0, 0, 0, 1]],
+                                      [0, 0, 1, 0], [0, 0, 0, 1]],
                                      dtype='float32')
                 locations = np.tile(locations, (1, 50))
             elif self._max_q_eval_mode == 'state_cloth_point':
@@ -198,8 +201,13 @@ class SacAgent(BaseAgent):
                 locations = np.tile(locations, (1, 50)) / 63
             elif self._max_q_eval_mode == 'pixel_cloth':
                 image = observation[0].squeeze(0).cpu().numpy()
-                locations = np.transpose(np.where(np.any(image < 100, axis=-1))).astype('float32')
-                locations = np.tile(locations, (1, 50)) / 63
+                location_orange = np.transpose(np.where(np.any(image < 50, axis=-1)))
+                location_pink = np.transpose(np.where(np.logical_and(image[:, :, 0] > 160, image[:, :, 1] < 180)))
+                locations = np.vstack([location_orange, location_pink])
+                locations = locations / (image.shape[0] - 1) * 2. - 1.
+
+                locations = np.array([locations[:, 1], locations[:, 0]]).transpose()  # Revert location into uv coordinate
+                locations = np.tile(locations, (1, 50)).astype('float32')
             else:
                 raise Exception()
 
@@ -223,13 +231,12 @@ class SacAgent(BaseAgent):
                                   for observation_q_i in observation_qs_i]
             aug_observation_qs = [MaxQInput(*aug_observation_q)
                                   for aug_observation_q in aug_observation_qs]
-
-            mean, log_std = self.model.forward_output(aug_observation_pi)#, prev_action, prev_reward)
+            mean, log_std = self.model.forward_output(aug_observation_pi)  # , prev_action, prev_reward)
 
             qs = [q.forward_output(aug_obs, mean) for q, aug_obs
                   in zip(self.q_models, aug_observation_qs)]
             q = torch.min(torch.stack(qs, dim=0), dim=0)[0]
-            #q = q.view(batch_size, n_locations)
+            # q = q.view(batch_size, n_locations)
 
             values, indices = torch.topk(q, math.ceil(threshold * n_locations), dim=-1)
 
@@ -241,28 +248,24 @@ class SacAgent(BaseAgent):
             # uniform = torch.clamp(uniform, 1e-5, 1 - 1e-5)
             # gumbel = -torch.log(-torch.log(uniform))
 
-            #sampled_idx = torch.argmax(values + gumbel, dim=-1)
+            # sampled_idx = torch.argmax(values + gumbel, dim=-1)
             sampled_idx = torch.randint(high=math.ceil(threshold * n_locations), size=(1,)).to(self.device)
 
             actual_idxs = indices[sampled_idx]
-            #actual_idxs += (torch.arange(batch_size) * n_locations).to(self.device)
-
-            location = locations[actual_idxs][:, :1]
-            location = (location - 0.5) / 0.5
+            # actual_idxs += (torch.arange(batch_size) * n_locations).to(self.device)
+            location = locations[actual_idxs][:, :2]
             delta = torch.tanh(mean[actual_idxs])
             action = torch.cat((location, delta), dim=-1)
 
             mean, log_std = mean[actual_idxs], log_std[actual_idxs]
-
             if no_batch:
                 action = action.squeeze(0)
                 mean = mean.squeeze(0)
                 log_std = log_std.squeeze(0)
-
             dist_info = DistInfoStd(mean=mean, log_std=log_std)
             agent_info = AgentInfo(dist_info=dist_info)
-
             action, agent_info = buffer_to((action, agent_info), device="cpu")
+
             return AgentStep(action=action, agent_info=agent_info)
 
     def update_target(self, tau=1):
@@ -314,7 +317,6 @@ class SacAgent(BaseAgent):
         rtn.update({f'target_q{i}_model': q.state_dict()
                     for i, q in enumerate(self.target_q_models)})
         return rtn
-
 
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict["model"])

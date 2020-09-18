@@ -142,6 +142,7 @@ class CpuEvalCollector(BaseEvalCollector):
         self.agent.reset()
         self.agent.eval_mode(itr)
         for t in range(self.max_T):
+            # print('here: {}/{}'.format(t, self.max_T))
             act_pyt, agent_info = self.agent.step(obs_pyt, act_pyt, rew_pyt)
             action = numpify_buffer(act_pyt)
             for b, env in enumerate(self.envs):
@@ -152,6 +153,7 @@ class CpuEvalCollector(BaseEvalCollector):
                     self.traj_infos_queue.put(traj_infos[b].terminate(o))
                     traj_infos[b] = self.TrajInfoCls()
                     o = env.reset()
+                    # print('env reset')
                 if d:
                     action[b] = 0  # Next prev_action.
                     r = 0

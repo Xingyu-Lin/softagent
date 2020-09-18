@@ -30,6 +30,10 @@ class SerialEvalCollector(BaseEvalCollector):
         for env in self.envs:
             observations.append(env.reset())
         observation = buffer_from_example(observations[0], len(self.envs))
+        # Somehow observation becomes zero after reset. This is a hacky fix
+        # observation.pixels[0] = observations[0].pixels
+        # observation.location[0] = observations[0].location
+
         action = buffer_from_example(self.envs[0].action_space.null_value(),
             len(self.envs))
         reward = np.zeros(len(self.envs), dtype="float32")
