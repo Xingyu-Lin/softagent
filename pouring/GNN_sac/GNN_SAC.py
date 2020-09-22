@@ -8,7 +8,7 @@ import time
 import math
 
 from pouring.GNN_sac import utils
-from pouring.GNN_sac.architecture import GNN_Actor, GNN_critic
+from pouring.GNN_sac.architecture import MLP_Actor, MLP_critic, GraphEncoder
 
 
 class GNNSAC(object):
@@ -19,6 +19,7 @@ class GNNSAC(object):
       device,
       actor_kwargs,
       critic_kwargs,
+      encoder_kwargs,
       args,
       discount=0.99,
       init_temperature=0.01,
@@ -43,11 +44,13 @@ class GNNSAC(object):
         self.log_interval = log_interval
         self.alpha_fixed = alpha_fixed
 
-        self.actor = GNN_Actor(**actor_kwargs).to(device)
+        self.encoder = GraphEncoder(**encoder_kwargs)
 
-        self.critic = GNN_critic(**critic_kwargs).to(device)
+        self.actor = MLP_Actor(encoder=self.encoder, **actor_kwargs).to(device)
 
-        self.critic_target = GNN_critic(**critic_kwargs).to(device)
+        self.critic = MLP_critic(encoder=self.encoder, **critic_kwargs).to(device)
+
+        self.critic_target = MLP_critic(encoder=self.encoder, **critic_kwargs).to(device)
 
         self.critic_target.load_state_dict(self.critic.state_dict())
 

@@ -21,7 +21,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 from torch.nn.init import kaiming_uniform_
-from pouring.kernel_points import load_kernels
+from pouring.KPConv_sac.kernel_points import load_kernels
 
 # ----------------------------------------------------------------------------------------------------------------------
 #

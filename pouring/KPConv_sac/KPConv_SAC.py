@@ -7,9 +7,8 @@ from matplotlib import pyplot as plt
 import time
 import math
 
-from pouring import utils
-from curl.encoder import make_encoder
-from pouring.architectures import KPCNN, KPCNN_actor, KPCNN_critic
+from pouring.KPConv_sac import utils
+from pouring.KPConv_sac.architectures import KPCNN, KPCNN_actor, KPCNN_critic
 
 
 class KPConvSacAgent(object):

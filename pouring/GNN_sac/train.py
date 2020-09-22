@@ -57,7 +57,7 @@ def run_task(vv, log_dir=None, exp_name=None):
     assert logdir is not None
     os.makedirs(logdir, exist_ok=True)
 
-    # update KPConv config
+    # update GNN config
     config = copy.deepcopy(GNN_default_config)
     update_config(config, vv)
     
@@ -143,6 +143,7 @@ def make_agent(args, config, device):
         args=args,
         actor_kwargs=config['actor_kwargs'],
         critic_kwargs=config['critic_kwargs'],
+        encoder_kwargs=config['encoder_kwargs'],
         device=device,
         discount=args.discount,
         init_temperature=args.init_temperature,

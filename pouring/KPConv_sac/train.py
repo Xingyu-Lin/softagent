@@ -5,12 +5,12 @@ import time
 import json
 import copy
 
-from pouring import utils
-from pouring.logger import Logger
+from pouring.KPConv_sac import utils
+from pouring.KPConv_sac.logger import Logger
 
-from pouring.KPConv_SAC import KPConvSacAgent
-from pouring.config import Modelnet40Config, Modelnet40DeformConfig
-from pouring.curl_default_config import DEFAULT_CONFIG
+from pouring.KPConv_sac.KPConv_SAC import KPConvSacAgent
+from pouring.KPConv_sac.config import Modelnet40Config, Modelnet40DeformConfig
+from pouring.KPConv_sac.curl_default_config import DEFAULT_CONFIG
 
 from experiments.planet.train import update_env_kwargs
 

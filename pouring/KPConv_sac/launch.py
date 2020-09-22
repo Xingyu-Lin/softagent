@@ -4,7 +4,7 @@ import click
 import socket
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from softgym.registered_env import env_arg_dict
-from pouring.train import run_task
+from pouring.KPConv_sac.train import run_task
 
 
 @click.command()
@@ -12,7 +12,7 @@ from pouring.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0907-pouring-kpconv'
+    exp_prefix = '0920-pouring-kpconv-top-rotation-1024-mlp-no-first-subsample'
 
     reward_scales = {
         'PourWater': 20.0,
@@ -84,6 +84,7 @@ def main(mode, debug, dry):
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_observation_mode', ['rim_interpolation'])
+    vg.add('env_kwargs_action_mode', ['rotation_top'])
 
     vg.add('algorithm', ['KPConv_rim_pointcloud'])
     vg.add('alpha_fixed', [False])
@@ -97,8 +98,9 @@ def main(mode, debug, dry):
     vg.add('scale_reward', lambda env_name: [reward_scales[env_name]])
     vg.add('clip_obs', lambda env_name, env_kwargs_observation_mode: [clip_obs[env_name]] if env_kwargs_observation_mode == 'key_point' else [None])
     vg.add('batch_size', [128])
-    vg.add('KPConv_config_final_hidden_dim', [256])
-    vg.add('KPConv_config_first_subsampling_dl', [0.04])
+    vg.add('KPConv_config_final_hidden_dim', [1024])
+    vg.add('KPConv_config_first_subsampling_dl', [None])
+    vg.add('KPConv_config_in_features_dim', [2])
     vg.add('KPConv_deform', [True, False])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
@@ -106,7 +108,7 @@ def main(mode, debug, dry):
     vg.add('save_model', [False])
 
     if not debug:
-        vg.add('seed', [100, 200])
+        vg.add('seed', [100, 200, 300])
     else:
         vg.add('seed', [200])
         exp_prefix += '_debug'

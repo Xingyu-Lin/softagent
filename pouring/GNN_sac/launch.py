@@ -12,7 +12,7 @@ from pouring.GNN_sac.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0913-pouring-GNN'
+    exp_prefix = '0913-pouring-GNN-share-encoder-test-speed'
 
     reward_scales = {
         'PourWater': 20.0,
@@ -102,7 +102,7 @@ def main(mode, debug, dry):
     vg.add('save_model', [False])
 
     if not debug:
-        vg.add('seed', [100, 200, 300])
+        vg.add('seed', [100, 200])
     else:
         vg.add('seed', [200])
         exp_prefix += '_debug'
