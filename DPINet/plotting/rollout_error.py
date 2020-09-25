@@ -33,13 +33,23 @@ model_paths = [
     'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0005/'
 ]
 
+model_names = [
+    'net_epoch_10_iter_10000.pth',
+    'net_epoch_20_iter_10000.pth',
+    'net_epoch_30_iter_10000.pth',
+    'net_epoch_40_iter_10000.pth',
+    'net_epoch_50_iter_10000.pth',
+    'net_epoch_60_iter_10000.pth',
+]
+
 
 def create_env(env_name):
     env_args = copy.deepcopy(env_arg_dicts[env_name])
     env_args['render_mode'] = 'particle'
     env_args['camera_name'] = 'default_camera'
     env_args['action_repeat'] = 2
-    env_args['headless'] = False
+    env_args['headless'] = True
+    env_args['render'] = False
     if env_name == 'ClothFlatten':
         env_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
     return SOFTGYM_ENVS[env_name](**env_args)
@@ -83,6 +93,7 @@ def visualize(env, n_shape, traj_pos, config_id):
 def get_model_prediction(args, stage, stat, traj_path, initial_pos, vels, datasets, model):
     pos_trajs = [initial_pos]
     for i in range(args.time_step):
+        step_time = time.time()
         if i == 0:
             attr, state, rels, n_particles, n_shapes, instance_idx, data = datasets[stage].obtain_graph(osp.join(traj_path, str(i) + '.h5'))
         else:
@@ -125,6 +136,7 @@ def get_model_prediction(args, stage, stat, traj_path, initial_pos, vels, datase
         data_cpu[0] = data_cpu[0] + predicted_vel * 1 / 60.
         data_cpu[1][:, :3] = predicted_vel
         data = data_cpu
+        print('step time:', time.time() - step_time)
 
     return pos_trajs[:-1]
 
@@ -191,31 +203,41 @@ def main(data_folder, n_rollout, save_folder=None, stage='train'):
     n_shape = 2
     env = create_env(env_name)
     datasets, stats = prepare_data(model_paths[0])
-    model_losses = {}
+    all_model_performance = {}
     for model_path in model_paths:
-        model_file = osp.join(model_path, 'net_best.pth')
-        args, model = prepare_model(model_file, datasets, stage)
-        losses = []
-        for idx, traj_id in enumerate(os.listdir(data_folder)):
-            if idx > n_rollout:
-                break
-            traj_folder = osp.join(data_folder, str(traj_id))
+        model_losses = {}
+        for model_name in model_names:
+            model_file = osp.join(model_path, model_name)
+            global args
+            args, model = prepare_model(model_file, datasets, stage)
+            losses = []
+            for idx, traj_id in enumerate(os.listdir(data_folder)):
+                if idx > n_rollout:
+                    break
+                traj_folder = osp.join(data_folder, str(traj_id))
 
-            traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
-            predicted_traj_pos = get_model_prediction(args, stage, stats, traj_folder, traj_pos[0], traj_vel, datasets, model)
-            # predicted_traj_pos = np.random.random(np.array(traj_pos).shape)
-            # frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
-            # combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
-            # save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
-            losses.append(np.mean((np.array(traj_pos) - np.array(predicted_traj_pos)) ** 2, axis=(1, 2)))
-        model_losses[str(args.noise_level)] = np.mean(np.array(losses), axis=0)
+                traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
+                predicted_traj_pos = get_model_prediction(args, stage, stats, traj_folder, traj_pos[0], traj_vel, datasets, model)
+                # predicted_traj_pos = np.random.random(np.array(traj_pos).shape)
+                # frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
+                # combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
+                # save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
+                losses.append(np.mean((np.array(traj_pos) - np.array(predicted_traj_pos)) ** 2, axis=(1, 2)))
+            model_losses[model_name[:12]] = np.mean(np.array(losses), axis=0)
 
-    plt.figure()
-    for k, v in model_losses.items():
-        plt.plot(range(len(v)), v, label=k)
-    plt.legend()
-    print('Saving to {}'.format(osp.join(save_folder, 'rollout_error_{}.png'.format(stage))))
-    plt.savefig(osp.join(save_folder, 'rollout_error_{}.png'.format(stage)))
+        plt.figure()
+        for k, v in model_losses.items():
+            plt.plot(range(len(v)), v, label=k)
+        plt.legend()
+        noise_level = str(args.noise_level)
+        save_name = 'rollout_error_{}_{}.png'.format(stage, noise_level)
+
+        print('Saving to {}'.format(osp.join(save_folder, save_name)))
+        plt.savefig(osp.join(save_folder, save_name))
+        all_model_performance[noise_level] = model_losses
+    import pickle
+    with open(osp.join(save_folder, 'rollout_dump.pkl'), 'wb') as f:
+        pickle.dump(all_model_performance, f)
 
 
 if __name__ == '__main__':

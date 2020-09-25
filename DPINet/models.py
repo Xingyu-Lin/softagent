@@ -208,18 +208,6 @@ class DPINet(nn.Module):
 
     def forward(self, attr, state, Rr, Rs, Ra, n_particles, node_r_idx, node_s_idx, pstep,
                 instance_idx, phases_dict, verbose=0):
-        # print("attr shape: ", attr.shape)
-        # print("state shape: ", state.shape)
-        # print("Rr shape: ", Rr[0].shape) # sparse matrix of shape (n_receiver, n_rel), with receiver_id entry at each column set to 1.
-        # print("Rs shape: ", Rs[0].shape)
-        # print("Ra shape: ", Ra[0].shape)
-        # print("n_particles: ", n_particles)
-        # print("node_r_idx shape: ", node_r_idx[0].shape)
-        # print("node_s_idx shape: ", node_s_idx[0].shape)
-        # print("pstep: ", pstep)
-        # print("instance idx: ", instance_idx)
-        # print("phase_dict: ", phases_dict)
-
         # calculate particle encoding
         if self.use_gpu:
             # NOTE: initialize h to be 0.

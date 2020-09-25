@@ -2,8 +2,8 @@ import time
 import argparse
 import os
 import os.path as osp
-from graph import load_data
-from data import load_data, prepare_input, normalize, denormalize
+from DPINet.graph import load_data
+from DPINet.data import load_data, prepare_input, normalize, denormalize
 import copy
 from softgym.registered_env import env_arg_dict as env_arg_dicts
 from softgym.registered_env import SOFTGYM_ENVS
@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--model_file', default=None)
 parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten/train')
 parser.add_argument('--env_name', type=str, default='ClothFlatten')
-parser.add_argument('--n_rollout', type=int, default=5)
+parser.add_argument('--n_rollout', type=int, default=1)
 parser.add_argument('--save_folder', type=str, default='./dpi_visualization')
 
 
@@ -106,7 +106,10 @@ def get_model_prediction(args, stat, traj_path, initial_pos, vels, datasets, mod
                                   args.verbose_model)
             print('Time forward', time.time() - st_time)
         predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [stat[1]])[0]
+        # if i < args.time_step:
         predicted_vel = np.concatenate([predicted_vel, vels[i][n_particles:]], 0)  ### Model only outputs predicted particle velocity,
+        # else:
+        #     predicted_vel = np.concatenate([predicted_vel, vels[0][n_particles:]], 0)  ### Model only outputs predicted particle velocity,
         ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
         ### maybe, the shape velocity is kind of like the control actions specified by the users
         pos = copy.copy(pos_trajs[-1])
@@ -120,20 +123,19 @@ def get_model_prediction(args, stat, traj_path, initial_pos, vels, datasets, mod
 
     return pos_trajs
 
+class VArgs(object):
+    def __init__(self, vv):
+        for key, val in vv.items():
+            setattr(self, key, val)
+
+def vv_to_args(vv):
+    args = VArgs(vv)
+    return args
 
 def prepare_model(model_path):
     variant_path = osp.join(osp.dirname(model_path), 'variant.json')
     with open(variant_path, 'r') as f:
         vv = json.load(f)
-
-    def vv_to_args(vv):
-        class VArgs(object):
-            def __init__(self, vv):
-                for key, val in vv.items():
-                    setattr(self, key, val)
-
-        args = VArgs(vv)
-        return args
 
     args = vv_to_args(vv)
 
