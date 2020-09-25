@@ -30,8 +30,8 @@ from matplotlib import cm
 from os import makedirs
 from os.path import join, exists
 
-from pouring.ply import read_ply, write_ply
-from pouring.config import bcolors
+from pouring.KPConv_sac.ply import read_ply, write_ply
+from pouring.KPConv_sac.config import bcolors
 
 
 # ------------------------------------------------------------------------------------------

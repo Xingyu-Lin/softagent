@@ -73,18 +73,12 @@ class DPIGNNLayer(MessagePassing):
         
         return x
 
-
-class GNN_Actor(nn.Module):
-    """GNN actor network."""
-
+class GraphEncoder(nn.Module):
     def __init__(
         self,
-        action_dim,
         input_node_dim,
         input_edge_dim,
         feature_dim,
-        log_std_min,
-        log_std_max,
         gnn_layer_class=DPIGNNLayer,
         gnn_layer_kwargs=dict(),
         pooling_layer_class=geometric_nn.TopKPooling,
@@ -93,11 +87,6 @@ class GNN_Actor(nn.Module):
         num_gnn_layers=3,
     ):
         super().__init__()
-
-        
-        self.log_std_min = log_std_min
-        self.log_std_max = log_std_max
-
         self.node_embedding_nn = nn.Sequential(
             nn.Linear(input_node_dim, feature_dim),
             nn.ReLU(),
@@ -111,32 +100,63 @@ class GNN_Actor(nn.Module):
         )
 
         self.gnn_layers = nn.ModuleList()
-        self.pooling_layers = nn.ModuleList()
+        if pooling_layer_class is not None:
+            self.pooling_layers = nn.ModuleList()
         for i in range(num_gnn_layers):
             self.gnn_layers.append(gnn_layer_class(**gnn_layer_kwargs))
-            self.pooling_layers.append(pooling_layer_class(**pooling_layer_kwargs))
+            if pooling_layer_class is not None:
+                self.pooling_layers.append(pooling_layer_class(**pooling_layer_kwargs))
 
         self.global_aggregate_func = global_aggregate_func
+        self.pooling = pooling_layer_class is not None
 
-        self.head_linear = nn.Linear(feature_dim, feature_dim)
-        self.head_mu = nn.Linear(feature_dim, action_dim)
-        self.head_log_std = nn.Linear(feature_dim, action_dim)
-
-    def forward(
-      self, obs, compute_pi=True, compute_log_pi=True, detach_encoder=False
-    ):
+    def forward(self, obs):
         x, edge_index, edge_attr, batch = obs.x, obs.edge_index, obs.edge_attr, obs.batch
         x = self.node_embedding_nn(x)
         edge_attr = self.edge_embedding_nn(edge_attr)    
 
         for gnn_layer, pooling_layer in zip(self.gnn_layers, self.pooling_layers):
             x = gnn_layer(x=x, edge_attr=edge_attr, edge_index=edge_index)
-            # print(type(pooling_layer))
-            x, edge_index, edge_attr, batch, _, _ = pooling_layer(x, edge_index, edge_attr, batch)
+            if self.pooling:
+                x, edge_index, edge_attr, batch, _, _ = pooling_layer(x, edge_index, edge_attr, batch)
         
         x = self.global_aggregate_func(x, batch)
+        return x
 
-        x = F.relu(self.head_linear(x))
+class MLP_Actor(nn.Module):
+    """MLP actor network."""
+
+    def __init__(
+        self,
+        action_dim,
+        feature_dim,
+        log_std_min,
+        log_std_max,
+        encoder,
+    ):
+        super().__init__()
+
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+
+        self.encoder = encoder
+
+        self.head_linear = nn.Sequential(
+            nn.Linear(feature_dim, feature_dim),
+            nn.ReLU(),
+            nn.Linear(feature_dim, feature_dim),
+            nn.ReLU()
+        )
+
+        self.head_mu = nn.Linear(feature_dim, action_dim)
+        self.head_log_std = nn.Linear(feature_dim, action_dim)
+
+    def forward(
+      self, obs, compute_pi=True, compute_log_pi=True, detach_encoder=False
+    ):
+        obs = self.encoder(obs)
+
+        x = F.relu(self.head_linear(obs))
         mu = self.head_mu(x)
         log_std = self.head_log_std(x)
 
@@ -165,82 +185,55 @@ class GNN_Actor(nn.Module):
         return mu, pi, log_pi, log_std
 
 
-class GNN_Q(nn.Module):
-    """GNN Q network."""
+class MLP_Q(nn.Module):
+    """MLP Q network."""
 
     def __init__(
         self,
         action_dim,
-        input_node_dim,
-        input_edge_dim,
         feature_dim,
-        gnn_layer_class=DPIGNNLayer,
-        gnn_layer_kwargs=dict(),
-        pooling_layer_class=geometric_nn.TopKPooling,
-        pooling_layer_kwargs=dict(),
-        global_aggregate_func=geometric_nn.global_mean_pool,
-        num_gnn_layers=3,
     ):
         super().__init__()
 
-        self.node_embedding_nn = nn.Sequential(
-            nn.Linear(input_node_dim, feature_dim),
+        self.head_q = nn.Sequential(
+            nn.Linear(feature_dim + action_dim, feature_dim),
             nn.ReLU(),
-            nn.Linear(feature_dim, feature_dim)
-        )
-
-        self.edge_embedding_nn = nn.Sequential(
-            nn.Linear(input_edge_dim, feature_dim),
+            nn.Linear(feature_dim, feature_dim),
             nn.ReLU(),
-            nn.Linear(feature_dim, feature_dim)
+            nn.Linear(feature_dim, 1)
         )
-
-        self.gnn_layers = nn.ModuleList()
-        self.pooling_layers = nn.ModuleList()
-        for i in range(num_gnn_layers):
-            self.gnn_layers.append(gnn_layer_class(**gnn_layer_kwargs))
-            self.pooling_layers.append(pooling_layer_class(**pooling_layer_kwargs))
-
-        self.global_aggregate_func = global_aggregate_func
-
-        self.head_linear = nn.Linear(feature_dim + action_dim, feature_dim)
-        self.head_q = nn.Linear(feature_dim, action_dim)
 
     def forward(
       self, obs, action
     ):
-        x, edge_index, edge_attr, batch = obs.x, obs.edge_index, obs.edge_attr, obs.batch
-        x = self.node_embedding_nn(x)
-        edge_attr = self.edge_embedding_nn(edge_attr)    
+        x = torch.cat([obs, action], dim=1)
 
-        for gnn_layer, pooling_layers in zip(self.gnn_layers, self.pooling_layers):
-            x = gnn_layer(x=x, edge_attr=edge_attr, edge_index=edge_index)
-            x, edge_index, edge_attr, batch, _, _ = pooling_layers(x, edge_index, edge_attr, batch)
-        
-        x = self.global_aggregate_func(x, batch)
-        x = torch.cat([x, action], dim=1)
-
-        x = F.relu(self.head_linear(x))
         q = self.head_q(x)
 
         return q
 
-class GNN_critic(nn.Module):
+class MLP_critic(nn.Module):
     """Critic network, employes two q-functions."""
 
-    def __init__(self, q_class=GNN_Q, q_kwargs=dict()):
+    def __init__(
+        self, 
+        encoder,
+        q_kwargs=dict(),
+    ):
+        
         super().__init__()
 
-        # TODO: another option is to share the KPconv part for these two q functions
+        self.encoder = encoder
 
-        self.Q1 = q_class(
+        self.Q1 = MLP_Q(
             **q_kwargs
         )
-        self.Q2 = q_class(
+        self.Q2 = MLP_Q(
             **q_kwargs
         )
 
     def forward(self, obs, action, detach_encoder=False):
+        obs = self.encoder(obs)
         q1 = self.Q1(obs, action)
         q2 = self.Q2(obs, action)
 

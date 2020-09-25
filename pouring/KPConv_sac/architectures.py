@@ -14,7 +14,7 @@
 #      Hugues THOMAS - 06/03/2020
 #
 
-from pouring.blocks import *
+from pouring.KPConv_sac.blocks import *
 import numpy as np
 import torch.nn.functional as F
 
@@ -124,7 +124,10 @@ class KPCNN(nn.Module):
 
         # Current radius of convolution and feature dimension
         layer = 0
-        r = config.first_subsampling_dl * config.conv_radius
+        if config.first_subsampling_dl is not None:
+            r = config.first_subsampling_dl * config.conv_radius
+        else:
+            r = 0.033 * config.conv_radius
         in_dim = config.in_features_dim
         out_dim = config.first_features_dim
         self.K = config.num_kernel_points
@@ -256,7 +259,10 @@ class KPFCNN(nn.Module):
 
         # Current radius of convolution and feature dimension
         layer = 0
-        r = config.first_subsampling_dl * config.conv_radius
+        if config.first_subsampling_dl is not None:
+            r = config.first_subsampling_dl * config.conv_radius
+        else:
+            r = config.conv_radius * 0.033
         in_dim = config.in_features_dim
         out_dim = config.first_features_dim
         self.K = config.num_kernel_points
@@ -467,7 +473,10 @@ class KPCNN_actor(nn.Module):
 
         # Current radius of convolution and feature dimension
         layer = 0
-        r = config.first_subsampling_dl * config.conv_radius
+        if config.first_subsampling_dl is not None:
+            r = config.first_subsampling_dl * config.conv_radius
+        else:
+            r = config.conv_radius * 0.033
         in_dim = config.in_features_dim
         out_dim = config.first_features_dim
         self.K = config.num_kernel_points
@@ -514,9 +523,14 @@ class KPCNN_actor(nn.Module):
                 out_dim *= 2
                 block_in_layer = 0
 
-        self.head_mlp = UnaryBlock(out_dim, config.final_hidden_dim, False, 0)
-        self.head_mlp_mean = UnaryBlock(config.final_hidden_dim, config.action_dim, False, 0)
-        self.head_mlp_logstd = UnaryBlock(config.final_hidden_dim, config.action_dim, False, 0)
+        self.head_mlp = nn.Sequential(
+            nn.Linear(out_dim, config.final_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.final_hidden_dim, config.final_hidden_dim),
+            nn.ReLU()
+        )
+        self.head_mlp_mean = nn.Linear(config.final_hidden_dim, config.action_dim)
+        self.head_mlp_logstd = nn.Linear(config.final_hidden_dim, config.action_dim)
         self.log_std_min = config.log_std_min
         self.log_std_max = config.log_std_max
 
@@ -578,7 +592,10 @@ class KPCNN_qfunction(nn.Module):
 
         # Current radius of convolution and feature dimension
         layer = 0
-        r = config.first_subsampling_dl * config.conv_radius
+        if config.first_subsampling_dl is not None:
+            r = config.first_subsampling_dl * config.conv_radius
+        else:
+            r = config.conv_radius * 0.033
         in_dim = config.in_features_dim
         out_dim = config.first_features_dim
         self.K = config.num_kernel_points
@@ -625,9 +642,13 @@ class KPCNN_qfunction(nn.Module):
                 out_dim *= 2
                 block_in_layer = 0
 
-        self.head_mlp_0 = UnaryBlock(out_dim + config.action_dim, config.final_hidden_dim, False, 0)
-        self.head_mlp_1 = UnaryBlock(config.final_hidden_dim, config.final_hidden_dim, False, 0)
-        self.head_mlp_q = UnaryBlock(config.final_hidden_dim, 1, False, 0)
+        self.head_mlp_0 = nn.Sequential(
+            nn.Linear(out_dim + config.action_dim, config.final_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.final_hidden_dim, config.final_hidden_dim),
+            nn.ReLU()
+        )
+        self.head_mlp_q = nn.Linear(config.final_hidden_dim, 1)
 
     def forward(self, batch_obs, batch_action):
 
@@ -641,7 +662,6 @@ class KPCNN_qfunction(nn.Module):
         # Head of network
         x = torch.cat([x, batch_action], dim=1)
         x = self.head_mlp_0(x)
-        x = self.head_mlp_1(x)
         q = self.head_mlp_q(x)
         return q
 

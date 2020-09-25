@@ -9,10 +9,10 @@ from torch.utils.data import Dataset, DataLoader
 import time
 from skimage.util.shape import view_as_windows
 from collections import deque
-import pouring.cpp_wrappers.cpp_subsampling.grid_subsampling as cpp_subsampling
-import pouring.cpp_wrappers.cpp_neighbors.radius_neighbors as cpp_neighbors
+import pouring.KPConv_sac.cpp_wrappers.cpp_subsampling.grid_subsampling as cpp_subsampling
+import pouring.KPConv_sac.cpp_wrappers.cpp_neighbors.radius_neighbors as cpp_neighbors
 
-from pouring.kernel_points import create_3D_rotations
+from pouring.KPConv_sac.kernel_points import create_3D_rotations
 
 
 class eval_mode(object):
@@ -262,9 +262,13 @@ class ReplayBufferPointCloud():
             obs_feature = obs[:, 3:]
             next_obs_feature = next_obs[:, 3:]
             
-            obs_subsampled, obs_feature_subsampled = grid_subsampling(obs_, features=obs_feature, sampleDl=self.config.first_subsampling_dl)
-            next_obs_subsampled, next_obs_feature_subsampled = grid_subsampling(next_obs_, features=next_obs_feature, sampleDl=self.config.first_subsampling_dl)
-            
+            if self.config.first_subsampling_dl is not None:
+                obs_subsampled, obs_feature_subsampled = grid_subsampling(obs_, features=obs_feature, sampleDl=self.config.first_subsampling_dl)
+                next_obs_subsampled, next_obs_feature_subsampled = grid_subsampling(next_obs_, features=next_obs_feature, sampleDl=self.config.first_subsampling_dl)
+            else:
+                obs_subsampled, obs_feature_subsampled = obs_, obs_feature
+                next_obs_subsampled, next_obs_feature_subsampled = next_obs_, next_obs_feature
+
             obses.append(obs_subsampled)
             next_obses.append(next_obs_subsampled)
             obs_features.append(obs_feature_subsampled)
@@ -281,8 +285,11 @@ class ReplayBufferPointCloud():
             stack_lengths = np.array([tp.shape[0] for tp in points_list], dtype=np.int32)
 
             # Input features
-            # stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
+            # stacked_features_old = np.ones_like(stacked_points[:, :1], dtype=np.float32)
             stacked_features = np.concatenate(features_list, axis=0)
+            # print("stacked_features_old.shape: ", stacked_features_old.shape)
+            # print("stacked_features_new.shape: ", stacked_features.shape)
+            # exit()
 
             #######################
             # Create network inputs
@@ -352,7 +359,11 @@ def classification_inputs(config,
                             stack_lengths):
 
     # Starting radius of convolutions
-    r_normal = config.first_subsampling_dl * config.conv_radius
+    if config.first_subsampling_dl is not None:
+        r_normal = config.first_subsampling_dl * config.conv_radius
+    else:
+        r_normal = 0.033 * config.conv_radius
+
 
     # Starting layer
     layer_blocks = []
@@ -504,7 +515,14 @@ def preprocess_single_obs(obs, config):
     feature = obs[:, 3:]
     # print(obs.shape)
     # print(feature.shape)
-    obs_subsampled, feature_subsampled = grid_subsampling(obs_, features=feature, sampleDl=config.first_subsampling_dl)
+    if config.first_subsampling_dl is not None:
+        obs_subsampled, feature_subsampled = grid_subsampling(obs_, features=feature, sampleDl=config.first_subsampling_dl)
+        # print(obs_subsampled.shape)
+        # print(feature_subsampled.shape)
+        # exit()
+    else:
+        obs_subsampled, feature_subsampled = obs_, feature
+
 
     tp_list = [obs_subsampled]
     stacked_points = np.concatenate(tp_list, axis=0)
