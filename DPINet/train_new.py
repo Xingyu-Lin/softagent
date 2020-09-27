@@ -24,6 +24,7 @@ from DPINet.utils import count_parameters
 from softgym.registered_env import env_arg_dict
 from softgym.registered_env import SOFTGYM_ENVS
 from DPINet.configs import env_configs
+from DPINet.graph_struct import convert_dpi_to_graph
 
 
 def get_default_args():
@@ -163,51 +164,9 @@ def train(args):
             losses = 0.
             for i, data in enumerate(dataloaders[phase]):
                 attr, state, rels, n_particles, n_shapes, instance_idx, label = data
-                Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
-                # for r in Ra:
-                #     print(r.sum(axis=0))
-                Rr, Rs = [], []
-
-                # print("rels[0] len: ", len(rels[0]))
-                for j in range(len(rels[0])):
-                    Rr_idx, Rs_idx, values = rels[0][j], rels[1][j], rels[2][j]  # NOTE: values are all just 1
-                    # print("node_r_idx[j].shape[0]: ", node_r_idx[j].shape[0])
-                    # print("Ra[j].size(0): ", Ra[j].size(0))
-                    Rr.append(torch.sparse.FloatTensor(  # NOTE: Ra = np.zeros((rels.shape[0], args.relation_dim)), relation_dim is just 1
-                        Rr_idx, values, torch.Size([node_r_idx[j].shape[0], Ra[j].size(0)])))
-                    Rs.append(torch.sparse.FloatTensor(
-                        Rs_idx, values, torch.Size([node_s_idx[j].shape[0], Ra[j].size(0)])))
-                    # NOTE: this is a matrix of size (n_receiver, n_rel). in each column (relationship), the receiver idx row is set to be 1.
-
-                data = [attr, state, Rr, Rs, Ra, label]
-
-                with torch.set_grad_enabled(phase == 'train'):
-                    if use_gpu:
-                        for d in range(len(data)):
-                            if type(data[d]) == list:
-                                for t in range(len(data[d])):
-                                    data[d][t] = Variable(data[d][t].cuda())
-                            else:
-                                data[d] = Variable(data[d].cuda())
-                    else:
-                        for d in range(len(data)):
-                            if type(data[d]) == list:
-                                for t in range(len(data[d])):
-                                    data[d][t] = Variable(data[d][t])
-                            else:
-                                data[d] = Variable(data[d])
-
-                    attr, state, Rr, Rs, Ra, label = data
-                    # st_time = time.time()
-                    predicted = model(
-                        attr, state, Rr, Rs, Ra, n_particles,
-                        node_r_idx, node_s_idx, pstep,
-                        instance_idx, args.phases_dict, args.verbose_model)
-                    # print('Time forward', time.time() - st_time)
-
-                    # print(predicted)
-                    # print(label)
-
+                graph = convert_dpi_to_graph(attr, state, rels, n_particles, n_shapes, instance_idx)
+                predicted = model(graph, args.phases_dict, args.verbose_model)
+                label = label.cuda()
                 loss = criterionMSE(predicted, label)
                 losses += np.sqrt(loss.item())
 
@@ -224,9 +183,9 @@ def train(args):
                         loss_acc += loss
 
                 if i % args.log_per_iter == 0:
-                    n_relations = 0
-                    for j in range(len(Ra)):
-                        n_relations += Ra[j].size(0)
+                    # n_relations = 0
+                    # for j in range(len(Ra)):
+                    #     n_relations += Ra[j].size(0)
                     # print('%s [%d/%d][%d/%d] n_relations: %d, Loss: %.6f, Agg: %.6f' %
                     #       (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
                     #        n_relations, np.sqrt(loss.item()), losses / (i + 1)))
@@ -238,7 +197,6 @@ def train(args):
 
                 if phase == 'train' and i > 0 and i % args.ckp_per_iter == 0:
                     torch.save(model.state_dict(), '%s/net_epoch_%d_iter_%d.pth' % (logdir, epoch, i))
-
             losses /= len(dataloaders[phase])
             print('%s [%d/%d] Loss: %.4f, Best valid: %.4f' %
                   (phase, epoch, args.n_epoch, losses, best_valid_loss))

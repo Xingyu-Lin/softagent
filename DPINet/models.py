@@ -206,20 +206,14 @@ class DPINet(nn.Module):
 
         return rot
 
-    def forward(self, attr, state, Rr, Rs, Ra, n_particles, node_r_idx, node_s_idx, pstep,
-                instance_idx, phases_dict, verbose=0):
-        # calculate particle encoding
-        if self.use_gpu:
-            # NOTE: initialize h to be 0.
-            particle_effect = Variable(torch.zeros((attr.size(0), self.nf_effect)).cuda())
-        else:
-            particle_effect = Variable(torch.zeros((attr.size(0), self.nf_effect)))
+    def forward(self, graph, phases_dict, verbose=0):
+        state, attr = graph.get_node_tensor()
+        instance_idx, psteps = graph.info['instance_idx'], graph.info['psteps']
 
+        # calculate particle encoding
+        particle_effect = torch.zeros((attr.size(0), self.nf_effect)).cuda()
         # add offset to center-of-mass for rigids to attr
-        if self.use_gpu:
-            offset = Variable(torch.zeros((attr.size(0), state.size(1))).cuda())
-        else:
-            offset = Variable(torch.zeros((attr.size(0), state.size(1))))
+        offset = torch.zeros((attr.size(0), state.size(1))).cuda()
 
         for i in range(len(instance_idx) - 1):
             st, ed = instance_idx[i], instance_idx[i + 1]
@@ -228,24 +222,24 @@ class DPINet(nn.Module):
                 offset[st:ed] = state[st:ed] - c
         attr = torch.cat([attr, offset], 1)
 
-        # print("len Rr: ", len(Rr))
-        n_stage = len(Rr)
+        n_stage = graph.num_stage
         # NOTE: the particle_effect is inherited from the last stage to the next stage. so the hierarchical instance order matters.
         for s in range(n_stage):
             if verbose:
                 print("=== Stage", s)
-            Rrp = Rr[s].t()  # transpose, then has shape (n_rel, n_receiver)
-            Rsp = Rs[s].t()
+            Rr, Rs, Ra, node_r_idx, node_s_idx = graph.get_edge_tensor(s)
+            Rrp = Rr.t()  # transpose, then has shape (n_rel, n_receiver)
+            Rsp = Rs.t()
 
             # receiver_attr, sender_attr
-            attr_r = attr[node_r_idx[s]]
-            attr_s = attr[node_s_idx[s]]
+            attr_r = attr[node_r_idx]
+            attr_s = attr[node_s_idx]
             attr_r_rel = Rrp.mm(attr_r)  # NOTE: use matrix multiplication to extract the receiver's attribute
             attr_s_rel = Rsp.mm(attr_s)
 
             # receiver_state, sender_state
-            state_r = state[node_r_idx[s]]
-            state_s = state[node_s_idx[s]]
+            state_r = state[node_r_idx]
+            state_s = state[node_s_idx]
             state_r_rel = Rrp.mm(state_r)  # NOTE: again use matrix multiplication to extract the receiver's state
             state_s_rel = Rsp.mm(state_s)
             # state_diff = state_r_rel - state_s_rel  # NOTE: state_diff is actually never used
@@ -257,18 +251,18 @@ class DPINet(nn.Module):
 
             # calculate relation encoding
             relation_encode = self.relation_encoder_list[s](
-                torch.cat([attr_r_rel, attr_s_rel, state_r_rel, state_s_rel, Ra[s]], 1))
+                torch.cat([attr_r_rel, attr_s_rel, state_r_rel, state_s_rel, Ra], 1))
             if verbose:
                 print("relation encode:", relation_encode.size())
 
-            for i in range(pstep[s]):
+            for i in range(psteps[s]):
                 if verbose:
                     print("pstep", i)
-                    print("Receiver index range", np.min(node_r_idx[s]), np.max(node_r_idx[s]))
-                    print("Sender index range", np.min(node_s_idx[s]), np.max(node_s_idx[s]))
+                    print("Receiver index range", np.min(node_r_idx), np.max(node_r_idx))
+                    print("Sender index range", np.min(node_s_idx), np.max(node_s_idx))
 
-                effect_p_r = particle_effect[node_r_idx[s]]
-                effect_p_s = particle_effect[node_s_idx[s]]
+                effect_p_r = particle_effect[node_r_idx]
+                effect_p_s = particle_effect[node_s_idx]
 
                 receiver_effect = Rrp.mm(effect_p_r)  # Rrp: (n_rel, n_receiver), where each row is (0, 0, ..., 1, ..., 0), 1 at receiver idx
                 sender_effect = Rsp.mm(effect_p_s)
@@ -280,7 +274,7 @@ class DPINet(nn.Module):
                     print("relation effect:", effect_rel.size())
 
                 # calculate particle effect by aggregating relation effect
-                effect_p_r_agg = Rr[s].mm(effect_rel)  # (n_receiver, n_rel) x (n_rel, nf_effect) -> (n_receiver, nf_effect)
+                effect_p_r_agg = Rr.mm(effect_rel)  # (n_receiver, n_rel) x (n_rel, nf_effect) -> (n_receiver, nf_effect)
                 # NOTE: this is correct. The first row of Rr[s] encodes in which rels the first particle is receiver.
 
                 # calculate particle effect
@@ -291,7 +285,7 @@ class DPINet(nn.Module):
                     print("particle effect:", effect_p.size())
 
                 # NOTE: update the residual
-                particle_effect[node_r_idx[s]] = effect_p
+                particle_effect[node_r_idx] = effect_p
 
         pred = []
         for i in range(len(instance_idx) - 1):

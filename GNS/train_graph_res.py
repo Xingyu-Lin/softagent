@@ -24,13 +24,12 @@ from utils import count_parameters
 if __name__ == "__main__":
 
     # Setup configs
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--pstep', type=int, default=2)
     parser.add_argument('--n_rollout', type=int, default=0)
     parser.add_argument('--time_step', type=int, default=0)
     parser.add_argument('--time_step_clip', type=int, default=0)
-    parser.add_argument('--dt', type=float, default=1./60.)
+    parser.add_argument('--dt', type=float, default=1. / 60.)
     parser.add_argument('--nf_relation', type=int, default=300)
     parser.add_argument('--nf_particle', type=int, default=200)
     parser.add_argument('--nf_effect', type=int, default=200)
@@ -39,8 +38,8 @@ if __name__ == "__main__":
     parser.add_argument('--outf', default='files')
     parser.add_argument('--dataf', default='data')
     parser.add_argument('--num_workers', type=int, default=10)
-    parser.add_argument('--gen_data', type=int, default=0)
-    parser.add_argument('--gen_stat', type=int, default=0)
+    parser.add_argument('--gen_data', type=int, default=1)
+    parser.add_argument('--gen_stat', type=int, default=1)
     parser.add_argument('--log_per_iter', type=int, default=1000)
     parser.add_argument('--ckp_per_iter', type=int, default=10000)
     parser.add_argument('--eval', type=int, default=0)
@@ -112,23 +111,22 @@ if __name__ == "__main__":
     else:
         raise AssertionError("Unsupported env")
 
-
     args.outf = args.outf + '_' + args.env
     args.dataf = 'data/' + args.dataf + '_' + args.env
 
     os.system('mkdir -p ' + args.outf)
     os.system('mkdir -p ' + args.dataf)
 
-    print ("Parsed args")
+    print("Parsed args")
 
     # Create Models
 
-    #material_encoder = MaterialEncoder(len(phases_dict['material'])) #Commented out for now
-    encoder_model = Encoder(args.state_dim+args.attr_dim, args.relation_dim).cuda()
-    processor_model = Processor([3*128+1, 2*128+1, 2*128+1]).cuda()
+    # material_encoder = MaterialEncoder(len(phases_dict['material'])) #Commented out for now
+    encoder_model = Encoder(args.state_dim + args.attr_dim, args.relation_dim).cuda()
+    processor_model = Processor([3 * 128 + 1, 2 * 128 + 1, 2 * 128 + 1]).cuda()
     decoder_model = Decoder().cuda()
 
-    print ("Created models")
+    print("Created models")
 
     # Create Dataloaders
 
@@ -139,23 +137,22 @@ if __name__ == "__main__":
         datasets[phase].load_data(args.env)
 
     dataloaders = {x: torch.utils.data.DataLoader(
-                        datasets[x], batch_size=args.batch_size,
-                        shuffle=True if x == 'train' else False,
-                        num_workers=args.num_workers)
-                for x in ['train', 'valid']}
+        datasets[x], batch_size=args.batch_size,
+        shuffle=True if x == 'train' else False,
+        num_workers=args.num_workers)
+        for x in ['train', 'valid']}
 
-    print ("Created dataloaders")
+    print("Created dataloaders")
 
     # Load model from checkpoint (optional)
 
     if args.resume_epoch > 0 or args.resume_iter > 0:
-
-        #mat_enc_path = os.path.join(args.outf, 'mat_enc_net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
+        # mat_enc_path = os.path.join(args.outf, 'mat_enc_net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
         enc_path = os.path.join(args.outf, 'enc_net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
         proc_path = os.path.join(args.outf, 'proc_net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
         dec_path = os.path.join(args.outf, 'dec_net_epoch_%d_iter_%d.pth' % (args.resume_epoch, args.resume_iter))
-        
-        #material_encoder.load_state_dict(torch.load(mat_enc_path))
+
+        # material_encoder.load_state_dict(torch.load(mat_enc_path))
         encoder_model.load_state_dict(torch.load(enc_path))
         processor_model.load_state_dict(torch.load(proc_path))
         decoder_model.load_state_dict(torch.load(dec_path))
@@ -178,7 +175,7 @@ if __name__ == "__main__":
         phases = ['train', 'valid'] if args.eval == 0 else ['valid']
         for phase in phases:
 
-            #material_encoder.train()
+            # material_encoder.train()
             encoder_model.train()
             processor_model.train()
             decoder_model.train()
@@ -187,7 +184,7 @@ if __name__ == "__main__":
             for i, data in enumerate(dataloaders[phase]):
 
                 node_attr, neighbors, edge_attr, global_feat, gt_accel = data
-                
+
                 node_attr = torch.squeeze(node_attr, dim=0).cuda()
                 neighbors = torch.squeeze(neighbors, dim=0).cuda()
                 edge_attr = torch.squeeze(edge_attr, dim=0).cuda()
@@ -198,7 +195,8 @@ if __name__ == "__main__":
 
                     # st_time = time.time()
                     node_embedding, edge_embedding = encoder_model(node_attr, edge_attr)
-                    node_embedding_out, edge_embedding_out, global_out = processor_model(node_embedding, neighbors, edge_embedding, global_feat, batch=None)
+                    node_embedding_out, edge_embedding_out, global_out = processor_model(node_embedding, neighbors, edge_embedding, global_feat,
+                                                                                         batch=None)
                     pred_accel = decoder_model(node_embedding)
                     # print('Time forward', time.time() - st_time)
 
@@ -215,34 +213,32 @@ if __name__ == "__main__":
 
                 if i % args.log_per_iter == 0:
                     print('%s [%d/%d][%d/%d] Loss: %.6f, Agg: %.6f' %
-                        (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
-                        np.sqrt(loss.item()), losses / (i + 1)))
+                          (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
+                           np.sqrt(loss.item()), losses / (i + 1)))
 
                 if phase == 'train' and i > 0 and i % args.ckp_per_iter == 0:
-
-                    #mat_enc_path = '%s/mat_enc_net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
+                    # mat_enc_path = '%s/mat_enc_net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
                     enc_path = '%s/enc_net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
                     proc_path = '%s/proc_net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
                     dec_path = '%s/dec_net_epoch_%d_iter_%d.pth' % (args.outf, epoch, i)
 
-                    #torch.save(material_encoder.state_dict(), mat_enc_path)
+                    # torch.save(material_encoder.state_dict(), mat_enc_path)
                     torch.save(encoder_model.state_dict(), enc_path)
                     torch.save(processor_model.state_dict(), proc_path)
                     torch.save(decoder_model.state_dict(), dec_path)
 
             losses /= len(dataloaders[phase])
             print('%s [%d/%d] Loss: %.4f, Best valid: %.4f' %
-                (phase, epoch, args.n_epoch, losses, best_valid_loss))
+                  (phase, epoch, args.n_epoch, losses, best_valid_loss))
 
             if phase == 'valid':
 
                 scheduler.step(losses)
 
-                if(losses < best_valid_loss):
-
+                if (losses < best_valid_loss):
                     best_valid_loss = losses
 
-                    #torch.save(material_encoder.state_dict(), '%s/mat_enc_net_best.pth' % (args.outf))
+                    # torch.save(material_encoder.state_dict(), '%s/mat_enc_net_best.pth' % (args.outf))
                     torch.save(encoder_model.state_dict(), '%s/enc_net_best.pth' % (args.outf))
                     torch.save(processor_model.state_dict(), '%s/proc_net_best.pth' % (args.outf))
                     torch.save(decoder_model.state_dict(), '%s/dec_net_best.pth' % (args.outf))
