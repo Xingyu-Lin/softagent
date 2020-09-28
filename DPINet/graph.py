@@ -98,7 +98,7 @@ class PhysicsFleXDataset(Dataset):
         for i in range(len(self.stat)):
             self.stat[i] = self.stat[i][-3:, :]
 
-    def _construct_graph(self, data, stat, args, phases_dict, var):
+    def _construct_graph(self, data, stat, args, phases_dict, var, downsample=True):
         raise NotImplementedError
 
     def _collect_policy(self, env, timestep):
@@ -200,12 +200,15 @@ class PhysicsFleXDataset(Dataset):
 
         data[1] = np.concatenate([data[1]] + vel_his, 1)
 
-        attr, state, relations, n_particles, n_shapes, instance_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
+        attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
 
         ### label
         data_nxt = normalize(load_data(self.data_names, data_nxt_path), self.stat)
 
-        label = torch.FloatTensor(data_nxt[1][:n_particles])  # NOTE: just use velocity at next step as label
+        if sample_idx is not None:
+            label = torch.FloatTensor(data_nxt[1][sample_idx[:n_particles]])
+        else:
+            label = torch.FloatTensor(data_nxt[1][:n_particles])  # NOTE: just use velocity at next step as label
         if self.args.noise_level > 0:
             state += torch.empty_like(state).normal_(mean=0, std=self.args.noise_level)
 
@@ -219,13 +222,13 @@ class PhysicsFleXDataset(Dataset):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
-    def construct_graph(self, data):
-        return self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
+    def construct_graph(self, data, downsample=True):
+        return self._construct_graph(data, self.stat, self.args, self.phases_dict, 0, downsample)
 
     def obtain_graph(self, data_path):
         data = load_data(self.data_names, data_path)
-        attr, state, relations, n_particles, n_shapes, instance_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
-        return attr, state, relations, n_particles, n_shapes, instance_idx, data
+        attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
+        return attr, state, relations, n_particles, n_shapes, instance_idx, data, sample_idx
 
 
 class ClothDataset(PhysicsFleXDataset):
@@ -351,10 +354,33 @@ class ClothDataset(PhysicsFleXDataset):
         #     for j in range(cloth_xdim):
         #         rels.append([i * cloth_ydim + j, (i + 1) * cloth_ydim + j, 1])
 
-    def _construct_graph(self, data, stat, args, phases_dict, var):
+    def _downsample(self, data, scale=2):
+        pos, vel, clusters, scene_params = data
+        sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
+        cloth_xdim, cloth_ydim = int(cloth_xdim), int(cloth_ydim)
+        n_particles = cloth_xdim * cloth_ydim
+        n_shapes = len(pos) - n_particles
+        new_idx = np.arange(cloth_xdim * cloth_ydim).reshape((cloth_ydim, cloth_xdim))
+        new_idx = new_idx[::scale, ::scale]
+        cloth_ydim, cloth_xdim = new_idx.shape
+        new_idx = new_idx.flatten()
+        clusters = clusters[:, :, :, new_idx]
+        new_idx = np.hstack([new_idx, np.arange(len(pos))[-n_shapes:]])
+        pos = pos[new_idx, :]
+        vel = vel[new_idx, :]
+        scene_params = sphere_radius, cloth_xdim, cloth_ydim, config_id
+        return (pos, vel, clusters, scene_params), new_idx
+
+    def _construct_graph(self, data, stat, args, phases_dict, var, downsample=True):
         # Arrangement:
         # particles, shapes, roots
-
+        if args.down_sample_scale is not None and downsample: # First one is vv and the second one is for rollout
+            new_data, sample_idx = self._downsample(data, args.down_sample_scale)
+            data[2] = new_data[2]
+            data[3] = new_data[3]
+            data = new_data
+        else:
+            sample_idx = None
         positions, velocities, clusters, scene_params = data
         n_shapes = 2
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
@@ -418,8 +444,12 @@ class ClothDataset(PhysicsFleXDataset):
                 raise NotImplementedError
 
         if False:
-            gt_edge = self._get_gt_neighbor(cloth_xdim, cloth_ydim, args.relation_dim)
-            pos = positions[:200]
+            if args.edge_type == 'eight_neighbor':
+                gt_edge = self._get_eight_neighbor(cloth_xdim, cloth_ydim, args.relation_dim)
+            else:
+                gt_edge = self._get_cloth_neighbor(cloth_xdim, cloth_ydim, args.relation_dim)
+
+            pos = positions[:]
             import matplotlib.pyplot as plt
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
@@ -427,9 +457,9 @@ class ClothDataset(PhysicsFleXDataset):
             for i in range(len(gt_edge)):
                 s = int(gt_edge[i][0])
                 r = int(gt_edge[i][1])
-                if s < 200 and r < 200:
+                # if s < 200 and r < 200:
                     # print([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]])
-                    ax.plot([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]], c='r')
+                ax.plot([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]], c='r')
             ax.scatter(pos[:, 0], pos[:, 1], pos[:, 2], c='g', s=20)
             ax.set_aspect('equal')
 
@@ -505,6 +535,5 @@ class ClothDataset(PhysicsFleXDataset):
 
         attr = torch.FloatTensor(attr)
         relations = [Rr_idxs, Rs_idxs, values, Ras, node_r_idxs, node_s_idxs, psteps]  # NOTE: values are just all 1, and Ras are just all 0.
-
-        return attr, state, relations, n_particles, n_shapes, instance_idx  # NOTE: attr are just object attributes, e.g, 0 for fluid, 1 for shape.
+        return attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx  # NOTE: attr are just object attributes, e.g, 0 for fluid, 1 for shape.
         # state = [positions, velocities], relations one line above.

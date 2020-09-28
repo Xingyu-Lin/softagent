@@ -131,7 +131,6 @@ class DPINet(nn.Module):
         self.stat = stat
         self.use_gpu = use_gpu
         self.residual = residual
-
         if use_gpu:
             self.pi = Variable(torch.FloatTensor([np.pi])).cuda()
             self.dt = Variable(torch.FloatTensor([args.dt])).cuda()

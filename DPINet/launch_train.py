@@ -11,7 +11,7 @@ from DPINet.train_new import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '0908_noise'
+    exp_prefix = '0927_downsample'
 
     vg = VariantGenerator()
 
@@ -20,9 +20,10 @@ def main(mode, debug, dry):
     vg.add('training', [True])
     vg.add('use_hierarchy', [True])
     vg.add('neighbor_radius', [0.013])
-    vg.add('edge_type', ['cloth_edge'])
+    vg.add('edge_type', ['eight_neighbor', 'cloth_edge'])
+    vg.add('down_sample_scale', [2, None, 3])
     vg.add('relation_dim', lambda edge_type: [3] if edge_type == 'eight_neighbor' else [5])
-    vg.add('noise_level', [ 0.003, 0.007, 0.011, 0.015, 0])
+    vg.add('noise_level', [0.007, 0.015, 0.03])
     vg.add('pstep', [2])
     vg.add('seed', [100])
 

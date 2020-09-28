@@ -11,8 +11,6 @@ import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-from torch.autograd import Variable
 from torch.utils.data import Dataset, DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
@@ -25,6 +23,7 @@ from softgym.registered_env import env_arg_dict
 from softgym.registered_env import SOFTGYM_ENVS
 from DPINet.configs import env_configs
 from DPINet.graph_struct import convert_dpi_to_graph
+from DPINet.visualize_data import get_model_prediction, parse_trajectory
 
 
 def get_default_args():
@@ -189,10 +188,31 @@ def train(args):
                     # print('%s [%d/%d][%d/%d] n_relations: %d, Loss: %.6f, Agg: %.6f' %
                     #       (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
                     #        n_relations, np.sqrt(loss.item()), losses / (i + 1)))
-                    logger.record_tabular('train/_epoch', epoch)
-                    logger.record_tabular('train/_steps', i)
-                    logger.record_tabular('train/loss', np.sqrt(loss.item()))
-                    logger.record_tabular('train/agg_loss', losses / (i + 1))
+                    # Evaluate rollout error
+                    rollout_eval_time = time.time()
+                    nstep_eval_rollout = args.nstep_eval_rollout
+                    data_folder = osp.join(args.dataf, phase)
+                    traj_ids = np.random.choice(len(os.listdir(data_folder)), nstep_eval_rollout, replace=False)
+                    for idx, traj_id in enumerate(traj_ids):
+                        traj_folder = osp.join(data_folder, str(traj_id))
+                        traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
+                        # frames_gt = visualize(env, n_shape, traj_pos, config_id)
+                        with torch.no_grad():
+                            pred_trajs, sample_idx = get_model_prediction(args, datasets[phase].stat, traj_folder, traj_vel, datasets[phase], model)
+                            if sample_idx is not None:
+                                traj_pos = [pos[sample_idx, :] for pos in traj_pos]
+                            rollout_error = np.mean([pred_traj - gt_traj for pred_traj, gt_traj in zip(pred_trajs, traj_pos)])
+                        print('rollout {}: {}'.format(idx, rollout_error))
+                        # frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
+                        # combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
+                        # save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
+
+                    logger.record_tabular(phase + '/rollout_eval_time', time.time() - rollout_eval_time)
+                    logger.record_tabular(phase + '/rollout_error', rollout_error)
+                    logger.record_tabular(phase + '/_epoch', epoch)
+                    logger.record_tabular(phase + '/_steps', i)
+                    logger.record_tabular(phase + '/loss', np.sqrt(loss.item()))
+                    logger.record_tabular(phase + '/agg_loss', losses / (i + 1))
                     logger.dump_tabular()
 
                 if phase == 'train' and i > 0 and i % args.ckp_per_iter == 0:

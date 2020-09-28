@@ -15,7 +15,7 @@ from torch.autograd import Variable
 from DPINet.data import collate_fn
 from DPINet.models import DPINet
 from DPINet.graph import ClothDataset
-
+from DPINet.graph_struct import convert_dpi_to_graph
 from softgym.utils.visualization import save_numpy_as_gif
 
 parser = argparse.ArgumentParser()
@@ -44,7 +44,7 @@ def parse_trajectory(traj_folder):
     traj_vel = []
     for t in steps:
         pos, vel, scene_params = load_data(['positions', 'velocities', 'scene_params'], osp.join(traj_folder, '{}.h5'.format(t)))
-        _, cloth_xdim, cloth_ydim, config_id = scene_params
+        _, _, _, config_id = scene_params
         traj_pos.append(pos)
         traj_vel.append(vel)
     return traj_pos, traj_vel, int(config_id)
@@ -72,65 +72,48 @@ def visualize(env, n_shape, traj_pos, config_id):
     return frames
 
 
-def get_model_prediction(args, stat, traj_path, initial_pos, vels, datasets, model):
-    pos_trajs = [initial_pos]
+def get_model_prediction(args, stat, traj_path, vels, dataset, model):
     for i in range(args.time_step):
         if i == 0:
-            attr, state, rels, n_particles, n_shapes, instance_idx, data = datasets['train'].obtain_graph(osp.join(traj_path, str(i) + '.h5'))
+            attr, state, rels, n_particles, n_shapes, instance_idx, data, sample_idx = dataset.obtain_graph(osp.join(traj_path, str(i) + '.h5'))
+
+            predicted_pos_trajs = [np.vstack([state[:n_particles, :3], state[-n_shapes:, :3]]).copy()]
         else:
-            attr, state, rels, n_particles, n_shapes, instance_idx = datasets['train'].construct_graph(data)
-
-        Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
-
-        Rr, Rs = [], []
-
-        for j in range(len(rels[0])):
-            Rr_idx, Rs_idx, values = rels[0][j], rels[1][j], rels[2][j]  # NOTE: values are all just 1
-            Rr.append(torch.sparse.FloatTensor(Rr_idx, values, torch.Size([node_r_idx[j].shape[0], Ra[j].size(0)])))
-            Rs.append(torch.sparse.FloatTensor(Rs_idx, values, torch.Size([node_s_idx[j].shape[0], Ra[j].size(0)])))
-        data_cpu = copy.copy(data)
-        data = [attr, state, Rr, Rs, Ra]
-
-        with torch.set_grad_enabled(False):
-            for d in range(len(data)):
-                if type(data[d]) == list:
-                    for t in range(len(data[d])):
-                        data[d][t] = Variable(data[d][t].cuda())
-                else:
-                    data[d] = Variable(data[d].cuda())
-
-            attr, state, Rr, Rs, Ra = data
-
-            st_time = time.time()
-            predicted_vel = model(attr, state, Rr, Rs, Ra, n_particles, node_r_idx, node_s_idx, pstep, instance_idx, args.phases_dict,
-                                  args.verbose_model)
-            print('Time forward', time.time() - st_time)
+            data[0] = state[:, :3]
+            data[1] = state[:, 3:]
+            # print(state.shape, predicted_vel.shape)
+            # exit()
+            attr, state, rels, n_particles, n_shapes, instance_idx, _ = dataset.construct_graph(data, downsample=False)
+        graph = convert_dpi_to_graph(attr, state, rels, n_particles, n_shapes, instance_idx)
+        st_time = time.time()
+        predicted_vel = model(graph, args.phases_dict, args.verbose_model)
+        print('Time forward', time.time() - st_time)
         predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [stat[1]])[0]
-        # if i < args.time_step:
-        predicted_vel = np.concatenate([predicted_vel, vels[i][n_particles:]], 0)  ### Model only outputs predicted particle velocity,
+        predicted_vel = np.concatenate([predicted_vel, vels[i][-n_shapes:]], 0)  ### Model only outputs predicted particle velocity,
         # else:
         #     predicted_vel = np.concatenate([predicted_vel, vels[0][n_particles:]], 0)  ### Model only outputs predicted particle velocity,
         ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
         ### maybe, the shape velocity is kind of like the control actions specified by the users
-        pos = copy.copy(pos_trajs[-1])
+        pos = copy.copy(predicted_pos_trajs[-1])
         pos += predicted_vel * 1 / 60.
-        pos_trajs.append(pos)
+        predicted_pos_trajs.append(pos)
+        # Modify data for next step rollout (state includes positions and velocities)
+        state = np.vstack([state[:n_particles, :], state[-n_shapes:, :]])
+        state[:, :3] = state[:, :3] + predicted_vel * 1 / 60.
+        state[:, 3:] = predicted_vel
+    return predicted_pos_trajs, sample_idx
 
-        # Modify data for next step rollout
-        data_cpu[0] = data_cpu[0] + predicted_vel * 1 / 60.
-        data_cpu[1][:, :3] = predicted_vel
-        data = data_cpu
-
-    return pos_trajs
 
 class VArgs(object):
     def __init__(self, vv):
         for key, val in vv.items():
             setattr(self, key, val)
 
+
 def vv_to_args(vv):
     args = VArgs(vv)
     return args
+
 
 def prepare_model(model_path):
     variant_path = osp.join(osp.dirname(model_path), 'variant.json')

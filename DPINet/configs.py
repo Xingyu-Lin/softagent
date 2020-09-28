@@ -14,7 +14,7 @@ env_configs = \
             # relation_dim=3, # Determined by the launch file
 
             n_instance=1,
-            time_step=51,
+            time_step=50,
             time_step_clip=0,
             n_stages=4,
             n_roots=30,
@@ -30,6 +30,7 @@ env_configs = \
 
             ),
             n_rollout=1000,
+            nstep_eval_rollout=2,
             dataf='./datasets/ClothFlatten/'
         )
     }
