@@ -496,7 +496,6 @@ class ClothDataset(PhysicsFleXDataset):
             node_r_idxs.append(np.arange(n_particles))
             node_s_idxs.append(np.arange(n_particles + n_shapes))
             psteps.append(args.pstep)
-
         if self.args.use_hierarchy:
             # add hierarchical relations per instance
             cnt_clusters = 0
@@ -527,7 +526,6 @@ class ClothDataset(PhysicsFleXDataset):
         data = [positions, velocities]
         data = normalize(data, stat, var)
         positions, velocities = data[0], data[1]
-
         if var:
             state = torch.cat([positions, velocities], 1)
         else:
