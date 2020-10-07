@@ -244,10 +244,7 @@ class ClothDataset(PhysicsFleXDataset):
 
     def _collect_policy(self, env, timestep):
         """ Policy for collecting data"""
-        if timestep < 30:
-            action = (0, 0.005, 0, 1, 0, 0, 0, 0)
-        else:
-            action = (0, 0, 0, 1, 0, 0, 0, 0)
+        action = env.action_space.sample()
         return action
 
     def _get_eight_neighbor(self, cloth_xdim, cloth_ydim, relation_dim):

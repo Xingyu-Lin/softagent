@@ -37,10 +37,10 @@ if __name__ == '__main__':
 
 
     num_noise = len(data.items())
-    plt.figure(figsize=(20, 20))
+    plt.figure(figsize=(15, 15))
     for i, model_file in enumerate(data.keys()):
         d = decode_label(model_file)
-        if d['Noise'] != '0.015':
+        if d['Noise'] != '0.03':
             continue
         curves = OrderedDict(data[model_file])
         avg_loss = [np.mean(losses) for losses in curves.values()]
