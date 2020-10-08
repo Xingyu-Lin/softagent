@@ -215,8 +215,9 @@ class PhysicsFleXDataset(Dataset):
             label = torch.FloatTensor(data_nxt[1][sample_idx[:n_particles]])
         else:
             label = torch.FloatTensor(data_nxt[1][:n_particles])  # NOTE: just use velocity at next step as label
+
         if self.args.noise_level > 0:
-            state += torch.empty_like(state).normal_(mean=0, std=self.args.noise_level)
+            state[:, :6] += torch.empty_like(state[:, :6]).normal_(mean=0, std=self.args.noise_level)
 
         return attr, state, relations, n_particles, n_shapes, instance_idx, label
 
@@ -249,9 +250,49 @@ class ClothDataset(PhysicsFleXDataset):
             action = (0, -0.005, 0, 1, 0, 0, 0, 0)
             env.step(action)
 
+    # def _collect_policy(self, env, timestep):
+    #     """ Policy for collecting data"""
+    #     action = env.action_space.sample()
+    #     return action
+
     def _collect_policy(self, env, timestep):
         """ Policy for collecting data"""
-        action = env.action_space.sample()
+        if timestep == 1 or self.policy_info['status'] == 'finished':  # In the first frame, pick a random start location
+            self.policy_info = {}
+            pos = pyflex.get_positions().reshape((-1, 4))[:, :3]
+            pp = np.random.randint(len(pos))
+            shape_states = pyflex.get_shape_states().reshape(-1, 14)
+            curr_pos = shape_states[0, :3] = pos[pp] + [0., env.picker_radius, 0.]
+            shape_states[1, :3] = -1
+            pyflex.set_shape_states(shape_states.flatten())
+            delta_pos = np.random.random(3) - 0.5
+            delta_pos[1] = (delta_pos[1] + 0.5) * 0.15
+            delta_pos[[0, 2]] *= 0.2
+            self.policy_info['delta_pos'] = delta_pos
+            self.policy_info['target_pos'] = curr_pos + delta_pos
+            self.policy_info['status'] = 'pick'
+
+        if self.policy_info['status'] == 'pick':
+            curr_pos = pyflex.get_shape_states().reshape(-1, 14)[0, :3]
+            dist = np.linalg.norm(self.policy_info['target_pos'] - curr_pos)
+            delta_move = 0.02
+            num_step = np.ceil(dist / delta_move)
+
+            if num_step <= 1:
+                delta = self.policy_info['target_pos'] - curr_pos
+                self.policy_info['status'] = 'wait'
+            else:
+                delta = (self.policy_info['target_pos'] - curr_pos) / num_step
+            # print(dist, pp_pos, num_step, self.policy_info['finished'])
+            action = np.zeros_like(env.action_space.sample())
+            action[3] = int(self.policy_info['status'] == 'pick')
+            action[:3] = delta / env.action_repeat
+        else:
+            action = np.zeros_like(env.action_space.sample())
+            vel = pyflex.get_velocities()
+            if np.abs(np.max(vel)) < 0.15:
+                self.policy_info['status'] = 'finished'
+
         return action
 
     def _get_eight_neighbor(self, cloth_xdim, cloth_ydim, relation_dim):
@@ -379,8 +420,8 @@ class ClothDataset(PhysicsFleXDataset):
         downsample: down sample scale
         """
         y, x = idx // cloth_xdim, idx % cloth_xdim
-        down_ydim, down_xdim = cloth_ydim // downsample, cloth_xdim // downsample
-        down_y, down_x = y//downsample, x//downsample
+        down_ydim, down_xdim = (cloth_ydim + downsample - 1) // downsample, (cloth_xdim + downsample - 1) // downsample
+        down_y, down_x = y // downsample, x // downsample
         new_idx = down_y * down_xdim + down_x
         return new_idx
 
@@ -388,6 +429,7 @@ class ClothDataset(PhysicsFleXDataset):
         pos, vel, clusters, scene_params, picked_points = data
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
         cloth_xdim, cloth_ydim = int(cloth_xdim), int(cloth_ydim)
+        original_xdim, original_ydim = cloth_xdim, cloth_ydim
         n_particles = cloth_xdim * cloth_ydim
         n_shapes = len(pos) - n_particles
         new_idx = np.arange(cloth_xdim * cloth_ydim).reshape((cloth_ydim, cloth_xdim))
@@ -403,8 +445,8 @@ class ClothDataset(PhysicsFleXDataset):
         pps = []
         for pp in picked_points.astype('int'):
             if pp != -1:
-                pps.append(self.downsample_mapping(cloth_ydim, cloth_xdim, pp, scale))
-                new_idx = self.downsample_mapping(cloth_ydim, cloth_xdim, pp, scale)
+                pps.append(self.downsample_mapping(original_ydim, original_xdim, pp, scale))
+                assert pps[-1] < len(pos)
                 # pps.append(self.get_closest_point(original_pos[pp, :], pos[:-n_shapes, :]))
         scene_params = sphere_radius, cloth_xdim, cloth_ydim, config_id
         return (pos, vel, clusters, scene_params, pps), new_idx

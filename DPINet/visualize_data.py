@@ -98,11 +98,10 @@ def get_model_prediction(args, stat, traj_path, vels, dataset, model):
         predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [stat[1]])[0]
         predicted_vel = np.concatenate([predicted_vel, vels[i+1][-n_shapes:]], 0)  ### Model only outputs predicted particle velocity,
 
-        # predicted_vel[:,:] = vels[i][sample_idx, :]
-
+        # predicted_vel[:,:] = vels[i+1][sample_idx, :]
         # Manually set the velocities of the picked points
         for pp in pick_points:
-            predicted_vel[pp, :] = vels[i+1][sample_idx, :][pp, :]
+            predicted_vel[pp, :] =  vels[i+1][sample_idx, :][pp, :]
 
         ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
         ### maybe, the shape velocity is kind of like the control actions specified by the users
