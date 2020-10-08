@@ -181,7 +181,7 @@ def train(args):
                     else:
                         loss_acc += loss
 
-                if i % args.log_per_iter == 0:
+                if i % args.log_per_iter == 0 and phase=='train':
                     # n_relations = 0
                     # for j in range(len(Ra)):
                     #     n_relations += Ra[j].size(0)
@@ -201,12 +201,11 @@ def train(args):
                             pred_trajs, sample_idx = get_model_prediction(args, datasets[phase].stat, traj_folder, traj_vel, datasets[phase], model)
                             if sample_idx is not None:
                                 traj_pos = [pos[sample_idx, :] for pos in traj_pos]
-                            rollout_error = np.mean([pred_traj - gt_traj for pred_traj, gt_traj in zip(pred_trajs, traj_pos)])
+                            rollout_error = np.mean([np.linalg.norm(pred_traj - gt_traj) for pred_traj, gt_traj in zip(pred_trajs, traj_pos)])
                         print('rollout {}: {}'.format(idx, rollout_error))
                         # frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
                         # combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
                         # save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
-
                     logger.record_tabular(phase + '/rollout_eval_time', time.time() - rollout_eval_time)
                     logger.record_tabular(phase + '/rollout_error', rollout_error)
                     logger.record_tabular(phase + '/_epoch', epoch)

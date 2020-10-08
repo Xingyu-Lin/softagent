@@ -8,7 +8,7 @@ import pickle
 import h5py
 
 import multiprocessing as mp
-import scipy.spatial as spatial
+from scipy.spatial.distance import cdist
 from sklearn.cluster import MiniBatchKMeans
 
 from mpl_toolkits.mplot3d import Axes3D
@@ -145,12 +145,16 @@ class PhysicsFleXDataset(Dataset):
             config = env.get_current_config()
             cloth_xdim, cloth_ydim = config['ClothSize']
             config_id = env.current_config_id
-            data = [positions[0], velocities[0], clusters, [env.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id]]
-            store_data(self.data_names, data, os.path.join(rollout_dir, str(0) + '.h5'))
 
-            for j in range(self.time_step):
+            for j in range(1, self.time_step):
                 action = self._collect_policy(env, j)
                 env.step(action)
+                picked_points = env.get_picked_particle()
+
+                # Store previous data
+                data = [positions[j - 1], velocities[j - 1], clusters, [env.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id], picked_points]
+                store_data(self.data_names, data, os.path.join(rollout_dir, str(j - 1) + '.h5'))
+
                 positions[j, :n_particles] = pyflex.get_positions().reshape(-1, 4)[:, :3]
                 shape_states = pyflex.get_shape_states().reshape(-1, 14)
 
@@ -162,10 +166,11 @@ class PhysicsFleXDataset(Dataset):
                 if j > 0:
                     velocities[j] = (positions[j] - positions[j - 1]) / self.dt
 
-                # NOTE: 1) particle + glass wall positions, 2) particle + glass wall velocitys, 3) glass wall rotations, 4) scenen parameters
-                data = [positions[j], velocities[j], clusters,
-                        [env.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id]]  # NOTE: radii is the sphere radius
-                store_data(self.data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
+            j = self.time_step - 1
+            # NOTE: 1) particle + glass wall positions, 2) particle + glass wall velocitys, 3) glass wall rotations, 4) scenen parameters
+            data = [positions[j], velocities[j], clusters,
+                    [env.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id], picked_points]  # NOTE: radii is the sphere radius
+            store_data(self.data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
 
             # change dtype for more accurate stat calculation
             # only normalize positions and velocities
@@ -200,7 +205,8 @@ class PhysicsFleXDataset(Dataset):
 
         data[1] = np.concatenate([data[1]] + vel_his, 1)
 
-        attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
+        attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict,
+                                                                                                        0)
 
         ### label
         data_nxt = normalize(load_data(self.data_names, data_nxt_path), self.stat)
@@ -227,14 +233,15 @@ class PhysicsFleXDataset(Dataset):
 
     def obtain_graph(self, data_path):
         data = load_data(self.data_names, data_path)
-        attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict, 0)
+        attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict,
+                                                                                                        0)
         return attr, state, relations, n_particles, n_shapes, instance_idx, data, sample_idx
 
 
 class ClothDataset(PhysicsFleXDataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.data_names = ['positions', 'velocities', 'clusters', 'scene_params']
+        self.data_names = ['positions', 'velocities', 'clusters', 'scene_params', 'picked']
 
     def _prepare_policy(self, env):
         """ Doing something after env reset but before collecting any data"""
@@ -351,8 +358,34 @@ class ClothDataset(PhysicsFleXDataset):
         #     for j in range(cloth_xdim):
         #         rels.append([i * cloth_ydim + j, (i + 1) * cloth_ydim + j, 1])
 
+    def obtain_pick(self, data_path, data=None):
+        if data is None:
+            assert data_path is not None
+            data = load_data(self.data_names, data_path)
+        _, cloth_xdim, cloth_ydim, _ = data[3]
+        pps = np.array(data[4]).astype('int')
+        down_pps = []
+        for pp in pps:
+            if pp is not None and pp != -1:
+                down_pps.append(self.downsample_mapping(cloth_ydim, cloth_xdim, pp, self.down_scale))
+        return np.array(down_pps).astype('int')
+
+    # def get_closest_point(self, pt, points):
+    #     dist = cdist(pt[None], points)[0]
+    #     return np.argmin(dist)
+
+    def downsample_mapping(self, cloth_ydim, cloth_xdim, idx, downsample):
+        """ Given the down sample scale, map each point index before down sampling to the index after down sampling
+        downsample: down sample scale
+        """
+        y, x = idx // cloth_xdim, idx % cloth_xdim
+        down_ydim, down_xdim = cloth_ydim // downsample, cloth_xdim // downsample
+        down_y, down_x = y//downsample, x//downsample
+        new_idx = down_y * down_xdim + down_x
+        return new_idx
+
     def _downsample(self, data, scale=2):
-        pos, vel, clusters, scene_params = data
+        pos, vel, clusters, scene_params, picked_points = data
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
         cloth_xdim, cloth_ydim = int(cloth_xdim), int(cloth_ydim)
         n_particles = cloth_xdim * cloth_ydim
@@ -365,35 +398,45 @@ class ClothDataset(PhysicsFleXDataset):
         new_idx = np.hstack([new_idx, np.arange(len(pos))[-n_shapes:]])
         pos = pos[new_idx, :]
         vel = vel[new_idx, :]
+
+        # Remap picked_points
+        pps = []
+        for pp in picked_points.astype('int'):
+            if pp != -1:
+                pps.append(self.downsample_mapping(cloth_ydim, cloth_xdim, pp, scale))
+                new_idx = self.downsample_mapping(cloth_ydim, cloth_xdim, pp, scale)
+                # pps.append(self.get_closest_point(original_pos[pp, :], pos[:-n_shapes, :]))
         scene_params = sphere_radius, cloth_xdim, cloth_ydim, config_id
-        return (pos, vel, clusters, scene_params), new_idx
+        return (pos, vel, clusters, scene_params, pps), new_idx
 
     def _construct_graph(self, data, stat, args, phases_dict, var, downsample=True):
+        self.down_scale = args.down_sample_scale
         # Arrangement:
         # particles, shapes, roots
-        if args.down_sample_scale is not None and downsample: # First one is vv and the second one is for rollout
+        if args.down_sample_scale is not None and downsample:  # First one is vv and the second one is for rollout
             new_data, sample_idx = self._downsample(data, args.down_sample_scale)
             data[2] = new_data[2]
             data[3] = new_data[3]
+            data[4] = new_data[4]
             data = new_data
         else:
             sample_idx = None
-        positions, velocities, clusters, scene_params = data
+        positions, velocities, clusters, scene_params, picked_points = data
         n_shapes = 2
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
 
         count_nodes = positions.size(0) if var else positions.shape[0]
         n_particles = count_nodes - n_shapes
-
         ### instance idx
         instance_idx = [0, n_particles]
 
         ### object attributes
-        #   dim 10: [rigid, fluid, root_0, root_1, gripper_0, gripper_1, mass_inv,
-        #            clusterStiffness, clusterPlasticThreshold, cluasterPlasticCreep]
+        # [cloth, root, picked]
         attr = np.zeros((count_nodes, args.attr_dim))
         # no need to include mass for now
-        # attr[:, 6] = positions[:, -1].data.cpu().numpy() if var else positions[:, -1] # mass_inv
+        for picked_point in picked_points:
+            if picked_point != -1:
+                attr[picked_point, 2] = 1
 
         ### construct relations
         Rr_idxs = []  # relation receiver idx list
@@ -413,24 +456,6 @@ class ClothDataset(PhysicsFleXDataset):
 
         rels = []
 
-        # connect each cloth particle to the sphere particle if their distance is smaller than a certain threshold
-        for i in range(n_shapes):
-            # object attr:
-            # [fluid, root, sphere_0, sphere_1, sphere_2, sphere_3]
-            attr[n_particles + i, 2] = 1
-
-            pos = positions.data.cpu().numpy() if var else positions
-            sphere_center = pos[n_particles + i, :3]
-            dis = np.sqrt(np.sum((pos[:n_particles, :3] - sphere_center) ** 2))
-            nodes = np.nonzero(dis < 0.05 + sphere_radius)[0]  # picker radius is 0.05
-
-            wall = np.ones(nodes.shape[0], dtype=np.int) * (n_particles + i)
-            if nodes.shape[0] > 0:
-                shape_edge_attr = np.zeros([nodes.shape[0], args.relation_dim])
-                shape_edge_attr[:, 0] = 1
-                # print(nodes.shape, wall.shape, shape_edge_attr.shape)
-                rels += [np.stack([nodes, wall, *shape_edge_attr], axis=1)]  # Different attributes for cloth edges
-                # NOTE: actually the values are just set to one to construct a sparse receiver-relation matrix
         ##### add relations between leaf particles
         if args.gt_edge:
             if args.edge_type == 'eight_neighbor':
@@ -455,7 +480,7 @@ class ClothDataset(PhysicsFleXDataset):
                 s = int(gt_edge[i][0])
                 r = int(gt_edge[i][1])
                 # if s < 200 and r < 200:
-                    # print([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]])
+                # print([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]])
                 ax.plot([pos[s, 0], pos[r, 0]], [pos[s, 1], pos[r, 1]], [pos[s, 2], pos[r, 2]], c='r')
             ax.scatter(pos[:, 0], pos[:, 1], pos[:, 2], c='g', s=20)
             ax.set_aspect('equal')
@@ -530,5 +555,6 @@ class ClothDataset(PhysicsFleXDataset):
 
         attr = torch.FloatTensor(attr)
         relations = [Rr_idxs, Rs_idxs, values, Ras, node_r_idxs, node_s_idxs, psteps]  # NOTE: values are just all 1, and Ras are just all 0.
+        # print('sum:', attr.sum(dim=0)) Attribute of the
         return attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx  # NOTE: attr are just object attributes, e.g, 0 for fluid, 1 for shape.
         # state = [positions, velocities], relations one line above.

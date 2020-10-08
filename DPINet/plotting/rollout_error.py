@@ -18,7 +18,7 @@ from DPINet.graph import ClothDataset
 
 from softgym.utils.visualization import save_numpy_as_gif
 import matplotlib.pyplot as plt
-
+from DPINet.visualize_data import get_model_prediction
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_file', default=None)
 parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten')
@@ -92,40 +92,6 @@ def visualize(env, n_shape, traj_pos, config_id):
         frames.append(env.get_image(720, 720))
     return frames
 
-
-def get_model_prediction(args, stat, traj_path, vels, dataset, model):
-    # State index order: [particles, shape, roots]
-    for i in range(args.time_step):
-        if i == 0:
-            attr, state, rels, n_particles, n_shapes, instance_idx, data, sample_idx = dataset.obtain_graph(osp.join(traj_path, str(i) + '.h5'))
-            pos = np.vstack([state[:n_particles, :3], state[n_particles:n_particles + n_shapes, :3]])
-            pos = denormalize([pos], [stat[0]])[0]  # Unnormalize
-            predicted_pos_trajs = [pos.copy()]
-        else:
-            data[0] = state[:, :3]
-            data[1] = state[:, 3:]
-            attr, state, rels, n_particles, n_shapes, instance_idx, _ = dataset.construct_graph(data, downsample=False)
-        graph = convert_dpi_to_graph(attr, state, rels, n_particles, n_shapes, instance_idx)
-        st_time = time.time()
-        predicted_vel = model(graph, args.phases_dict, args.verbose_model)
-        print('Time forward', time.time() - st_time)
-        predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [stat[1]])[0]
-        predicted_vel = np.concatenate([predicted_vel, vels[i][-n_shapes:]], 0)  ### Model only outputs predicted particle velocity,
-        # else:
-        #     predicted_vel = np.concatenate([predicted_vel, vels[0][n_particles:]], 0)  ### Model only outputs predicted particle velocity,
-        ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
-        ### maybe, the shape velocity is kind of like the control actions specified by the users
-        pos = copy.copy(predicted_pos_trajs[-1])
-        pos += predicted_vel * 1 / 60.
-        predicted_pos_trajs.append(pos)
-
-        # Modify data for next step rollout (state includes positions and velocities)
-        state = np.vstack([state[:n_particles, :], state[-n_shapes:, :]])
-        pos = denormalize([state[:, :3]], [stat[0]])[0]  # Unnormalize
-        pos += predicted_vel * 1 / 60.
-        state[:, :3] = pos
-        state[:, 3:] = predicted_vel
-    return predicted_pos_trajs, sample_idx
 
 
 def prepare_args(model_path):

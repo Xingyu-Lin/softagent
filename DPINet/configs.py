@@ -29,7 +29,7 @@ env_configs = \
                 material=["fluid"]
 
             ),
-            n_rollout=100, # Was 1000 with 50 timesteps
+            n_rollout=500, # Was 1000 with 50 timesteps
             nstep_eval_rollout=2,
             dataf='./datasets/ClothFlatten/'
         )

@@ -14,8 +14,8 @@ def main(mode, debug, dry):
     exp_prefix = '1001_explore'
     vg = VariantGenerator()
     vg.add('env_name', ['ClothFlatten'])
-    vg.add('gen_data', [True])
-    vg.add('training', [False])
+    vg.add('gen_data', [False])
+    vg.add('training', [True])
     vg.add('use_hierarchy', [True])
     vg.add('neighbor_radius', [0.026])
     vg.add('edge_type', ['eight_neighbor'])

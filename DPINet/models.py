@@ -305,8 +305,7 @@ class DPINet(nn.Module):
             elif phases_dict['material'][i] == 'fluid':
                 pred.append(self.fluid_particle_predictor(particle_effect[st:ed]))
 
-        pred = torch.cat(pred, 0)
-
+        pred = torch.cat(pred, 0).clamp(-10, 10)
         if verbose:
             print("pred:", pred.size())
 
