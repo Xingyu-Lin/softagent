@@ -14,7 +14,7 @@ env_configs = \
             # relation_dim=3, # Determined by the launch file
 
             n_instance=1,
-            time_step=50,
+            time_step=100,
             time_step_clip=0,
             n_stages=4,
             n_roots=30,
@@ -29,7 +29,7 @@ env_configs = \
                 material=["fluid"]
 
             ),
-            n_rollout=1000,
+            n_rollout=500, # Was 1000 with 50 timesteps
             nstep_eval_rollout=2,
             dataf='./datasets/ClothFlatten/'
         )

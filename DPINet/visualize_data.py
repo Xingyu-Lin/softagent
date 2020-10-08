@@ -58,14 +58,18 @@ def set_shape_pos(pos):
     return
 
 
-def visualize(env, n_shape, traj_pos, config_id):
+def visualize(env, n_shape, traj_pos, config_id, sample_idx=None):
     env.reset(config_id=config_id)
-    frames = [env.get_image(720, 720)]
+    frames = []
     for i, pos in enumerate(traj_pos):
         particle_pos = pos[:-n_shape, :]
         shape_pos = pos[-n_shape:, :]
         p = pyflex.get_positions().reshape(-1, 4)
-        p[:, :3] = particle_pos
+        if sample_idx is None:
+            p[:, :3] = particle_pos
+        else:
+            p[:, :3] =0
+            p[sample_idx[:-2], :3] = particle_pos
         pyflex.set_positions(p)
         set_shape_pos(shape_pos)
         frames.append(env.get_image(720, 720))
@@ -73,33 +77,44 @@ def visualize(env, n_shape, traj_pos, config_id):
 
 
 def get_model_prediction(args, stat, traj_path, vels, dataset, model):
-    for i in range(args.time_step):
+    # State index order: [particles, shape, roots]
+    for i in range(args.time_step-1):
         if i == 0:
             attr, state, rels, n_particles, n_shapes, instance_idx, data, sample_idx = dataset.obtain_graph(osp.join(traj_path, str(i) + '.h5'))
-
-            predicted_pos_trajs = [np.vstack([state[:n_particles, :3], state[-n_shapes:, :3]]).copy()]
+            pos = np.vstack([state[:n_particles, :3], state[n_particles:n_particles + n_shapes, :3]])
+            pos = denormalize([pos], [stat[0]])[0]  # Unnormalize
+            predicted_pos_trajs = [pos.copy()]
+            pick_points = dataset.obtain_pick(None, data=data)
         else:
             data[0] = state[:, :3]
             data[1] = state[:, 3:]
-            # print(state.shape, predicted_vel.shape)
-            # exit()
+            pick_points = dataset.obtain_pick(osp.join(traj_path, str(i) + '.h5'))
+            data[4] = pick_points
             attr, state, rels, n_particles, n_shapes, instance_idx, _ = dataset.construct_graph(data, downsample=False)
         graph = convert_dpi_to_graph(attr, state, rels, n_particles, n_shapes, instance_idx)
         st_time = time.time()
         predicted_vel = model(graph, args.phases_dict, args.verbose_model)
-        print('Time forward', time.time() - st_time)
+        # print('Time forward', time.time() - st_time)
         predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [stat[1]])[0]
-        predicted_vel = np.concatenate([predicted_vel, vels[i][-n_shapes:]], 0)  ### Model only outputs predicted particle velocity,
-        # else:
-        #     predicted_vel = np.concatenate([predicted_vel, vels[0][n_particles:]], 0)  ### Model only outputs predicted particle velocity,
+        predicted_vel = np.concatenate([predicted_vel, vels[i+1][-n_shapes:]], 0)  ### Model only outputs predicted particle velocity,
+
+        # predicted_vel[:,:] = vels[i][sample_idx, :]
+
+        # Manually set the velocities of the picked points
+        for pp in pick_points:
+            predicted_vel[pp, :] = vels[i+1][sample_idx, :][pp, :]
+
         ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
         ### maybe, the shape velocity is kind of like the control actions specified by the users
         pos = copy.copy(predicted_pos_trajs[-1])
         pos += predicted_vel * 1 / 60.
         predicted_pos_trajs.append(pos)
+
         # Modify data for next step rollout (state includes positions and velocities)
         state = np.vstack([state[:n_particles, :], state[-n_shapes:, :]])
-        state[:, :3] = state[:, :3] + predicted_vel * 1 / 60.
+        pos = denormalize([state[:, :3]], [stat[0]])[0]  # Unnormalize
+        pos += predicted_vel * 1 / 60.
+        state[:, :3] = pos
         state[:, 3:] = predicted_vel
     return predicted_pos_trajs, sample_idx
 
@@ -169,8 +184,9 @@ def main(data_folder, n_rollout, save_folder=None, model_file=None):
         traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
         frames_gt = visualize(env, n_shape, traj_pos, config_id)
         if model_file is not None:
-            predicted_traj_pos = get_model_prediction(args, stats, traj_folder, traj_pos[0], traj_vel, datasets, model)
-            frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
+            with torch.no_grad():
+                predicted_traj_pos, sample_idx = get_model_prediction(args, stats, traj_folder, traj_vel, datasets['valid'], model)
+            frames_model = visualize(env, n_shape, predicted_traj_pos, config_id, sample_idx)
             combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
             save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
 

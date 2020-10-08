@@ -6,6 +6,7 @@ from DPINet.data import load_data, prepare_input, normalize, denormalize
 import copy
 from softgym.registered_env import env_arg_dict as env_arg_dicts
 from softgym.registered_env import SOFTGYM_ENVS
+from DPINet.graph_struct import convert_dpi_to_graph
 import numpy as np
 import pyflex
 import torch
@@ -17,7 +18,7 @@ from DPINet.graph import ClothDataset
 
 from softgym.utils.visualization import save_numpy_as_gif
 import matplotlib.pyplot as plt
-
+from DPINet.visualize_data import get_model_prediction
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_file', default=None)
 parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten')
@@ -25,14 +26,16 @@ parser.add_argument('--env_name', type=str, default='ClothFlatten')
 parser.add_argument('--n_rollout', type=int, default=10)
 parser.add_argument('--save_folder', type=str, default='./dpi_visualization')
 
-model_paths = [
-    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0001/',
-    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0002/',
-    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0003/',
-    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0004/',
-    'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0005/'
-]
+# model_paths = [
+#     'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0001/',
+#     'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0002/',
+#     'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0003/',
+#     'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0004/',
+#     'data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0005/'
+# ]
 
+model_dir = 'data/autobot/0928_downsample/0928_downsample/'
+model_paths = [osp.join(model_dir, dir_name) for dir_name in os.listdir(model_dir)]
 model_names = [
     'net_epoch_10_iter_10000.pth',
     'net_epoch_20_iter_10000.pth',
@@ -89,56 +92,6 @@ def visualize(env, n_shape, traj_pos, config_id):
         frames.append(env.get_image(720, 720))
     return frames
 
-
-def get_model_prediction(args, stage, stat, traj_path, initial_pos, vels, datasets, model):
-    pos_trajs = [initial_pos]
-    for i in range(args.time_step):
-        step_time = time.time()
-        if i == 0:
-            attr, state, rels, n_particles, n_shapes, instance_idx, data = datasets[stage].obtain_graph(osp.join(traj_path, str(i) + '.h5'))
-        else:
-            attr, state, rels, n_particles, n_shapes, instance_idx = datasets[stage].construct_graph(data)
-
-        Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
-
-        Rr, Rs = [], []
-
-        for j in range(len(rels[0])):
-            Rr_idx, Rs_idx, values = rels[0][j], rels[1][j], rels[2][j]  # NOTE: values are all just 1
-            Rr.append(torch.sparse.FloatTensor(Rr_idx, values, torch.Size([node_r_idx[j].shape[0], Ra[j].size(0)])))
-            Rs.append(torch.sparse.FloatTensor(Rs_idx, values, torch.Size([node_s_idx[j].shape[0], Ra[j].size(0)])))
-        data_cpu = copy.copy(data)
-        data = [attr, state, Rr, Rs, Ra]
-
-        with torch.set_grad_enabled(False):
-            for d in range(len(data)):
-                if type(data[d]) == list:
-                    for t in range(len(data[d])):
-                        data[d][t] = Variable(data[d][t].cuda())
-                else:
-                    data[d] = Variable(data[d].cuda())
-
-            attr, state, Rr, Rs, Ra = data
-
-            st_time = time.time()
-            predicted_vel = model(attr, state, Rr, Rs, Ra, n_particles, node_r_idx, node_s_idx, pstep, instance_idx, args.phases_dict,
-                                  args.verbose_model)
-            print('Time forward', time.time() - st_time)
-        predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [stat[1]])[0]
-        predicted_vel = np.concatenate([predicted_vel, vels[i][n_particles:]], 0)  ### Model only outputs predicted particle velocity,
-        ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
-        ### maybe, the shape velocity is kind of like the control actions specified by the users
-        pos = copy.copy(pos_trajs[-1])
-        pos += predicted_vel * 1 / 60.
-        pos_trajs.append(pos)
-
-        # Modify data for next step rollout
-        data_cpu[0] = data_cpu[0] + predicted_vel * 1 / 60.
-        data_cpu[1][:, :3] = predicted_vel
-        data = data_cpu
-        print('step time:', time.time() - step_time)
-
-    return pos_trajs[:-1]
 
 
 def prepare_args(model_path):
@@ -202,13 +155,16 @@ def main(data_folder, n_rollout, save_folder=None, stage='train'):
     env_name = 'ClothFlatten'
     n_shape = 2
     env = create_env(env_name)
-    datasets, stats = prepare_data(model_paths[0])
     all_model_performance = {}
     for model_path in model_paths:
         model_losses = {}
+        datasets, stats = prepare_data(osp.join(model_path, model_names[0])) # Re-load dataset for each model as the relation dim can vary
         for model_name in model_names:
             model_file = osp.join(model_path, model_name)
-            global args
+            if not osp.isfile(model_file):
+                continue
+            print('evaluating ' + model_file)
+            # global args
             args, model = prepare_model(model_file, datasets, stage)
             losses = []
             for idx, traj_id in enumerate(os.listdir(data_folder)):
@@ -217,24 +173,28 @@ def main(data_folder, n_rollout, save_folder=None, stage='train'):
                 traj_folder = osp.join(data_folder, str(traj_id))
 
                 traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
-                predicted_traj_pos = get_model_prediction(args, stage, stats, traj_folder, traj_pos[0], traj_vel, datasets, model)
+                with torch.no_grad():
+                    predicted_traj_pos, sample_idx = get_model_prediction(args, stats, traj_folder, traj_vel, datasets[stage], model)
                 # predicted_traj_pos = np.random.random(np.array(traj_pos).shape)
                 # frames_model = visualize(env, n_shape, predicted_traj_pos, config_id)
                 # combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
                 # save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
-                losses.append(np.mean((np.array(traj_pos) - np.array(predicted_traj_pos)) ** 2, axis=(1, 2)))
+                if sample_idx is not None:
+                    losses.append(np.mean((np.array(traj_pos)[:, sample_idx, :] - np.array(predicted_traj_pos)) ** 2, axis=(1, 2)))
+                else:
+                    losses.append(np.mean((np.array(traj_pos) - np.array(predicted_traj_pos)) ** 2, axis=(1, 2)))
             model_losses[model_name[:12]] = np.mean(np.array(losses), axis=0)
-
         plt.figure()
         for k, v in model_losses.items():
             plt.plot(range(len(v)), v, label=k)
         plt.legend()
-        noise_level = str(args.noise_level)
-        save_name = 'rollout_error_{}_{}.png'.format(stage, noise_level)
+        label = 'Noise: ' + str(args.noise_level) + ' Downsample: ' + str(
+            args.down_sample_scale) + ' EdgeType: ' + args.edge_type + ' NeighborRadius: ' + str(args.neighbor_radius)
+        save_name = 'rollout_error_{}_{}.png'.format(stage, label)
 
         print('Saving to {}'.format(osp.join(save_folder, save_name)))
         plt.savefig(osp.join(save_folder, save_name))
-        all_model_performance[noise_level] = model_losses
+        all_model_performance[label] = model_losses
     import pickle
     with open(osp.join(save_folder, 'rollout_dump.pkl'), 'wb') as f:
         pickle.dump(all_model_performance, f)
