@@ -496,7 +496,8 @@ class UnaryBlock(nn.Module):
 
     def forward(self, x, batch=None):
         x = self.mlp(x)
-        x = self.batch_norm(x)
+        if self.use_bn:
+            x = self.batch_norm(x)
         if not self.no_relu:
             x = self.leaky_relu(x)
         return x
@@ -562,7 +563,10 @@ class SimpleBlock(nn.Module):
             neighb_inds = batch.neighbors[self.layer_ind]
 
         x = self.KPConv(q_pts, s_pts, neighb_inds, x)
-        return self.leaky_relu(self.batch_norm(x))
+        if self.use_bn:
+            return self.leaky_relu(self.batch_norm(x))
+        else:
+            return self.leaky_relu(x)
 
 
 class ResnetBottleneckBlock(nn.Module):
@@ -638,11 +642,12 @@ class ResnetBottleneckBlock(nn.Module):
 
         # Convolution
         x = self.KPConv(q_pts, s_pts, neighb_inds, x)
-        # print("before batch_norm_conv x.shape: ", x.shape)
-        x = self.leaky_relu(self.batch_norm_conv(x))
+        if self.use_bn:
+            x = self.leaky_relu(self.batch_norm_conv(x))
+        else:
+            x = self.leaky_relu(x)
 
         # Second upscaling mlp
-        # print("after batch_norm_conv x.shape: ", x.shape)
         x = self.unary2(x)
 
         # Shortcut

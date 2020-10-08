@@ -4,7 +4,7 @@ import click
 import socket
 from chester.run_exp import run_experiment_lite, VariantGenerator
 from softgym.registered_env import env_arg_dict
-from pouring.KPConv_sac.train import run_task
+from pouring.KPConv_sac.supervise_rim_to_state import run_task
 
 
 @click.command()
@@ -12,7 +12,7 @@ from pouring.KPConv_sac.train import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '1005-pouring-kpconv-with-reduced-state-loss-no-deform'
+    exp_prefix = '0929-supervise-rim-2-reduced-state-train-longer'
 
     reward_scales = {
         'PourWater': 20.0,
@@ -51,67 +51,38 @@ def main(mode, debug, dry):
         'RigidClothDrop': None,
     }
 
-    def get_critic_lr(env_name, obs_mode):
-        if env_name in ['ClothFold', 'RigidClothFold', 'PassWaterTorus'] or (env_name =='RopeFlattenNew' and obs_mode =='point_cloud'):
-            if obs_mode == 'cam_rgb':
-                return 1e-4
-            else:
-                return 5e-4
-        if obs_mode == 'cam_rgb':
-            return 3e-4
-        else:
-            return 1e-3
-
-    def get_alpha_lr(env_name, obs_mode):
-        if env_name in ['RigidClothFold', 'ClothFold']:
-            return 2e-5
-        else:
-            return 1e-3
-
-    def get_lr_decay(env_name, obs_mode):
-        if env_name == 'RopeFlattenNew' or (env_name == 'ClothFlatten' and obs_mode == 'cam_rgb') \
-          or (env_name == 'RigidClothFold' and obs_mode == 'key_point'):
-            return 0.01
-        elif obs_mode == 'point_cloud':
-            return 0.01
-        elif env_name == 'PassWaterTorus':
-            return 0.01
-        else:
-            return None
 
     vg = VariantGenerator()
 
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['rim_interpolation_and_state'])
+    vg.add('env_kwargs_observation_mode', ['rim_interpolation'])
     vg.add('env_kwargs_action_mode', ['rotation_top'])
 
-    vg.add('algorithm', ['KPConv_rim_pointcloud'])
-    vg.add('alpha_fixed', [False])
-    vg.add('critic_lr', lambda env_name, env_kwargs_observation_mode: [get_critic_lr(env_name, env_kwargs_observation_mode)])
-    vg.add('actor_lr', lambda critic_lr: [critic_lr])
-    vg.add('alpha_lr', lambda env_name, env_kwargs_observation_mode: [get_alpha_lr(env_name, env_kwargs_observation_mode)])
-    vg.add('lr_decay', lambda env_name, env_kwargs_observation_mode: [get_lr_decay(env_name, env_kwargs_observation_mode)])
-    vg.add('init_temperature', lambda env_kwargs_observation_mode: [0.1] if env_kwargs_observation_mode == 'cam_rgb' else [0.1])
-    vg.add('replay_buffer_capacity', lambda env_kwargs_observation_mode: [100000] if env_kwargs_observation_mode == 'cam_rgb' else [100000])
-    vg.add('num_train_steps', lambda env_kwargs_observation_mode: [1000000] if env_kwargs_observation_mode == 'cam_rgb' else [1000000])
+    vg.add('algorithm', ['KPConv_supervise_rim_2_rstate'])
+    vg.add('batch_size', [200])
     vg.add('scale_reward', lambda env_name: [reward_scales[env_name]])
     vg.add('clip_obs', lambda env_name, env_kwargs_observation_mode: [clip_obs[env_name]] if env_kwargs_observation_mode == 'key_point' else [None])
-    vg.add('batch_size', [128])
-    vg.add('rs_loss_coef', [0.1, 0.5, 1])
     vg.add('KPConv_config_final_hidden_dim', [1024])
     vg.add('KPConv_config_first_subsampling_dl', [None])
-    vg.add('KPConv_config_in_features_dim', [2])
+    vg.add('KPConv_config_in_features_dim', [1])
     vg.add('KPConv_config_use_batch_norm', [True, False])
-    vg.add('KPConv_deform', [False])
-    vg.add('KPConv_config_reduced_state_dim', [9])
+    vg.add('KPConv_deform', [True, False])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
     vg.add('save_model', [False])
+    vg.add('output_dim', [9])
+    vg.add('valid_interval', [1])
+    vg.add('save_interval', [25])
+    vg.add('num_episodes', [1000])
+    vg.add('train_epochs', [2000])
+    vg.add('lr', [1e-3])
+    vg.add('load_data_path', ['data/local/pouring/supervise_data'])
+    vg.add('save_data_path', ['data/local/pouring/supervise_data'])
 
     if not debug:
-        vg.add('seed', [100, 200])
+        vg.add('seed', [100])
     else:
         vg.add('seed', [200])
         exp_prefix += '_debug'

@@ -223,12 +223,18 @@ class ReplayBufferPointCloud():
         self.actions = np.empty((capacity, config.action_dim), dtype=np.float32)
         self.rewards = np.empty((capacity, 1), dtype=np.float32)
         self.not_dones = np.empty((capacity, 1), dtype=np.float32)
+        self.reduced_states = np.empty((capacity, config.reduced_state_dim), dtype=np.float32)
 
         self.idx = 0
         self.last_save = 0
         self.full = False
 
     def add(self, obs, action, reward, next_obs, done):
+        reduced_state = None
+        if isinstance(obs, tuple):
+            reduced_state = obs[1]
+            obs = obs[0]
+            next_obs = next_obs[0]
 
         self.obses.append(obs)
         np.copyto(self.actions[self.idx], action)
@@ -239,6 +245,9 @@ class ReplayBufferPointCloud():
             self.obses.pop(0)
         if len(self.next_obses) > self.capacity:
             self.next_obses.pop(0)
+
+        if reduced_state is not None:
+            np.copyto(self.reduced_states[self.idx], reduced_state)
 
         self.idx = (self.idx + 1) % self.capacity
         self.full = self.full or self.idx == 0
@@ -317,7 +326,8 @@ class ReplayBufferPointCloud():
         actions = torch.as_tensor(self.actions[idxs], device=self.device)
         rewards = torch.as_tensor(self.rewards[idxs], device=self.device)
         not_dones = torch.as_tensor(self.not_dones[idxs], device=self.device)
-        return obs_batch, actions, rewards, next_obs_batch, not_dones
+        reduced_states = torch.as_tensor(self.reduced_states[idxs], device=self.device)
+        return [obs_batch, reduced_states], actions, rewards, next_obs_batch, not_dones
 
 
     def save(self, save_dir):
@@ -511,15 +521,15 @@ class PointCloudCustomBatch:
 
 
 def preprocess_single_obs(obs, config):
-    obs_ = obs[:, :3]
-    feature = obs[:, 3:]
-    # print(obs.shape)
-    # print(feature.shape)
+    if isinstance(obs, tuple): # handle 'rim_interpolation_and_state' mode
+        obs_tmp = obs[0]
+    else:
+        obs_tmp = obs
+
+    obs_ = obs_tmp[:, :3]
+    feature = obs_tmp[:, 3:]
     if config.first_subsampling_dl is not None:
         obs_subsampled, feature_subsampled = grid_subsampling(obs_, features=feature, sampleDl=config.first_subsampling_dl)
-        # print(obs_subsampled.shape)
-        # print(feature_subsampled.shape)
-        # exit()
     else:
         obs_subsampled, feature_subsampled = obs_, feature
 
@@ -530,7 +540,6 @@ def preprocess_single_obs(obs, config):
     
     # Input features
     tf_list = [feature_subsampled]
-    # stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
     stacked_features = np.concatenate(tf_list, axis=0)
 
     input_list = classification_inputs(config, 

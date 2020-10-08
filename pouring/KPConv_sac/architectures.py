@@ -456,22 +456,11 @@ class KPFCNN(nn.Module):
         return correct / total
 
 
-
-
-
-class KPCNN_actor(nn.Module):
-    """
-    Class defining KPCNN
-    """
-
+class KPCNN_Encoder(nn.Module):
     def __init__(self, config):
-        super(KPCNN_actor, self).__init__()
-
-        #####################
-        # Network opperations
-        #####################
-
         # Current radius of convolution and feature dimension
+        super(KPCNN_Encoder, self).__init__()
+
         layer = 0
         if config.first_subsampling_dl is not None:
             r = config.first_subsampling_dl * config.conv_radius
@@ -523,8 +512,29 @@ class KPCNN_actor(nn.Module):
                 out_dim *= 2
                 block_in_layer = 0
 
+        self.out_dim = out_dim
+
+    def forward(self, batch_obs):
+        # Save all block operations in a list of modules
+        x = batch_obs.features.clone().detach()
+
+        # Loop over consecutive blocks
+        for b_idx, block_op in enumerate(self.block_ops):
+            x = block_op(x, batch_obs)
+
+        return x
+
+class KPCNN_actor(nn.Module):
+    """
+    Class defining KPCNN
+    """
+
+    def __init__(self, config, encoder):
+        super(KPCNN_actor, self).__init__()
+
+        self.encoder = encoder
         self.head_mlp = nn.Sequential(
-            nn.Linear(out_dim, config.final_hidden_dim),
+            nn.Linear(encoder.out_dim, config.final_hidden_dim),
             nn.ReLU(),
             nn.Linear(config.final_hidden_dim, config.final_hidden_dim),
             nn.ReLU()
@@ -534,17 +544,16 @@ class KPCNN_actor(nn.Module):
         self.log_std_min = config.log_std_min
         self.log_std_max = config.log_std_max
 
+        self.rs_mlp = nn.Sequential(
+            nn.Linear(encoder.out_dim, config.final_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.final_hidden_dim, config.final_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.final_hidden_dim, config.reduced_state_dim)
+        )
+
     def forward(self, batch_obs, compute_pi=True, compute_log_pi=True, detach_encoder=False):
-
-        # Save all block operations in a list of modules
-        x = batch_obs.features.clone().detach()
-
-        # Loop over consecutive blocks
-        for b_idx, block_op in enumerate(self.block_ops):
-            # print("block_idx: ", b_idx)
-            # if hasattr(block_op, 'block_name'):
-            #     print("block_name: ", block_op.block_name)
-            x = block_op(x, batch_obs)
+        x = self.encoder(batch_obs)
 
         # Head of network
         x = self.head_mlp(x)
@@ -574,8 +583,10 @@ class KPCNN_actor(nn.Module):
 
         return mu, pi, log_pi, log_std
 
-
-
+    def predict_reduced_state(self, obs):
+        x = self.encoder(obs)
+        x = self.rs_mlp(x)
+        return x
 
 
 class KPCNN_qfunction(nn.Module):
@@ -583,81 +594,34 @@ class KPCNN_qfunction(nn.Module):
     Class defining KPCNN
     """
 
-    def __init__(self, config):
+    def __init__(self, config, encoder):
         super(KPCNN_qfunction, self).__init__()
 
         #####################
         # Network opperations
         #####################
 
-        # Current radius of convolution and feature dimension
-        layer = 0
-        if config.first_subsampling_dl is not None:
-            r = config.first_subsampling_dl * config.conv_radius
-        else:
-            r = config.conv_radius * 0.033
-        in_dim = config.in_features_dim
-        out_dim = config.first_features_dim
-        self.K = config.num_kernel_points
-
-        # Save all block operations in a list of modules
-        self.block_ops = nn.ModuleList()
-
-        # Loop over consecutive blocks
-        block_in_layer = 0
-        for block_i, block in enumerate(config.architecture):
-
-            # Check equivariance
-            if ('equivariant' in block) and (not out_dim % 3 == 0):
-                raise ValueError('Equivariant block but features dimension is not a factor of 3')
-
-            # Detect upsampling block to stop
-            if 'upsample' in block:
-                break
-
-            # Apply the good block function defining tf ops
-            self.block_ops.append(block_decider(block,
-                                                r,
-                                                in_dim,
-                                                out_dim,
-                                                layer,
-                                                config))
-
-
-            # Index of block in this layer
-            block_in_layer += 1
-
-            # Update dimension of input from output
-            if 'simple' in block:
-                in_dim = out_dim // 2
-            else:
-                in_dim = out_dim
-
-
-            # Detect change to a subsampled layer
-            if 'pool' in block or 'strided' in block:
-                # Update radius and feature dimension for next layer
-                layer += 1
-                r *= 2
-                out_dim *= 2
-                block_in_layer = 0
+        self.encoder = encoder
 
         self.head_mlp_0 = nn.Sequential(
-            nn.Linear(out_dim + config.action_dim, config.final_hidden_dim),
+            nn.Linear(encoder.out_dim + config.action_dim, config.final_hidden_dim),
             nn.ReLU(),
             nn.Linear(config.final_hidden_dim, config.final_hidden_dim),
             nn.ReLU()
         )
         self.head_mlp_q = nn.Linear(config.final_hidden_dim, 1)
 
+        self.rs_mlp = nn.Sequential(
+            nn.Linear(encoder.out_dim, config.final_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.final_hidden_dim, config.final_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.final_hidden_dim, config.reduced_state_dim)
+        )
+
     def forward(self, batch_obs, batch_action):
 
-        # Save all block operations in a list of modules
-        x = batch_obs.features.clone().detach()
-
-        # Loop over consecutive blocks
-        for block_op in self.block_ops:
-            x = block_op(x, batch_obs)
+        x = self.encoder(batch_obs)
 
         # Head of network
         x = torch.cat([x, batch_action], dim=1)
@@ -665,19 +629,25 @@ class KPCNN_qfunction(nn.Module):
         q = self.head_mlp_q(x)
         return q
 
+    def predict_reduced_state(self, batch_obs):
+        x = self.encoder(batch_obs)
+
+        x = self.rs_mlp(x)
+        return x
+
 class KPCNN_critic(nn.Module):
     """Critic network, employes two q-functions."""
 
-    def __init__(self, config):
+    def __init__(self, config, encoder1, encoder2):
         super().__init__()
 
         # TODO: another option is to share the KPconv part for these two q functions
 
         self.Q1 = KPCNN_qfunction(
-            config
+            config, encoder1
         )
         self.Q2 = KPCNN_qfunction(
-            config
+            config, encoder2
         )
 
     def forward(self, obs, action, detach_encoder=False):
@@ -686,9 +656,44 @@ class KPCNN_critic(nn.Module):
 
         return q1, q2
 
+    def predict_reduced_state(self, obs):
+        x1 = self.Q1.predict_reduced_state(obs)
+        x2 = self.Q2.predict_reduced_state(obs)
 
+        return x1, x2
 
     
+
+class KPConvRegression(nn.Module):
+    """
+    Class defining KPCNN
+    """
+
+    def __init__(self, config, encoder):
+        super(KPConvRegression, self).__init__()
+
+        #####################
+        # Network opperations
+        #####################
+
+        self.encoder = encoder
+
+        self.head_mlp_0 = nn.Sequential(
+            nn.Linear(encoder.out_dim, config.final_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.final_hidden_dim, config.final_hidden_dim),
+            nn.ReLU()
+        )
+        self.head_mlp_output = nn.Linear(config.final_hidden_dim, config.output_dim)
+
+    def forward(self, batch_obs):
+
+        x = self.encoder(batch_obs)
+
+        # Head of network
+        x = self.head_mlp_0(x)
+        q = self.head_mlp_output(x)
+        return q
 
 
 

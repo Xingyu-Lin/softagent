@@ -20,6 +20,13 @@ from envs.env import Env
 from softgym.utils.visualization import save_numpy_as_gif, make_grid
 import matplotlib.pyplot as plt
 
+def obs_process(obs):
+    if isinstance(obs, tuple):
+        obs_tensor = torch.tensor(obs[0], dtype=torch.float32)
+        return obs_tensor, obs[1]
+    else:
+        return torch.tensor(obs, dtype=torch.float32)
+
 def vv_to_args(vv):
     class VArgs(object):
         def __init__(self, vv):
@@ -76,9 +83,11 @@ def get_info_stats(infos):
     return stat_dict
 
 
+
 def evaluate(env, agent, video_dir, num_episodes, L, step, args, config):
     all_ep_rewards = []
 
+    agent.train(False)
     def run_eval_loop(sample_stochastically=True):
         start_time = time.time()
         prefix = 'stochastic_' if sample_stochastically else ''
@@ -127,7 +136,7 @@ def evaluate(env, agent, video_dir, num_episodes, L, step, args, config):
 
     run_eval_loop(sample_stochastically=False)
     L.dump(step)
-
+    agent.train(True)
 
 def make_agent(args, config, device):
     return KPConvSacAgent(
@@ -161,7 +170,7 @@ def main(args, config):
     args.encoder_type = 'identity' if symbolic else 'pixel'
 
     env = Env(args.env_name, symbolic, args.seed, 200, 1, 8, 128, env_kwargs=args.env_kwargs, normalize_observation=False,
-              scale_reward=args.scale_reward, clip_obs=args.clip_obs)
+              scale_reward=args.scale_reward, clip_obs=args.clip_obs, obs_process=obs_process)
     env.seed(args.seed)
 
     # make directory
@@ -228,6 +237,7 @@ def main(args, config):
             if step % args.log_interval == 0:
                 L.log('train/episode', episode, step)
 
+        # print("before single obs process, obs is: ", obs[1])
         # sample action for data collection
         if step < args.init_steps:
             action = env.action_space.sample()
@@ -247,6 +257,7 @@ def main(args, config):
         ep_info.append(info)
         done_bool = 0 if episode_step + 1 == env.horizon else float(done)
         episode_reward += reward
+        # print("after single obs process, obs is: ", obs[1])
         replay_buffer.add(obs, action, reward, next_obs, done_bool)
 
         obs = next_obs

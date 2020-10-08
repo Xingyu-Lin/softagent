@@ -8,7 +8,7 @@ import time
 import math
 
 from pouring.KPConv_sac import utils
-from pouring.KPConv_sac.architectures import KPCNN, KPCNN_actor, KPCNN_critic
+from pouring.KPConv_sac.architectures import KPCNN, KPCNN_actor, KPCNN_critic, KPCNN_Encoder
 
 
 class KPConvSacAgent(object):
@@ -43,11 +43,16 @@ class KPConvSacAgent(object):
         self.log_interval = log_interval
         self.alpha_fixed = alpha_fixed
 
-        self.actor = KPCNN_actor(KPconv_config).to(device)
+        self.actor_encoder = KPCNN_Encoder(KPconv_config)
+        self.actor = KPCNN_actor(KPconv_config, self.actor_encoder).to(device)
 
-        self.critic = KPCNN_critic(KPconv_config).to(device)
+        self.q_encoder_1 = KPCNN_Encoder(KPconv_config)
+        self.q_encoder_2 = KPCNN_Encoder(KPconv_config)
+        self.critic = KPCNN_critic(KPconv_config, self.q_encoder_1, self.q_encoder_2).to(device)
 
-        self.critic_target = KPCNN_critic(KPconv_config).to(device)
+        self.q_encoder_target_1 = KPCNN_Encoder(KPconv_config)
+        self.q_encoder_target_2 = KPCNN_Encoder(KPconv_config)
+        self.critic_target = KPCNN_critic(KPconv_config, self.q_encoder_target_1, self.q_encoder_target_2).to(device)
 
         self.critic_target.load_state_dict(self.critic.state_dict())
 
@@ -76,6 +81,12 @@ class KPConvSacAgent(object):
         self.train()
         self.critic_target.train()
 
+    # def print_module(self, module):
+    #     print(module.__class__.__name__)
+    #     print(module.training)
+    #     for module in module.children():
+    #         self.print_module(module)
+
     def train(self, training=True):
         self.training = training
         self.actor.train(training)
@@ -103,6 +114,9 @@ class KPConvSacAgent(object):
             return pi.cpu().data.numpy().flatten()
 
     def update_critic(self, obs, action, reward, next_obs, not_done, L, step):
+        reduced_states = obs[1]
+        obs = obs[0]
+
         with torch.no_grad():
             _, policy_action, log_pi, _ = self.actor(next_obs)
             target_Q1, target_Q2 = self.critic_target(next_obs, policy_action)
@@ -115,41 +129,56 @@ class KPConvSacAgent(object):
         # get current Q estimates
         current_Q1, current_Q2 = self.critic(
             obs, action)
+
         critic_loss = F.mse_loss(current_Q1,
                                  target_Q) + F.mse_loss(current_Q2, target_Q)
-        if step % self.log_interval == 0:
-            L.log('train_critic/loss', critic_loss, step)
-            # L.log('train/q1', torch.mean(current_Q1), step)
-            # L.log('train/comp_Q', torch.mean(comp_Q), step)
-            # L.log('train/comp_E', torch.mean(comp_E), step)
+        
+        rs_loss = torch.zeros(1).to(self.device)
+        if self.args.rs_loss_coef > 0:
+            rs_prediction_1, rs_prediction_2 = self.critic.predict_reduced_state(obs)
+            rs_loss = F.mse_loss(reduced_states, rs_prediction_1) + F.mse_loss(reduced_states, rs_prediction_2)
+            
+        loss = critic_loss + self.args.rs_loss_coef * rs_loss
 
-            # critic_stats = get_optimizer_stats(self.critic_optimizer)
-            # for key, val in critic_stats.items():
-            #     L.log('train/critic_optim/' + key, val, step)
+        if step % self.log_interval == 0:
+            L.log('train_critic/critic_loss', critic_loss, step)
+            L.log('train_critic/rs_loss', rs_loss, step)
+            L.log('train_critic/total_loss', loss, step)
 
         # Optimize the critic
         self.critic_optimizer.zero_grad()
-        critic_loss.backward()
+        loss.backward()
         self.critic_optimizer.step()
 
         if self.args.lr_decay is not None:
             self.critic_lr_scheduler.step()
             L.log('train/critic_lr', self.critic_optimizer.param_groups[0]['lr'], step)
 
-
         # self.critic.log(L, step)
 
     def update_actor_and_alpha(self, obs, L, step):
         # detach encoder, so we don't update it with the actor loss
+        reduced_states = obs[1]
+        obs = obs[0]
+
         _, pi, log_pi, log_std = self.actor(obs, detach_encoder=True)
         actor_Q1, actor_Q2 = self.critic(obs, pi, detach_encoder=True)
 
         actor_Q = torch.min(actor_Q1, actor_Q2)
         actor_loss = (self.alpha.detach() * log_pi - actor_Q).mean()
 
+        rs_loss = torch.zeros(1).to(self.device)
+        if self.args.rs_loss_coef > 0:
+            rs_prediction = self.actor.predict_reduced_state(obs)
+            rs_loss = F.mse_loss(reduced_states, rs_prediction)
+
+        loss = actor_loss + self.args.rs_loss_coef * rs_loss
+
         if step % self.log_interval == 0:
-            L.log('train_actor/loss', actor_loss, step)
-            L.log('train_actor/target_entropy', self.target_entropy, step)
+            L.log('train_actor/total_loss', loss, step)
+            L.log('train_actor/actor_loss', actor_loss, step)
+            L.log('train_actor/rs_loss', rs_loss, step)
+
         entropy = 0.5 * log_std.shape[1] * \
                   (1.0 + np.log(2 * np.pi)) + log_std.sum(dim=-1)
         if step % self.log_interval == 0:
@@ -157,7 +186,7 @@ class KPConvSacAgent(object):
 
         # optimize the actor
         self.actor_optimizer.zero_grad()
-        actor_loss.backward()
+        loss.backward()
         self.actor_optimizer.step()
 
         if self.args.lr_decay is not None:
