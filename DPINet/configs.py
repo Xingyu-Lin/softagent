@@ -2,7 +2,7 @@ env_configs = \
     {
         'ClothFlatten': dict(
             # object states:
-            # [x, y, z, xdot, ydot, zdot]
+            # [x, y, z, xdot, ydot, zdot, u_xdot, u_ydot, u_zdot] The last three indicates the action
             state_dim=6,
             position_dim=3,
             # object attr:
@@ -29,7 +29,7 @@ env_configs = \
                 material=["fluid"]
 
             ),
-            n_rollout=500, # Was 1000 with 50 timesteps
+            n_rollout=500,# Was 500 # Was 1000 with 50 timesteps
             nstep_eval_rollout=2,
             dataf='./datasets/ClothFlatten/'
         )

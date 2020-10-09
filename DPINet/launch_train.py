@@ -11,10 +11,10 @@ from DPINet.train_new import run_task
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '1001_explore'
+    exp_prefix = '1008_explore'
     vg = VariantGenerator()
     vg.add('env_name', ['ClothFlatten'])
-    vg.add('gen_data', [False])
+    vg.add('gen_data', [True])
     vg.add('training', [True])
     vg.add('use_hierarchy', [True])
     vg.add('neighbor_radius', [0.026])
