@@ -195,6 +195,7 @@ class PhysicsFleXDataset(Dataset):
         data_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep) + '.h5')
         data_nxt_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep + 1) + '.h5')
         data = load_data(self.data_names, data_path)
+        data_nxt = load_data(self.data_names, data_nxt_path)
 
         # NOTE: include history velocity as part of the state. only used for RiceGrip
         vel_his = []
@@ -204,17 +205,18 @@ class PhysicsFleXDataset(Dataset):
             vel_his.append(data_his[1])
 
         data[1] = np.concatenate([data[1]] + vel_his, 1)
+        data.append(data_nxt[1])  # Append the velocity of the next time step. Use only for control.
 
         attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict,
                                                                                                         0)
 
         ### label
-        data_nxt = normalize(load_data(self.data_names, data_nxt_path), self.stat)
+        normalized_data_nxt = normalize(data_nxt, self.stat)
 
         if sample_idx is not None:
-            label = torch.FloatTensor(data_nxt[1][sample_idx[:n_particles]])
+            label = torch.FloatTensor(normalized_data_nxt[1][sample_idx[:n_particles]])
         else:
-            label = torch.FloatTensor(data_nxt[1][:n_particles])  # NOTE: just use velocity at next step as label
+            label = torch.FloatTensor(normalized_data_nxt[1][:n_particles])  # NOTE: just use velocity at next step as label
 
         if self.args.noise_level > 0:
             state[:, :6] += torch.empty_like(state[:, :6]).normal_(mean=0, std=self.args.noise_level)
@@ -232,8 +234,10 @@ class PhysicsFleXDataset(Dataset):
     def construct_graph(self, data, downsample=True):
         return self._construct_graph(data, self.stat, self.args, self.phases_dict, 0, downsample)
 
-    def obtain_graph(self, data_path):
+    def obtain_graph(self, data_path, data_nxt_path):
         data = load_data(self.data_names, data_path)
+        data_nxt = load_data(self.data_names, data_nxt_path)
+        data.append(data_nxt[1])
         attr, state, relations, n_particles, n_shapes, instance_idx, sample_idx = self._construct_graph(data, self.stat, self.args, self.phases_dict,
                                                                                                         0)
         return attr, state, relations, n_particles, n_shapes, instance_idx, data, sample_idx
@@ -267,10 +271,11 @@ class ClothDataset(PhysicsFleXDataset):
             pyflex.set_shape_states(shape_states.flatten())
             delta_pos = np.random.random(3) - 0.5
             delta_pos[1] = (delta_pos[1] + 0.5) * 0.15
-            delta_pos[[0, 2]] *= 0.2
+            delta_pos[[0, 2]] *= 0.5
             self.policy_info['delta_pos'] = delta_pos
             self.policy_info['target_pos'] = curr_pos + delta_pos
             self.policy_info['status'] = 'pick'
+            return np.zeros_like(env.action_space.sample())
 
         if self.policy_info['status'] == 'pick':
             curr_pos = pyflex.get_shape_states().reshape(-1, 14)[0, :3]
@@ -292,7 +297,6 @@ class ClothDataset(PhysicsFleXDataset):
             vel = pyflex.get_velocities()
             if np.abs(np.max(vel)) < 0.15:
                 self.policy_info['status'] = 'finished'
-
         return action
 
     def _get_eight_neighbor(self, cloth_xdim, cloth_ydim, relation_dim):
@@ -426,7 +430,7 @@ class ClothDataset(PhysicsFleXDataset):
         return new_idx
 
     def _downsample(self, data, scale=2):
-        pos, vel, clusters, scene_params, picked_points = data
+        pos, vel, clusters, scene_params, picked_points, vel_nxt = data
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
         cloth_xdim, cloth_ydim = int(cloth_xdim), int(cloth_ydim)
         original_xdim, original_ydim = cloth_xdim, cloth_ydim
@@ -440,6 +444,7 @@ class ClothDataset(PhysicsFleXDataset):
         new_idx = np.hstack([new_idx, np.arange(len(pos))[-n_shapes:]])
         pos = pos[new_idx, :]
         vel = vel[new_idx, :]
+        vel_nxt = vel_nxt[new_idx, :]
 
         # Remap picked_points
         pps = []
@@ -449,7 +454,7 @@ class ClothDataset(PhysicsFleXDataset):
                 assert pps[-1] < len(pos)
                 # pps.append(self.get_closest_point(original_pos[pp, :], pos[:-n_shapes, :]))
         scene_params = sphere_radius, cloth_xdim, cloth_ydim, config_id
-        return (pos, vel, clusters, scene_params, pps), new_idx
+        return (pos, vel, clusters, scene_params, pps, vel_nxt), new_idx
 
     def _construct_graph(self, data, stat, args, phases_dict, var, downsample=True):
         self.down_scale = args.down_sample_scale
@@ -463,7 +468,7 @@ class ClothDataset(PhysicsFleXDataset):
             data = new_data
         else:
             sample_idx = None
-        positions, velocities, clusters, scene_params, picked_points = data
+        positions, velocities, clusters, scene_params, picked_points, vel_nxt = data
         n_shapes = 2
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
 
@@ -479,6 +484,7 @@ class ClothDataset(PhysicsFleXDataset):
         for picked_point in picked_points:
             if picked_point != -1:
                 attr[picked_point, 2] = 1
+                velocities[picked_point, :] = vel_nxt[picked_point, :]
 
         ### construct relations
         Rr_idxs = []  # relation receiver idx list
