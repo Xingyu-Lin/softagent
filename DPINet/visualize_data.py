@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--model_file', default=None)
 parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten/train')
 parser.add_argument('--env_name', type=str, default='ClothFlatten')
-parser.add_argument('--n_rollout', type=int, default=1)
+parser.add_argument('--n_rollout', type=int, default=5)
 parser.add_argument('--save_folder', type=str, default='./dpi_visualization')
 
 
@@ -68,7 +68,7 @@ def visualize(env, n_shape, traj_pos, config_id, sample_idx=None):
         if sample_idx is None:
             p[:, :3] = particle_pos
         else:
-            p[:, :3] =0
+            p[:, :3] = 0
             p[sample_idx[:-2], :3] = particle_pos
         pyflex.set_positions(p)
         set_shape_pos(shape_pos)
@@ -78,9 +78,10 @@ def visualize(env, n_shape, traj_pos, config_id, sample_idx=None):
 
 def get_model_prediction(args, stat, traj_path, vels, dataset, model):
     # State index order: [particles, shape, roots]
-    for i in range(args.time_step-1):
+    for i in range(args.time_step - 1):
         if i == 0:
-            attr, state, rels, n_particles, n_shapes, instance_idx, data, sample_idx = dataset.obtain_graph(osp.join(traj_path, str(i) + '.h5'))
+            attr, state, rels, n_particles, n_shapes, instance_idx, data, sample_idx = dataset.obtain_graph(osp.join(traj_path, str(i) + '.h5'),
+                                                                                                            osp.join(traj_path, str(i + 1) + '.h5'))
             pos = np.vstack([state[:n_particles, :3], state[n_particles:n_particles + n_shapes, :3]])
             pos = denormalize([pos], [stat[0]])[0]  # Unnormalize
             predicted_pos_trajs = [pos.copy()]
@@ -90,18 +91,19 @@ def get_model_prediction(args, stat, traj_path, vels, dataset, model):
             data[1] = state[:, 3:]
             pick_points = dataset.obtain_pick(osp.join(traj_path, str(i) + '.h5'))
             data[4] = pick_points
+            data[5] = vels[i+1]
             attr, state, rels, n_particles, n_shapes, instance_idx, _ = dataset.construct_graph(data, downsample=False)
         graph = convert_dpi_to_graph(attr, state, rels, n_particles, n_shapes, instance_idx)
         st_time = time.time()
         predicted_vel = model(graph, args.phases_dict, args.verbose_model)
         # print('Time forward', time.time() - st_time)
         predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [stat[1]])[0]
-        predicted_vel = np.concatenate([predicted_vel, vels[i+1][-n_shapes:]], 0)  ### Model only outputs predicted particle velocity,
+        predicted_vel = np.concatenate([predicted_vel, vels[i + 1][-n_shapes:]], 0)  ### Model only outputs predicted particle velocity,
 
         # predicted_vel[:,:] = vels[i+1][sample_idx, :]
         # Manually set the velocities of the picked points
         for pp in pick_points:
-            predicted_vel[pp, :] =  vels[i+1][sample_idx, :][pp, :]
+            predicted_vel[pp, :] = vels[i + 1][sample_idx, :][pp, :]
 
         ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
         ### maybe, the shape velocity is kind of like the control actions specified by the users
