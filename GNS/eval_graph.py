@@ -296,7 +296,7 @@ if __name__ == "__main__":
                 # st_time = time.time()
                 node_embedding, edge_embedding = encoder_model(node_attr.float(), edge_attr.float())
                 node_embedding_out, edge_embedding_out, global_out = processor_model(node_embedding, neighbors, edge_embedding, global_feat, batch=None)
-                pred_accel = decoder_model(node_embedding)
+                pred_accel = decoder_model(node_embedding_out)
                 # print('Time forward', time.time() - st_time)
 
             pred_vel = vel_nxt_gt[step] + pred_accel.cpu().numpy() * args.dt
