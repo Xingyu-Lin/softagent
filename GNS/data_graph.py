@@ -99,9 +99,15 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
         # Compute GT label: calculate accleration
         data_nxt = self._load_data_file(load_names, data_nxt_path)
-        gt_accel = torch.FloatTensor((data_nxt[1] - data[1][:, 0:3]) / self.args.dt)
-        if sample_idx is not None:
-            gt_accel = gt_accel[sample_idx]
+        if not self.args.predict_vel:
+            gt_accel = torch.FloatTensor((data_nxt[1] - data[1][:, 0:3]) / self.args.dt)
+            if sample_idx is not None:
+                gt_accel = gt_accel[sample_idx]
+        else: # predict velocity
+            gt_accel = torch.FloatTensor(data_nxt[1])
+            if sample_idx is not None:
+                gt_accel = gt_accel[sample_idx]
+
 
         return node_attr, neighbors, edge_attr, global_feat, gt_accel
 
@@ -321,7 +327,7 @@ class ClothDataset(PhysicsFleXDataset):
                                 picked_particles[i] = int(pick_id)
 
                     # update the position and velocity of the picked particle
-                    if picked_particles[i] is not None:     
+                    if picked_particles[i] != -1:     
 
                         old_pos = particle_pos[picked_particles[i]]
                         new_pos = particle_pos[picked_particles[i]] + new_picker_pos[i, :] - picker_pos[i,:]
@@ -332,12 +338,23 @@ class ClothDataset(PhysicsFleXDataset):
                         velocity_his[picked_particles[i], :3] = new_vel
 
                         particle_pos[picked_particles[i]] = new_pos
+                else:
+                    picked_particles[i] = -1
                     
             positions = particle_pos
+            picked_points = picked_particles
 
-
-        # no node attribute for now: no difference between normal particles and picked particles
+        # picked particle [0, 1]
+        # normal particle [1, 0]
+        node_one_hot = np.zeros((len(positions), 2), dtype=np.float32)
+        node_one_hot[:, 0] = 1
+        for picked in picked_points:
+            if picked != -1:
+                node_one_hot[picked, 0] = 0
+                node_one_hot[picked, 1] = 1
+        node_one_hot = torch.from_numpy(node_one_hot)
         node_attr = torch.from_numpy(velocity_his)
+        node_attr = torch.cat([node_attr, node_one_hot], dim=1)
 
         ##### add env specific graph components
         ## Edge attributes:
@@ -378,9 +395,9 @@ class ClothDataset(PhysicsFleXDataset):
             # print("edge type: ", edge_types.dtype)
             edge_attr = torch.cat([edge_attr, edge_types], dim=1)
 
-        # concatenate all edges
-        mesh_edges = torch.from_numpy(mesh_edges)
-        edges = torch.cat([edges, mesh_edges], dim=1)
+            # concatenate all edges
+            mesh_edges = torch.from_numpy(mesh_edges)
+            edges = torch.cat([edges, mesh_edges], dim=1)
         
         # Global features are unused
         global_feat = torch.FloatTensor([[0.]])
@@ -408,7 +425,7 @@ class ClothDataset(PhysicsFleXDataset):
         move_direction[1] += 0.52
         self.policy_info = {}
         self.policy_info['move_direction'] = move_direction / np.linalg.norm(move_direction)
-        self.policy_info['move_distance'] = np.random.rand() * 0.5 + 0.6
+        self.policy_info['move_distance'] = np.random.rand() * 0.5
         self.policy_info['move_steps'] = 60
         self.policy_info['delta_move'] = self.policy_info['move_distance'] / self.policy_info['move_steps'] 
 

@@ -19,23 +19,26 @@ def main(mode, debug, dry):
             return 4
 
 
-    exp_prefix = '1010_GNS_first_try'
+    exp_prefix = '1010_GNS_small_fix'
     vg = VariantGenerator()
     vg.add('env_name', ['ClothFlatten'])
-    vg.add('gen_data', [True])
+    vg.add('n_epoch', [10000])
+    vg.add('gen_data', [False])
     vg.add('training', [True])
-    # vg.add('use_hierarchy', [True])
     vg.add('neighbor_radius', [0.026])
     vg.add('edge_type', ['eight_neighbor'])
     vg.add('down_sample_scale', [3])
-    vg.add('use_mesh_edge', [True])
-    vg.add('relation_dim', [lambda use_mesh_edge: [get_relation_dim(use_mesh_edge)]])
+    vg.add('use_mesh_edge', [True, False])
+    vg.add('relation_dim', lambda use_mesh_edge: [get_relation_dim(use_mesh_edge)])
     vg.add('seed', [100])
+    vg.add('video_interval', [10000])
+    vg.add('predict_vel', [True, False])
     if debug:
         vg.add('n_rollout', [20])
-        vg.add('log_per_iter', [50])
+        # vg.add('log_per_iter', [50])
     else:
-        vg.add('n_rollout', [500])
+        vg.add('n_rollout', [20])
+        vg.add('log_per_iter', [10000])
 
     if not debug:
         pass

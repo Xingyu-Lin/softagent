@@ -22,10 +22,10 @@ class MaterialEncoder(torch.nn.Module):
         self.model = torch.nn.Sequential(
             torch.nn.Linear(self.input_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.output_size)
         )
 
@@ -125,10 +125,10 @@ class EdgeModel(torch.nn.Module):
         self.model = torch.nn.Sequential(
             torch.nn.Linear(self.input_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.output_size)
         )
 
@@ -159,10 +159,10 @@ class NodeModel(torch.nn.Module):
         self.model = torch.nn.Sequential(
             torch.nn.Linear(self.input_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.output_size)
         )
 
@@ -196,10 +196,10 @@ class GlobalModel(torch.nn.Module):
         self.model = torch.nn.Sequential(
             torch.nn.Linear(self.input_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.output_size)
         )
 
@@ -314,10 +314,10 @@ class Decoder(torch.nn.Module):
         self.model = torch.nn.Sequential(
             torch.nn.Linear(self.input_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.hidden_size),
             torch.nn.ReLU(inplace=True),
-            torch.nn.LayerNorm(self.hidden_size),
+            # torch.nn.LayerNorm(self.hidden_size),
             torch.nn.Linear(self.hidden_size, self.output_size)
         )
 

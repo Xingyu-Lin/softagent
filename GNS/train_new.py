@@ -168,7 +168,7 @@ def train(args, env):
                     optimizer.step()
                     optimizer.zero_grad()
 
-                if i % args.log_per_iter == 0 or i == len(dataloaders[phase]) - 1:
+                if i > 0 and i % args.log_per_iter == 0 or i == len(dataloaders[phase]) - 1:
                     # print("epoch {} i {}".format(epoch, i))
                     # print('%s [%d/%d][%d/%d] Loss: %.6f, Agg: %.6f' %
                     #       (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
@@ -192,14 +192,15 @@ def train(args, env):
                         pos_errorss.append(pos_errors)
                         vel_errorss.append(vel_errors)
 
-                        frames_model = visualize(datasets[phase].env, predicted_positions, 
-                            shape_positions, config_id, sample_idx)
-                        frames_gt = visualize(datasets[phase].env, gt_positions, 
-                            shape_positions, config_id, sample_idx)
-                        combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
-                        save_numpy_as_gif(np.array(combined_frames), osp.join(logdir, '{}-{}-{}-{}.gif'.format(
-                            phase, epoch, i, idx
-                        )))
+                        if i % args.video_interval == 0 or i == len(dataloaders[phase]) - 1:
+                            frames_model = visualize(datasets[phase].env, predicted_positions, 
+                                shape_positions, config_id, sample_idx)
+                            frames_gt = visualize(datasets[phase].env, gt_positions, 
+                                shape_positions, config_id, sample_idx)
+                            combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
+                            save_numpy_as_gif(np.array(combined_frames), osp.join(logdir, '{}-{}-{}-{}.gif'.format(
+                                phase, epoch, i, idx
+                            )))
 
                     pos_errorss = np.vstack(pos_errorss)
                     vel_errorss = np.vstack(vel_errorss)
@@ -308,8 +309,8 @@ def run_task(vv, log_dir, exp_name):
     env_args['action_repeat'] = 1
     # env_args['headless'] = False
     if args.env_name == 'ClothFlatten':
-        env_args['cached_states_path'] = 'cloth_flatten_init_states_small.pkl'
-        env_args['num_variations'] = 50
+        env_args['cached_states_path'] = 'cloth_flatten_init_states_small_2.pkl'
+        env_args['num_variations'] = 20
     env = SOFTGYM_ENVS[args.env_name](**env_args)
 
     if vv['gen_data']:

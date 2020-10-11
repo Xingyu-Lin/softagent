@@ -149,8 +149,12 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
                                                                                     batch=None)
             pred_accel = decoder_model(node_embedding_out)
 
-        pred_vel = data[1][:, :3] + pred_accel.cpu().numpy() * args.dt
-        pred_pos = data[0] + pred_vel * args.dt
+        if not args.predict_vel:
+            pred_vel = data[1][:, :3] + pred_accel.cpu().numpy() * args.dt
+            pred_pos = data[0] + pred_vel * args.dt
+        else:
+            pred_vel = pred_accel.cpu().numpy()
+            pred_pos = data[0] + pred_vel * args.dt
 
         # compute prediction error
         data_dir = osp.join(data_path, str(rollout_idx), '{}.h5'.format(t))
