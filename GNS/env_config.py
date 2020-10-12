@@ -2,8 +2,8 @@ env_configs = \
     {
         'ClothFlatten': dict(
             # object states:
-            # 5 velocity + one-hot of picked / normal particle
-            state_dim=17,
+            # 5 velocity + one-hot of picked / normal particle + distance to ground
+            state_dim=18,
             position_dim=0,
             relation_dim = 6,
             # object attr:
@@ -17,7 +17,7 @@ env_configs = \
             phases_dict=dict(),
             n_rollout=1000,# Was 500 # Was 1000 with 50 timesteps
             nstep_eval_rollout=2,
-            dataf='./datasets/ClothFlatten_small/'
+            dataf='./datasets/ClothFlatten_new/'
         ),
         'BoxBath': dict(
             n_rollout = 3000,

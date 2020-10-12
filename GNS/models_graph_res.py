@@ -262,10 +262,15 @@ class Processor(torch.nn.Module):
         self.use_global = use_global
 
         self.gn1 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
-        self.gn2 = GNBlock(2*self.input_size, self.hidden_size, self.output_size, self.use_global)
-        self.gn3 = GNBlock(2*self.input_size, self.hidden_size, self.output_size, self.use_global)
-        self.gn4 = GNBlock(2*self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn2 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn3 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn4 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
         self.gn5 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn6 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn7 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn8 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn9 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
+        self.gn10 = GNBlock(self.input_size, self.hidden_size, self.output_size, self.use_global)
 
     def forward(self, x, edge_index, edge_attr, u, batch):
 
@@ -295,7 +300,32 @@ class Processor(torch.nn.Module):
         edge_attr_res = edge_attr4 + edge_attr_res
         u_res = u4 + u_res
 
-        x_out, edge_attr_out, u_out = self.gn5(x_res, edge_index, edge_attr_res, u_res, batch)
+        x5, edge_attr5, u5 = self.gn5(x_res, edge_index, edge_attr_res, u_res, batch)
+        x_res = x5 + x_res
+        edge_attr_res = edge_attr5 + edge_attr_res
+        u_res = u5 + u_res
+
+        x6, edge_attr6, u6 = self.gn6(x_res, edge_index, edge_attr_res, u_res, batch)
+        x_res = x6 + x_res
+        edge_attr_res = edge_attr6 + edge_attr_res
+        u_res = u6 + u_res
+
+        x7, edge_attr7, u7 = self.gn7(x_res, edge_index, edge_attr_res, u_res, batch)
+        x_res = x7 + x_res
+        edge_attr_res = edge_attr7 + edge_attr_res
+        u_res = u7 + u_res
+
+        x8, edge_attr8, u8 = self.gn8(x_res, edge_index, edge_attr_res, u_res, batch)
+        x_res = x8 + x_res
+        edge_attr_res = edge_attr8 + edge_attr_res
+        u_res = u8 + u_res
+
+        x9, edge_attr9, u9 = self.gn9(x_res, edge_index, edge_attr_res, u_res, batch)
+        x_res = x9 + x_res
+        edge_attr_res = edge_attr9 + edge_attr_res
+        u_res = u9 + u_res
+
+        x_out, edge_attr_out, u_out = self.gn10(x_res, edge_index, edge_attr_res, u_res, batch)
 
         return x_out, edge_attr_out, u_out
 

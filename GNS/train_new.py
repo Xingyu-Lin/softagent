@@ -185,14 +185,14 @@ def train(args, env):
                     for idx, traj_id in enumerate(traj_ids):
                         # print("idx: ", idx)
                         with torch.no_grad():
-                            pos_errors, vel_errors, gt_positions, predicted_positions, shape_positions, sample_idx, config_id \
+                            pos_errors, vel_errors, gt_positions, predicted_positions, shape_positions, sample_idx, config_id, _ \
                                 = get_model_prediction_rollout(args, data_folder, traj_id, args.n_his - 1, 
-                                    [encoder_model, processor_model, decoder_model], datasets[phase])
+                                    [encoder_model, processor_model, decoder_model], datasets[phase], noise_scale=0)
 
                         pos_errorss.append(pos_errors)
                         vel_errorss.append(vel_errors)
 
-                        if i % args.video_interval == 0 or i == len(dataloaders[phase]) - 1:
+                        if i > 0 and i % args.video_iter_interval == 0 or i == len(dataloaders[phase]) - 1 and epoch % args.video_epoch_interval == 0:
                             frames_model = visualize(datasets[phase].env, predicted_positions, 
                                 shape_positions, config_id, sample_idx)
                             frames_gt = visualize(datasets[phase].env, gt_positions, 
@@ -212,11 +212,11 @@ def train(args, env):
                     for pos_errors in pos_errorss:
                         axes[0].plot(range(len(pos_errors)), pos_errors)
                     for vel_errors in vel_errorss:
-                        axes[0].plot(range(len(vel_errors)), vel_errors)
+                        axes[1].plot(range(len(vel_errors)), vel_errors)
                     axes[0].set_title("rollout position errors")
                     axes[1].set_title("rollout velocity errors")
                     axes[0].set_xlabel("rollout timestep")
-                    axes[0].set_ylabel("error")
+                    axes[1].set_ylabel("error")
                     plt.savefig(osp.join(logdir, 'errors-{}-{}-{}.png'.format(phase, epoch, i)))
                     plt.close('all')
 

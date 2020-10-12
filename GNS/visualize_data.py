@@ -17,38 +17,28 @@ from DPINet.models import DPINet
 from DPINet.graph import ClothDataset
 from DPINet.graph_struct import convert_dpi_to_graph
 from softgym.utils.visualization import save_numpy_as_gif
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--model_file', default=None)
-parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten/train')
-parser.add_argument('--env_name', type=str, default='ClothFlatten')
-parser.add_argument('--n_rollout', type=int, default=5)
-parser.add_argument('--save_folder', type=str, default='./dpi_visualization')
+from GNS.models_graph_res import MaterialEncoder, Encoder, Processor, Decoder
+import json
+from GNS.data_graph import PhysicsFleXDataset, ClothDataset
+import cv2
 
 
 def create_env(env_name):
-    env_args = copy.deepcopy(env_arg_dicts[env_name])
+    from softgym.registered_env import env_arg_dict
+    from softgym.registered_env import SOFTGYM_ENVS
+    import copy
+
+    env_args = copy.deepcopy(env_arg_dict[args.env_name])
     env_args['render_mode'] = 'particle'
     env_args['camera_name'] = 'default_camera'
-    env_args['action_repeat'] = 2
-    env_args['headless'] = False
-    if env_name == 'ClothFlatten':
-        env_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
-    return SOFTGYM_ENVS[env_name](**env_args)
+    env_args['action_repeat'] = 1
+    # env_args['headless'] = False
+    if args.env_name == 'ClothFlatten':
+        env_args['cached_states_path'] = 'cloth_flatten_init_states_small_2.pkl'
+        env_args['num_variations'] = 20
+    env = SOFTGYM_ENVS[args.env_name](**env_args)
 
-
-def parse_trajectory(traj_folder):
-    steps = os.listdir(traj_folder)
-    steps = sorted([int(step[:-3]) for step in steps])
-    traj_pos = []
-    traj_vel = []
-    for t in steps:
-        pos, vel, scene_params = load_data(['positions', 'velocities', 'scene_params'], osp.join(traj_folder, '{}.h5'.format(t)))
-        _, _, _, config_id = scene_params
-        traj_pos.append(pos)
-        traj_vel.append(vel)
-    return traj_pos, traj_vel, int(config_id)
-
+    return env
 
 def set_shape_pos(pos):
     shape_states = np.array(pyflex.get_shape_states()).reshape(-1, 14)
@@ -56,7 +46,7 @@ def set_shape_pos(pos):
     shape_states[:, :3] = pos.reshape(-1, 3)
     pyflex.set_shape_states(shape_states)
 
-def visualize(env, particle_positions, shape_positions, config_id, sample_idx=None):
+def visualize(env, particle_positions, shape_positions, config_id, sample_idx=None, picked_particles=None, show=False):
     env.reset(config_id=config_id)
     frames = []
     for i in range(len(particle_positions)):
@@ -71,9 +61,24 @@ def visualize(env, particle_positions, shape_positions, config_id, sample_idx=No
         pyflex.set_positions(p)
         set_shape_pos(shape_pos)
         frames.append(env.get_image(720, 720))
+
+        if show:
+            if i == 0: continue
+            picked_point = picked_particles[i]
+            phases = np.zeros(pyflex.get_n_particles())
+            # print(picked_point)
+            for id in picked_point:
+                if id != -1:
+                    phases[sample_idx[int(id)]] = 1
+            pyflex.set_phases(phases)
+            img = env.get_image()
+
+            cv2.imshow('pciked particle images', img[:, :, ::-1])
+            cv2.waitKey()
+
     return frames
 
-def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, model, dataset):
+def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, model, dataset, noise_scale=0):
     encoder_model, processor_model, decoder_model = model
     encoder_model.eval()
     processor_model.eval()
@@ -90,6 +95,7 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
     predicted_positions = [data[0]]
     shape_positions = [data[-1]]
     config_id = int(data[-2][-1])
+    all_picked_particles = [data[4]]
 
     # print("picked points: ", data[4])
 
@@ -115,8 +121,8 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
     for t in range(args.n_his, args.time_step - 1):
         # print("visualzie step {}".format(t))
         if t == args.n_his:
-            node_attr, neighbors, edge_attr, global_feat, sample_idx, picked_particles, down_cloth_x, down_cloth_y \
-                 = dataset._prepare_input(data, test=True)
+            node_attr, neighbors, edge_attr, global_feat, sample_idx, picked_particles, down_cloth_x, down_cloth_y, picked_status \
+                 = dataset._prepare_input(data, test=True, noise_scale=noise_scale)
             down_sample_idx = sample_idx
             data[0] = data[0][down_sample_idx]
             data[1] = data[1][down_sample_idx]
@@ -129,12 +135,14 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
 
         else:
             # after initial downsample, no need to do downsample again
-            node_attr, neighbors, edge_attr, global_feat, _, picked_particles, _, _ \
-                = dataset._prepare_input(data, test=True, downsample=False)
+            node_attr, neighbors, edge_attr, global_feat, _, picked_particles, _, _, picked_status \
+                = dataset._prepare_input(data, test=True, downsample=False, noise_scale=noise_scale)
             # print("len of picked particles: ", len(picked_particles))
             # print('picked particles: ', picked_particles)
 
-        
+        # print("t: ", t, " picked particles in get model prediction: ", picked_particles)
+        all_picked_particles.append(picked_particles.copy())
+
         node_attr = torch.squeeze(node_attr, dim=0).cuda()
         neighbors = torch.squeeze(neighbors, dim=0).cuda()
         edge_attr = torch.squeeze(edge_attr, dim=0).cuda()
@@ -151,10 +159,11 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
 
         if not args.predict_vel:
             pred_vel = data[1][:, :3] + pred_accel.cpu().numpy() * args.dt
-            pred_pos = data[0] + pred_vel * args.dt
         else:
             pred_vel = pred_accel.cpu().numpy()
-            pred_pos = data[0] + pred_vel * args.dt
+        
+        picked_vel, picked_pos = picked_status
+        pred_pos = data[0] + pred_vel * args.dt
 
         # compute prediction error
         data_dir = osp.join(data_path, str(rollout_idx), '{}.h5'.format(t))
@@ -175,12 +184,20 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
         data[1][:, 3:] = old_vel
         data[1][:, :3] = pred_vel
 
+        # the picked particles position and velocity should not change
+        cnt = 0
+        for p_idx in picked_particles:
+            if p_idx != -1:
+                data[0][p_idx] = picked_pos[cnt]
+                data[1][p_idx] = picked_vel[cnt]
+                cnt += 1
+
         # update picker position and picker action, and the particles picked
         data[2] = new_data[2]
         data[3] = new_data[3]
         data[4] = picked_particles
 
-    return pos_errors, vel_errors, gt_positions, predicted_positions, shape_positions, down_sample_idx, config_id
+    return pos_errors, vel_errors, gt_positions, predicted_positions, shape_positions, down_sample_idx, config_id, all_picked_particles
 
 class VArgs(object):
     def __init__(self, vv):
@@ -192,71 +209,67 @@ def vv_to_args(vv):
     args = VArgs(vv)
     return args
 
+def findOccurrences(s, ch):
+    return [i for i, letter in enumerate(s) if letter == ch]
 
-def prepare_model(model_path):
-    variant_path = osp.join(osp.dirname(model_path), 'variant.json')
-    with open(variant_path, 'r') as f:
-        vv = json.load(f)
-
-    args = vv_to_args(vv)
-
-    if args.env_name == 'ClothFlatten':
-        datasets = {phase: ClothDataset(args, phase, args.phases_dict) for phase in ['train', 'valid']}
-    else:
-        raise NotImplementedError
-
-    for phase in ['train', 'valid']:
-        datasets[phase].load_data(args.env_name)
-
-    print("Dataset loaded from", args.dataf)
-    use_gpu = torch.cuda.is_available()
-
-    datasets = {x: torch.utils.data.dataset(
-        datasets[x], batch_size=args.batch_size,
-        shuffle=True if x == 'train' else False,
-        num_workers=args.num_workers,
-        collate_fn=collate_fn)
-        for x in ['train', 'valid']}
-
-    # define propagation network
-    model = DPINet(args, datasets['train'].stat, args.phases_dict, residual=True, use_gpu=use_gpu)
-
-    model.load_state_dict(torch.load(model_path))
-
-    if use_gpu:
-        model = model.cuda()
-
-    stat_path = os.path.join(args.dataf, 'stat.h5')
-    stat = load_data(['positions', 'velocities'], stat_path)
-    for i in range(len(stat)):
-        stat[i] = stat[i][-args.position_dim:, :]
-
-    return args, datasets, model, stat
-
-
-
-
-
-def main(data_folder, n_rollout, save_folder=None, model_file=None):
+# args, data_path, rollout_idx, init_timestep, model, dataset
+def main(data_folder, n_rollout, save_folder=None, model_dir=None):
     env_name = 'ClothFlatten'
-    n_shape = 2
     env = create_env(env_name)
-    if model_file is not None:
-        args, datasets, model, stats = prepare_model(model_file)
-    for idx, traj_id in enumerate(os.listdir(data_folder)):
-        if idx > n_rollout:
-            break
-        traj_folder = osp.join(data_folder, str(traj_id))
-        traj_pos, traj_vel, config_id = parse_trajectory(traj_folder)
-        frames_gt = visualize(env, n_shape, traj_pos, config_id)
-        if model_file is not None:
-            with torch.no_grad():
-                predicted_traj_pos, sample_idx = get_model_prediction(args, stats, traj_folder, traj_vel, datasets['valid'], model)
-            frames_model = visualize(env, n_shape, predicted_traj_pos, config_id, sample_idx)
+
+
+
+    vv = json.load(open(osp.join(model_dir, 'variant.json'), 'r'))
+    args = vv_to_args(vv)
+    rollout_idx = [i  for i in range(n_rollout)]
+
+    args.regularize_picked_vel = True
+
+    encoder_model = Encoder(args.state_dim + args.attr_dim, args.relation_dim).cuda()
+    processor_model = Processor([3 * 128 + 1, 2 * 128 + 1, 2 * 128 + 1], use_global=False).cuda()
+    decoder_model = Decoder().cuda()
+
+    encoder_model.load_state_dict(torch.load(osp.join(model_dir, 'enc_net_best.pth')))
+    processor_model.load_state_dict(torch.load(osp.join(model_dir, 'proc_net_best.pth')))
+    decoder_model.load_state_dict(torch.load(osp.join(model_dir, 'dec_net_best.pth')))
+
+    phase = 'train'
+    phase_dict = args.phases_dict
+    datasets = {phase: ClothDataset(args, phase, phase_dict, env, args.verbose_data)
+        for phase in ['train', 'valid']}
+
+    occ = findOccurrences(model_dir, '/')
+    save_prefix = model_dir[occ[-2]+1:-1]
+    print("save_prefix is: ", save_prefix)
+
+    for r_idx in rollout_idx:
+        with torch.no_grad():
+            pos_errors, vel_errors, gt_positions, predicted_positions, shape_positions, sample_idx, config_id, picked_points \
+                = get_model_prediction_rollout(args, data_folder, r_idx, args.n_his - 1, 
+                    [encoder_model, processor_model, decoder_model], datasets[phase], noise_scale=0)
+
+            # print(picked_points)
+            # exit()
+            frames_model = visualize(datasets[phase].env, predicted_positions, 
+                shape_positions, config_id, sample_idx, picked_particles=picked_points, show=False)
+            frames_gt = visualize(datasets[phase].env, gt_positions, 
+                shape_positions, config_id, sample_idx)
             combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
-            save_numpy_as_gif(np.array(combined_frames), osp.join(save_folder, str(idx) + '.gif'))
+            save_path = osp.join(save_folder, save_prefix)
+            # print(save_path)
+            # exit()
+            if not osp.exists(save_path):
+                os.makedirs(save_path, exist_ok=True)
+            save_numpy_as_gif(np.array(combined_frames), osp.join(save_path, 'visual_{}.gif'.format(r_idx)))
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model_dir', default=None)
+    parser.add_argument('--data_folder', type=str, default='datasets/ClothFlatten_small/train')
+    parser.add_argument('--env_name', type=str, default='ClothFlatten')
+    parser.add_argument('--n_rollout', type=int, default=5)
+    parser.add_argument('--save_folder', type=str, default='./datasets/visualizations')
+
     args = parser.parse_args()
-    main(args.data_folder, args.n_rollout, args.save_folder, args.model_file)
+    main(args.data_folder, args.n_rollout, args.save_folder, args.model_dir)

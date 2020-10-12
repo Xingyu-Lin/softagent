@@ -19,26 +19,35 @@ def main(mode, debug, dry):
             return 4
 
 
-    exp_prefix = '1010_GNS_small_fix'
+    exp_prefix = '1011_GNS_deeper_larger_noise'
     vg = VariantGenerator()
     vg.add('env_name', ['ClothFlatten'])
     vg.add('n_epoch', [10000])
+    vg.add('train_rollout', [True])
     vg.add('gen_data', [False])
     vg.add('training', [True])
-    vg.add('neighbor_radius', [0.026])
+
     vg.add('edge_type', ['eight_neighbor'])
     vg.add('down_sample_scale', [3])
-    vg.add('use_mesh_edge', [True, False])
+    vg.add('use_mesh_edge', [True])
     vg.add('relation_dim', lambda use_mesh_edge: [get_relation_dim(use_mesh_edge)])
     vg.add('seed', [100])
-    vg.add('video_interval', [10000])
-    vg.add('predict_vel', [True, False])
+    vg.add('dt', [0.01])
+    vg.add('video_iter_interval', [100000])
+    vg.add('video_epoch_interval', [1])
     if debug:
         vg.add('n_rollout', [20])
         # vg.add('log_per_iter', [50])
+        vg.add('neighbor_radius', [0.026])
+        vg.add('noise_scale', [0.007])
+        vg.add('predict_vel', [False])
     else:
-        vg.add('n_rollout', [20])
+        vg.add('neighbor_radius', [0.026, 0.036, 0.16])
+        vg.add('noise_scale', [0, 0.003, 0.007])
+        vg.add('predict_vel', [True, False])
+        vg.add('n_rollout', [500])
         vg.add('log_per_iter', [10000])
+        vg.add('nstep_eval_rollout', [10])
 
     if not debug:
         pass

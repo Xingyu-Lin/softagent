@@ -82,7 +82,11 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
         data_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep) + '.h5')
         data_nxt_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep + 1) + '.h5')
 
-        load_names = ['positions', 'velocities', 'picked_points', 'picked_point_positions', 'scene_params']
+        if not self.args.train_rollout:
+            load_names = ['positions', 'velocities', 'picked_points', 'picked_point_positions', 'scene_params']
+        else:
+            load_names = ['positions', 'velocities', 'picker_position', 'action', 'picked_points', 'scene_params', 'shape_positions']
+
         data = self._load_data_file(load_names, data_path)
 
         # Get velocity history
@@ -95,7 +99,10 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
         data[1] = np.concatenate([data[1]] + vel_his, 1)
 
         # Construct Graph
-        node_attr, neighbors, edge_attr, global_feat, sample_idx = self._prepare_input(data)
+        if not self.args.train_rollout:
+            node_attr, neighbors, edge_attr, global_feat, sample_idx = self._prepare_input(data, test=False)
+        else:
+            node_attr, neighbors, edge_attr, global_feat, sample_idx, _, _, _, _ = self._prepare_input(data, test=True)
 
         # Compute GT label: calculate accleration
         data_nxt = self._load_data_file(load_names, data_nxt_path)
@@ -256,7 +263,7 @@ class ClothDataset(PhysicsFleXDataset):
         self.data_names = ['positions', 'velocities', 'picked_points', 'picked_point_positions', 
             'picker_position', 'action', 'scene_params', 'shape_positions']
 
-    def _prepare_input(self, data, downsample=True, test=False):
+    def _prepare_input(self, data, downsample=True, test=False, noise_scale=None):
         """
         data: positions, vel_history, picked_points, picked_point_positions, scene_params
         downsample: whether to downsample the graph
@@ -281,8 +288,20 @@ class ClothDataset(PhysicsFleXDataset):
         else:
             sample_idx = None
 
+        # add noise
+        if noise_scale is None:
+            noise_scale = args.noise_scale
+
+        position_noise = np.random.normal(loc=0, scale=noise_scale, size=data[0].shape)
+        vel_history_noise = np.random.normal(loc=0, scale=noise_scale, size=data[1].shape)
+
+        picked_velocity = []
+        picked_pos = []
         if not test:
             positions, velocity_his, picked_points, picked_points_position, scene_params = data
+            positions += position_noise
+            velocity_his += vel_history_noise
+
              # modify the position and velocity of the picked particle due to the pick action
             _, cloth_xdim, cloth_ydim, _ = scene_params
 
@@ -299,14 +318,19 @@ class ClothDataset(PhysicsFleXDataset):
                     velocity_his[picked_point, 3:] = tmp_vel_history
                     velocity_his[picked_point, :3] = new_vel
                     cnt += 1
+                    picked_velocity.append(velocity_his[picked_point])
+                    picked_pos.append(picked_point_pos)
         else:
             particle_pos, velocity_his, picker_pos, action, picked_particles, scene_params, _ = data
             _, cloth_xdim, cloth_ydim, _ = scene_params
+            particle_pos += position_noise
+            velocity_his += vel_history_noise
 
             # print("in data graph, picked particles: ", picked_particles)
             env = self.env
             action = np.reshape(action, [-1, 4])
             pick_flag = action[:, 3] > 0.5
+            # print("pick flag is: ", pick_flag)
             new_picker_pos = picker_pos.copy()
             for i in range(env.action_tool.num_picker):
                 # print("picker {}".format(i)) 
@@ -315,7 +339,8 @@ class ClothDataset(PhysicsFleXDataset):
                     if picked_particles[i] == -1:  # No particle is currently picked and thus need to select a particle to pick
                         dists = scipy.spatial.distance.cdist(picker_pos[i].reshape((-1, 3)), particle_pos[:, :3].reshape((-1, 3)))
                         idx_dists = np.hstack([np.arange(particle_pos.shape[0]).reshape((-1, 1)), dists.reshape((-1, 1))])
-                        mask = dists.flatten() <= env.action_tool.picker_threshold + env.action_tool.picker_radius + env.action_tool.particle_radius
+                        mask = dists.flatten() <= env.action_tool.picker_threshold * args.down_sample_scale \
+                                 + env.action_tool.picker_radius + env.action_tool.particle_radius
                         idx_dists = idx_dists[mask, :].reshape((-1, 2))
                         if idx_dists.shape[0] > 0:
                             pick_id, pick_dist = None, None
@@ -338,6 +363,9 @@ class ClothDataset(PhysicsFleXDataset):
                         velocity_his[picked_particles[i], :3] = new_vel
 
                         particle_pos[picked_particles[i]] = new_pos
+
+                        picked_velocity.append(velocity_his[picked_particles[i]])
+                        picked_pos.append(new_pos)
                 else:
                     picked_particles[i] = -1
                     
@@ -352,9 +380,10 @@ class ClothDataset(PhysicsFleXDataset):
             if picked != -1:
                 node_one_hot[picked, 0] = 0
                 node_one_hot[picked, 1] = 1
+        distance_to_ground = torch.from_numpy(positions[:, 1]).view((-1, 1))
         node_one_hot = torch.from_numpy(node_one_hot)
         node_attr = torch.from_numpy(velocity_his)
-        node_attr = torch.cat([node_attr, node_one_hot], dim=1)
+        node_attr = torch.cat([node_attr, distance_to_ground, node_one_hot], dim=1)
 
         ##### add env specific graph components
         ## Edge attributes:
@@ -364,15 +393,23 @@ class ClothDataset(PhysicsFleXDataset):
         # Calculate undirected edge list and corresponding relative edge attributes (distance vector + magnitude)
         point_tree = spatial.cKDTree(positions)
         undirected_neighbors = np.array(list(point_tree.query_pairs(self.args.neighbor_radius, p=2))).T
-        dist_vec = positions[undirected_neighbors[0, :]] - positions[undirected_neighbors[1, :]]
-        dist = np.linalg.norm(dist_vec, axis=1, keepdims=True)
-        edge_attr = np.concatenate([dist_vec, dist], axis=1)
-        edge_attr_reverse = np.concatenate([-dist_vec, dist], axis=1)
+        # print("shape of undirected neighbors: ", undirected_neighbors.shape)
+        # print("shape of positions: ", positions.shape)
+        # print("undirected_neighbors: ")
+        # print(undirected_neighbors)
 
-        # Generate directed edge list and corresponding edge attributes
-        edges = torch.from_numpy(np.concatenate([undirected_neighbors, undirected_neighbors[::-1]], axis=1))
-        edge_attr = torch.from_numpy(np.concatenate([edge_attr, edge_attr_reverse]))
-        num_distance_edges = edges.shape[1]
+        if len(undirected_neighbors) > 0:
+            dist_vec = positions[undirected_neighbors[0, :]] - positions[undirected_neighbors[1, :]]
+            dist = np.linalg.norm(dist_vec, axis=1, keepdims=True)
+            edge_attr = np.concatenate([dist_vec, dist], axis=1)
+            edge_attr_reverse = np.concatenate([-dist_vec, dist], axis=1)
+
+            # Generate directed edge list and corresponding edge attributes
+            edges = torch.from_numpy(np.concatenate([undirected_neighbors, undirected_neighbors[::-1]], axis=1))
+            edge_attr = torch.from_numpy(np.concatenate([edge_attr, edge_attr_reverse]))
+            num_distance_edges = edges.shape[1]
+        else:
+            num_distance_edges = 0
 
         # Build mesh edges -- both directions
         if self.args.use_mesh_edge:
@@ -383,7 +420,10 @@ class ClothDataset(PhysicsFleXDataset):
             mesh_edge_attr = torch.from_numpy(mesh_edge_attr)
             num_mesh_edges = mesh_edges.shape[1]
             
-            edge_attr = torch.cat([edge_attr, mesh_edge_attr], dim=0)
+            if num_distance_edges > 0:
+                edge_attr = torch.cat([edge_attr, mesh_edge_attr], dim=0)
+            else:
+                edge_attr = mesh_edge_attr
 
             # Concatenate edge types
             edge_types = np.zeros((num_mesh_edges + num_distance_edges, 2), dtype=np.float32)
@@ -391,21 +431,23 @@ class ClothDataset(PhysicsFleXDataset):
             edge_types[num_distance_edges:, 1] = 1.
             edge_types = torch.from_numpy(edge_types)
 
-            # print("edge attr:", edge_attr.dtype)
-            # print("edge type: ", edge_types.dtype)
             edge_attr = torch.cat([edge_attr, edge_types], dim=1)
 
             # concatenate all edges
             mesh_edges = torch.from_numpy(mesh_edges)
-            edges = torch.cat([edges, mesh_edges], dim=1)
-        
+
+            if num_distance_edges > 0:
+                edges = torch.cat([edges, mesh_edges], dim=1)
+            else:
+                edges = mesh_edges
+
         # Global features are unused
         global_feat = torch.FloatTensor([[0.]])
 
         if not test:
             return node_attr, edges, edge_attr, global_feat, sample_idx, 
         else:
-            return node_attr, edges, edge_attr, global_feat, sample_idx, picked_particles, cloth_xdim, cloth_ydim
+            return node_attr, edges, edge_attr, global_feat, sample_idx, picked_particles, cloth_xdim, cloth_ydim, (picked_velocity, picked_pos)
 
 
     def _prepare_policy(self, env):
