@@ -4,7 +4,7 @@ env_configs = \
             # object states:
             # [x, y, z, xdot, ydot, zdot, u_xdot, u_ydot, u_zdot] The last three indicates the action
             state_dim=6,
-            position_dim=6,
+            position_dim=3,
             # object attr:
             # [cloth, root, sphere]
             attr_dim=3,
