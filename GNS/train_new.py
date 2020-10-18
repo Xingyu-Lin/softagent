@@ -270,8 +270,6 @@ def generate_dataset(args, env):
 
 
 def run_task(vv, log_dir, exp_name):
-    # import multiprocessing as mp
-    # mp.set_start_method('spawn')
     args = get_default_args()
     args.__dict__.update(env_configs[vv['env_name']])
     args.__dict__.update(**vv)
@@ -307,6 +305,7 @@ def run_task(vv, log_dir, exp_name):
     env_args['render_mode'] = 'particle'
     env_args['camera_name'] = 'default_camera'
     env_args['action_repeat'] = 1
+    env_args['render'] = True
     # env_args['headless'] = False
     if args.env_name == 'ClothFlatten':
         env_args['cached_states_path'] = 'cloth_flatten_init_states_small_2.pkl'

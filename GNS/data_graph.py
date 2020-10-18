@@ -4,7 +4,7 @@ import torch
 import os
 from scipy import spatial
 
-import multiprocessing as mp
+# import multiprocessing as mp
 from softgym.registered_env import env_arg_dict
 from softgym.registered_env import SOFTGYM_ENVS
 import copy
@@ -12,11 +12,11 @@ import copy
 import pyflex
 import scipy
 
-pool = mp.Pool(processes=10)
+# pool = mp.Pool(processes=10)
 
 class PhysicsFleXDataset(torch.utils.data.Dataset):
 
-    def __init__(self, args, phase, phases_dict, env=None, verbose=False):
+    def __init__(self, args, phase, phases_dict=None, env=None, verbose=False):
 
         self.args = args
         self.phase = phase
@@ -201,6 +201,7 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
             os.system('mkdir -p ' + rollout_dir)
             env.reset()
             self._prepare_policy(env)
+            
             n_particles = pyflex.get_n_particles()
             n_shapes = pyflex.get_n_shapes()
 
@@ -320,6 +321,8 @@ class ClothDataset(PhysicsFleXDataset):
                     cnt += 1
                     picked_velocity.append(velocity_his[picked_point])
                     picked_pos.append(picked_point_pos)
+
+            new_picker_pos = None # we do not use this thing when test is False
         else:
             particle_pos, velocity_his, picker_pos, action, picked_particles, scene_params, _ = data
             _, cloth_xdim, cloth_ydim, _ = scene_params
@@ -327,6 +330,7 @@ class ClothDataset(PhysicsFleXDataset):
             velocity_his += vel_history_noise
 
             # print("in data graph, picked particles: ", picked_particles)
+            picked_particles = [int(x) for x in picked_particles]
             env = self.env
             action = np.reshape(action, [-1, 4])
             pick_flag = action[:, 3] > 0.5
@@ -352,7 +356,8 @@ class ClothDataset(PhysicsFleXDataset):
                                 picked_particles[i] = int(pick_id)
 
                     # update the position and velocity of the picked particle
-                    if picked_particles[i] != -1:     
+                    if picked_particles[i] != -1:  
+                        # print(picked_particles[i])   
 
                         old_pos = particle_pos[picked_particles[i]]
                         new_pos = particle_pos[picked_particles[i]] + new_picker_pos[i, :] - picker_pos[i,:]
@@ -367,7 +372,7 @@ class ClothDataset(PhysicsFleXDataset):
                         picked_velocity.append(velocity_his[picked_particles[i]])
                         picked_pos.append(new_pos)
                 else:
-                    picked_particles[i] = -1
+                    picked_particles[i] = int(-1)
                     
             positions = particle_pos
             picked_points = picked_particles
@@ -447,19 +452,22 @@ class ClothDataset(PhysicsFleXDataset):
         if not test:
             return node_attr, edges, edge_attr, global_feat, sample_idx, 
         else:
-            return node_attr, edges, edge_attr, global_feat, sample_idx, picked_particles, cloth_xdim, cloth_ydim, (picked_velocity, picked_pos)
+            return node_attr, edges, edge_attr, global_feat, sample_idx, picked_particles, cloth_xdim, cloth_ydim, (picked_velocity, picked_pos, new_picker_pos)
 
 
     def _prepare_policy(self, env):
+        print("preparing policy! ")
         """ Doing something after env reset but before collecting any data"""
         # move one of the picker to be under ground
         shape_states = pyflex.get_shape_states().reshape(-1, 14)
         shape_states[1, :3] = -1
+        shape_states[1, 7:10] = -1
 
         # move another picker to a randomly chosen particle
         pos = pyflex.get_positions().reshape((-1, 4))[:, :3]
         pp = np.random.randint(len(pos))
         shape_states[0, :3] = pos[pp] + [0., env.picker_radius, 0.]
+        shape_states[0, 7:10] = pos[pp] + [0., env.picker_radius, 0.]
         pyflex.set_shape_states(shape_states.flatten())
 
         # randomly select a move direction and a move distance

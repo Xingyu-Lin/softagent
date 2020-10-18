@@ -162,7 +162,7 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
         else:
             pred_vel = pred_accel.cpu().numpy()
         
-        picked_vel, picked_pos = picked_status
+        picked_vel, picked_pos, _ = picked_status
         pred_pos = data[0] + pred_vel * args.dt
 
         # compute prediction error

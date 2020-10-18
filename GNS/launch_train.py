@@ -24,7 +24,7 @@ def main(mode, debug, dry):
     vg.add('env_name', ['ClothFlatten'])
     vg.add('n_epoch', [10000])
     vg.add('train_rollout', [True])
-    vg.add('gen_data', [False])
+    vg.add('gen_data', [True])
     vg.add('training', [True])
 
     vg.add('edge_type', ['eight_neighbor'])
@@ -32,7 +32,7 @@ def main(mode, debug, dry):
     vg.add('use_mesh_edge', [True])
     vg.add('relation_dim', lambda use_mesh_edge: [get_relation_dim(use_mesh_edge)])
     vg.add('seed', [100])
-    vg.add('dt', [0.01])
+    vg.add('dt', [0.01]) # this is the actual dt in flex
     vg.add('video_iter_interval', [100000])
     vg.add('video_epoch_interval', [1])
     if debug:
