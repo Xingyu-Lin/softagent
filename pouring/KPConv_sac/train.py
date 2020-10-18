@@ -23,9 +23,11 @@ import matplotlib.pyplot as plt
 def obs_process(obs):
     if isinstance(obs, tuple):
         obs_tensor = torch.tensor(obs[0], dtype=torch.float32)
-        return obs_tensor, obs[1]
+        # return obs_tensor, obs[1]
+        return obs[0].astype(np.float32), obs[1].astype(np.float32)
     else:
-        return torch.tensor(obs, dtype=torch.float32)
+        # return torch.tensor(obs, dtype=torch.float32)
+        return obs.astype(np.float32)
 
 def vv_to_args(vv):
     class VArgs(object):
@@ -257,7 +259,7 @@ def main(args, config):
         ep_info.append(info)
         done_bool = 0 if episode_step + 1 == env.horizon else float(done)
         episode_reward += reward
-        # print("after single obs process, obs is: ", obs[1])
+        # print("after single obs process, obs is: ", obs[1])        replay_buffer.add(obs, action, reward, next_obs, done_bool)
         replay_buffer.add(obs, action, reward, next_obs, done_bool)
 
         obs = next_obs

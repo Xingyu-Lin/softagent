@@ -290,3 +290,39 @@ def center_crop_image(image, output_size):
     image = image[:, top:top + new_h, left:left + new_w]
     # print('output image shape:', image.shape)
     return image
+
+
+
+import pouring.KPConv_sac.cpp_wrappers.cpp_subsampling.grid_subsampling as cpp_subsampling
+import pouring.KPConv_sac.cpp_wrappers.cpp_neighbors.radius_neighbors as cpp_neighbors
+from pouring.KPConv_sac.utils import classification_inputs, PointCloudCustomBatch, grid_subsampling
+
+def preprocess_single_obs(KPConv_model, obs, config, device):
+    obs_tmp = obs
+
+    obs_ = obs_tmp[:, :3]
+    # feature = obs_tmp[:, 3:]
+    if config.first_subsampling_dl is not None:
+        obs_subsampled = grid_subsampling(obs_, sampleDl=config.first_subsampling_dl)
+    else:
+        obs_subsampled = obs_
+
+    tp_list = [obs_subsampled]
+    stacked_points = np.concatenate(tp_list, axis=0)
+    stack_lengths = np.array([tp.shape[0] for tp in tp_list], dtype=np.int32)
+    
+    # Input features
+    stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
+
+    input_list = classification_inputs(config, 
+                                        stacked_points,
+                                        stacked_features,
+                                        stack_lengths)
+
+    obs_batch = PointCloudCustomBatch(input_list).to(device)
+    with torch.no_grad():
+        obs = KPConv_model(obs_batch).cpu().numpy()[0]
+
+    # print("after KPConv model, shape is: ", obs.shape)
+    return obs
+    

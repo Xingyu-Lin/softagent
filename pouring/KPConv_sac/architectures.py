@@ -520,6 +520,7 @@ class KPCNN_Encoder(nn.Module):
 
         # Loop over consecutive blocks
         for b_idx, block_op in enumerate(self.block_ops):
+            # print("at block {} {}".format(b_idx, type(block_op)))
             x = block_op(x, batch_obs)
 
         return x

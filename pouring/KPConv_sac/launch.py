@@ -83,7 +83,7 @@ def main(mode, debug, dry):
 
     vg.add('env_name', ['PourWater'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
-    vg.add('env_kwargs_observation_mode', ['rim_interpolation_and_state'])
+    vg.add('env_kwargs_observation_mode', ['rim_interpolation'])
     vg.add('env_kwargs_action_mode', ['rotation_top'])
 
     vg.add('algorithm', ['KPConv_rim_pointcloud'])

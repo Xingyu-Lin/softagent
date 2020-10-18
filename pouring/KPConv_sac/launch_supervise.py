@@ -66,8 +66,8 @@ def main(mode, debug, dry):
     vg.add('KPConv_config_final_hidden_dim', [1024])
     vg.add('KPConv_config_first_subsampling_dl', [None])
     vg.add('KPConv_config_in_features_dim', [1])
-    vg.add('KPConv_config_use_batch_norm', [True, False])
-    vg.add('KPConv_deform', [True, False])
+    vg.add('KPConv_config_use_batch_norm', [True])
+    vg.add('KPConv_deform', [True])
     vg.add('env_kwargs_deterministic', [False])
     vg.add('save_tb', [False])
     vg.add('save_video', [True])
@@ -80,6 +80,8 @@ def main(mode, debug, dry):
     vg.add('lr', [1e-3])
     vg.add('load_data_path', ['data/local/pouring/supervise_data'])
     vg.add('save_data_path', ['data/local/pouring/supervise_data'])
+    vg.add('train', [False])
+    vg.add('model_path', ['data/KPConv/supervise_models/1000.pkl'])
 
     if not debug:
         vg.add('seed', [100])

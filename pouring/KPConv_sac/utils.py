@@ -526,12 +526,15 @@ def preprocess_single_obs(obs, config):
     else:
         obs_tmp = obs
 
+    # print(type(obs_tmp))
+    # exit()
     obs_ = obs_tmp[:, :3]
     feature = obs_tmp[:, 3:]
     if config.first_subsampling_dl is not None:
         obs_subsampled, feature_subsampled = grid_subsampling(obs_, features=feature, sampleDl=config.first_subsampling_dl)
     else:
         obs_subsampled, feature_subsampled = obs_, feature
+
 
 
     tp_list = [obs_subsampled]
@@ -548,4 +551,5 @@ def preprocess_single_obs(obs, config):
                                         stack_lengths)
 
     obs_batch = PointCloudCustomBatch(input_list)
+
     return obs_batch

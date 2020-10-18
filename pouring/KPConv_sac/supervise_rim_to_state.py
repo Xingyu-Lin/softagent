@@ -175,55 +175,87 @@ def main(args, config):
     data_label_train = data_label[:train_num]
     data_label_valid = data_label[train_num:]
 
+    if args.model_path is not None:
+        agent.load_state_dict(torch.load(args.model_path))
+        print("KPconv model loaded from: ", args.model_path)
+
     # do the training
-    print("start training!")
-    for epoch_idx in range(args.train_epochs):
-        agent.train()
-        batch_num = train_num // args.batch_size
-        loss_epoch = 0
-        for batch_idx in range(batch_num):
-            start_idx = batch_idx * args.batch_size
-            end_idx = (batch_idx + 1) * args.batch_size
-            x = []
-            for idx in range(start_idx, end_idx):
-                x.append(data_input_train[idx])
-            label = data_label_train[start_idx:end_idx]
-
-            obs_batch = handle_obs_batch(x, config).to(device)
-            label_batch = torch.FloatTensor(label).to(device)
-
-            predictions = agent(obs_batch)
-            loss = torch.nn.functional.mse_loss(predictions, label_batch)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            loss_value = loss.item() if not isinstance(loss, float) else loss
-            loss_epoch += loss_value
-
-        print(f'epoch {epoch_idx}: train loss {loss_epoch/batch_num:.6f}')
-        logger.record_tabular("training_loss", loss_epoch/batch_num)
-
-        if epoch_idx % args.valid_interval == 0:
-            agent.eval()
-            with torch.no_grad():
+    if args.train:
+        print("start training!")
+        for epoch_idx in range(args.train_epochs):
+            agent.train()
+            batch_num = train_num // args.batch_size
+            loss_epoch = 0
+            for batch_idx in range(batch_num):
+                start_idx = batch_idx * args.batch_size
+                end_idx = (batch_idx + 1) * args.batch_size
                 x = []
-                for obs in data_input_valid:
-                    x.append(obs)
-                label = data_label_valid
+                for idx in range(start_idx, end_idx):
+                    x.append(data_input_train[idx])
+                label = data_label_train[start_idx:end_idx]
 
                 obs_batch = handle_obs_batch(x, config).to(device)
-                predictions = agent(obs_batch).cpu().numpy()
-                valid_error = np.mean((label - predictions) ** 2)
+                label_batch = torch.FloatTensor(label).to(device)
 
-            logger.record_tabular("validation_loss", valid_error)
-            print(f'epoch {epoch_idx}: valid loss {valid_error:.6f}')
-            logger.dump_tabular()
-                
-        if epoch_idx % args.save_interval == 0:
-            save_path = logger.get_dir()
-            save_name = '{}.pkl'.format(epoch_idx)
-            torch.save(agent.state_dict(), os.path.join(save_path, save_name))
+                predictions = agent(obs_batch)
+                loss = torch.nn.functional.mse_loss(predictions, label_batch)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                loss_value = loss.item() if not isinstance(loss, float) else loss
+                loss_epoch += loss_value
+
+            print(f'epoch {epoch_idx}: train loss {loss_epoch/batch_num:.6f}')
+            logger.record_tabular("training_loss", loss_epoch/batch_num)
+
+            if epoch_idx % args.valid_interval == 0:
+                agent.eval()
+                with torch.no_grad():
+                    x = []
+                    for obs in data_input_valid:
+                        x.append(obs)
+                    label = data_label_valid
+
+                    obs_batch = handle_obs_batch(x, config).to(device)
+                    predictions = agent(obs_batch).cpu().numpy()
+                    valid_error = np.mean((label - predictions) ** 2)
+
+                logger.record_tabular("validation_loss", valid_error)
+                print(f'epoch {epoch_idx}: valid loss {valid_error:.6f}')
+                logger.dump_tabular()
+                    
+            if epoch_idx % args.save_interval == 0:
+                save_path = logger.get_dir()
+                save_name = '{}.pkl'.format(epoch_idx)
+                torch.save(agent.state_dict(), os.path.join(save_path, save_name))
+    else:
+        print("evaluating model!")
+        agent.eval()
+        with torch.no_grad():
+            valid_num = len(data_input_valid)
+            per_num = 100
+            predictions = []
+            print("valid data num: ", valid_num)
+            for i in range(valid_num // per_num):
+                print("batch {}".format(i))
+                x = []
+                for obs in data_input_valid[per_num *i: (i +1)*per_num]:
+                    x.append(obs)
+                label = data_label_valid[per_num *i: (i + 1) * per_num]
+
+                obs_batch = handle_obs_batch(x, config).to(device)
+                prediction = agent(obs_batch).cpu().numpy()
+                predictions.append(prediction)
+
+        label = data_label_valid
+        predictions = np.concatenate(predictions, axis=0)
+        valid_error = ((label - predictions) ** 2)
+        valid_error = np.mean(valid_error, axis=0)
+        all_error = np.sum(valid_error)
+        for x in valid_error:
+            # print("{:.6}".format(x))
+            print("{}%".format(round(x / all_error * 100, 2)))
 
 
 
