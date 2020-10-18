@@ -15,6 +15,7 @@ import numpy as np
 import pyflex
 from sklearn.cluster import MiniBatchKMeans
 
+
 def run_task(arg_vv, log_dir, exp_name):
     mp.set_start_method('spawn')
     vv = arg_vv
@@ -76,7 +77,7 @@ def run_task(arg_vv, log_dir, exp_name):
         infos = []
         for j in range(env.horizon):
             logger.log('episode {}, step {}'.format(i, j))
-            action = policy.get_action() # Use env_state
+            action = policy.get_action()  # Use env_state
             action_traj.append(copy.copy(action))
             obs, reward, _, info = env.step(action)
             infos.append(info)

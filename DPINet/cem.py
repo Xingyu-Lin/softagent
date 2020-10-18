@@ -10,7 +10,8 @@ import pickle
 import numpy as np
 import scipy.stats as stats
 from tqdm import tqdm
-from DPINet.visualize_data import prepare_model
+from DPINet.visualize_data import prepare_model, convert_dpi_to_graph
+import scipy
 
 
 class DPIModel(object):
@@ -24,74 +25,112 @@ class DPIModel(object):
         self.denormalize = self.env._env.denormalize
         self.phases_dict = phases_dict
 
+    def generate_pick_and_place(self, actions, picker_pos):
+        """
+        :param actions: N x 5 vectors indicating a list of pick and place action in qpg format.
+        # :param n_particles: Number of particles.
+        :return: A list of control veloctires for both the particles (dummy ones) and the picker and whether the picker is activated
+        """
+        curr_pos = picker_pos
+        model_actions = []
+        for action in actions:
+            generated_actions, curr_pos = self.env.action_tool.get_model_action(action, curr_pos)
+            model_actions.extend(generated_actions)
+        model_actions = np.array(model_actions)
+        return model_actions[:, :, :3] / 60., model_actions[:, :, 3]
+
+    # def get_pick_points(self, picker_pos, particle_pos):
+    #     """ Picker pos: shape 1 x 3, particle pos: shape N x 3"""
+    #     picker_threshold = 0.005
+    #     picker_radius = 0.05
+    #     particle_radius = 0.00625
+    #     # Pick new particles and update the mass and the positions
+    #     dists = scipy.spatial.distance.cdist(picker_pos, particle_pos[:, :3].reshape((-1, 3)))[0]
+    #     idx_dists = np.hstack([np.arange(particle_pos.shape[0]).reshape((-1, 1)), dists.reshape((-1, 1))])
+    #     mask = np.nonzero(dists.flatten() <= picker_threshold + picker_radius + particle_radius)
+    #     print(mask)
+    #     exit()
+    #     if len(mask[0]) == 0:
+    #         return -1
+    #     else:
+    #         idx_dists = idx_dists[mask, :].reshape((-1, 2))
+    #         closest = np.argmin(idx_dists[:, 0])
+    #         picked_point = idx_dists[closest]
+    #         return picked_point
+
     def get_single_traj_cost(self, *args):
         actions, positions, velocities, clusters, cloth_xdim, cloth_ydim, config_id, phases_dict = args
-        pos_trajs = [positions]
-        data = [positions, velocities, clusters, [self.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id]]
-        for i in range(actions.shape[0]):
-            attr, state, rels, n_particles, n_shapes, instance_idx = self.datasets['train'].construct_graph(data)
+        dataset = self.datasets['train']
+        n_shapes = 1
+        with torch.no_grad():
+            control_vels, activated = self.generate_pick_and_place(actions, positions[-1:])
+            # control_vels = control_vels[:, 0, :]  # n_shape =1
+            # activated = activated[:, 0]  # n_shape =1
+            for i in range(control_vels.shape[0]):
+                print(i)
+                if i == 0:
+                    assert control_vels[i].shape[0] == 1, 'More than one shape will cause issue here'
+                    # Broadcast control vel to all particles as we do not yet know which particle to pick
+                    vel_nxt = np.tile(control_vels[i], [positions.shape[0], 1])
+                    data = [positions, velocities, clusters, [self.cloth_particle_radius, cloth_xdim, cloth_ydim, config_id], activated[i],
+                            vel_nxt]
+                    attr, state, rels, n_particles, n_shapes, instance_idx, sample_idx = dataset.construct_graph(data, downsample=True)
 
-            Ra, node_r_idx, node_s_idx, pstep = rels[3], rels[4], rels[5], rels[6]
+                    pos = np.vstack([state[:n_particles, :3], state[n_particles:n_particles + n_shapes, :3]])
+                    pos = denormalize([pos], [self.stat[0]])[0]  # Unnormalize
+                    pos_trajs = [pos.copy()]
+                else:
+                    vel_nxt = np.tile(control_vels[i], [positions.shape[0], 1])
+                    data[0] = state[:, :3]
+                    data[1] = state[:, 3:]
+                    data[4], data[5] = activated[i], vel_nxt
+                    attr, state, rels, n_particles, n_shapes, instance_idx, _ = dataset.construct_graph(data, downsample=False)
+                graph = convert_dpi_to_graph(attr, state, rels, n_particles, n_shapes, instance_idx)
+                predicted_vel = self.model(graph, phases_dict, 0)
+                predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [self.stat[1]])[0]
+                predicted_vel = np.concatenate([predicted_vel, vel_nxt[-n_shapes:]],
+                                               0)  ### Model only outputs predicted particle velocity,
 
-            Rr, Rs = [], []
+                # Manually set the velocities of the picked points
+                picked_points = dataset.picked_points
+                for pp in picked_points:
+                    if pp != -1:
+                        predicted_vel[pp, :] = vel_nxt[pp, :]
 
-            for j in range(len(rels[0])):
-                Rr_idx, Rs_idx, values = rels[0][j], rels[1][j], rels[2][j]  # NOTE: values are all just 1
-                Rr.append(torch.sparse.FloatTensor(Rr_idx, values, torch.Size([node_r_idx[j].shape[0], Ra[j].size(0)])))
-                Rs.append(torch.sparse.FloatTensor(Rs_idx, values, torch.Size([node_s_idx[j].shape[0], Ra[j].size(0)])))
-            data_cpu = copy.copy(data)
-            data = [attr, state, Rr, Rs, Ra]
+                ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
+                ### maybe, the shape velocity is kind of like the control actions specified by the users
+                pos = copy.copy(pos_trajs[-1])
+                pos += predicted_vel * 1 / 60.
+                pos_trajs.append(pos)
 
-            with torch.set_grad_enabled(False):
-                for d in range(len(data)):
-                    if type(data[d]) == list:
-                        for t in range(len(data[d])):
-                            data[d][t] = Variable(data[d][t].cuda())
-                    else:
-                        data[d] = Variable(data[d].cuda())
+                # Modify data for next step rollout (state includes positions and velocities)
+                state = np.vstack([state[:n_particles, :], state[-n_shapes:, :]])
+                pos = denormalize([state[:, :3]], [self.stat[0]])[0]  # Unnormalize
+                pos += predicted_vel * 1 / 60.
+                state[:, :3] = pos
+                state[:, 3:] = predicted_vel
 
-                attr, state, Rr, Rs, Ra = data
-
-                predicted_vel = self.model(attr, state, Rr, Rs, Ra, n_particles, node_r_idx, node_s_idx, pstep, instance_idx, self.phases_dict,False)
-            predicted_vel = denormalize([predicted_vel.data.cpu().numpy()], [self.stat[1]])[0]
-            action = self.denormalize(actions[i, :])
-            # Specifically for cloth flatten
-            shape_vel = action.reshape((-1, 4))[:, :3] * 60.
-            predicted_vel = np.vstack([predicted_vel, shape_vel])  ### Model only outputs predicted particle velocity,
-            ### so here we use the ground truth shape velocity. Why doesn't the model also predict the shape velocity?
-            ### maybe, the shape velocity is kind of like the control actions specified by the users
-            pos = copy.copy(pos_trajs[-1])
-            pos += predicted_vel * 1 / 60.
-
-            # Add back fourth dimension and remove the picker
-
-            pos_trajs.append(pos)
-
-            # Modify data for next step rollout
-            data_cpu[0] = data_cpu[0] + predicted_vel * 1 / 60.
-            data_cpu[1][:, :3] = predicted_vel
-            data = data_cpu
         rewards = []
-        for pos in pos_trajs:
+        for pos in pos_trajs[1:]:
             reward_pos = np.hstack([pos[:-2, :3], np.zeros([pos.shape[0] - 2, 1])])
             rewards.append(self.reward_func(reward_pos))
         cost = - sum(rewards)
         return cost
 
-    def get_cost(self, args):
-        clusters, init_state, all_actions = args
+    def get_cost(self, clusters, init_state, all_actions):
         costs = []
         for actions in all_actions:
             pos = init_state['particle_pos'].reshape(-1, 4)[:, :3]
             vel = init_state['particle_vel'].reshape(-1, 3)
             shape_states = init_state['shape_pos'].reshape(-1, 14)
-            n_shapes = 2
+            n_shapes = 1
             for k in range(n_shapes):
                 pos = np.vstack([pos, shape_states[k, :3][None]])
                 vel = np.vstack([vel, np.zeros([1, 3])])
             config = self.env.cached_configs[init_state['config_id']]
             cloth_xdim, cloth_ydim = config['ClothSize']
-            costs.append(self.get_single_traj_cost(actions, pos, vel, clusters, cloth_xdim, cloth_ydim, init_state['config_id'], self.datasets['train']))
+            costs.append(
+                self.get_single_traj_cost(actions, pos, vel, clusters, cloth_xdim, cloth_ydim, init_state['config_id'], self.phases_dict))
             print('costs:', costs, actions.shape)
         return costs
 
@@ -197,15 +236,12 @@ class CEMPolicy(object):
 class ParallelRolloutWorker(object):
     """ Rollout a set of trajectory in parallel. """
 
-    def __init__(self, model, plan_horizon, action_dim, num_worker=4):
+    def __init__(self, model, plan_horizon, action_dim, num_worker=1):
         self.num_worker = num_worker
         self.plan_horizon, self.action_dim = plan_horizon, action_dim
-        self.pool = Pool(processes=num_worker)
         self.model = model
 
     def cost_function(self, clusters, init_state, action_trajs):
         action_trajs = action_trajs.reshape([-1, self.plan_horizon, self.action_dim])
-        splitted_action_trajs = np.array_split(action_trajs, self.num_worker)
-        ret = self.pool.map(self.model.get_cost, [(clusters, init_state, splitted_action_trajs[i]) for i in range(self.num_worker)])
-        flat_costs = [item for sublist in ret for item in sublist]  # ret is indexed first by worker_num then traj_num
-        return flat_costs
+        costs = self.model.get_cost(clusters, init_state, action_trajs)
+        return costs

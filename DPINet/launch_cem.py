@@ -13,30 +13,18 @@ def main(mode, debug, dry):
     exp_prefix = '0923_dpi_net'
     vg = VariantGenerator()
     cem_plan_horizon = {
-        'PassWater': 7,
-        'PourWater': 40,
-        'PourWaterAmount': 40,
-        'ClothFold': 15,
-        'ClothFoldPPP': 5,
-        'ClothFoldCrumpled': 30,
-        'ClothFoldDrop': 30,
-        'ClothFlatten': 15,
-        'ClothFlattenPPP': 5,
-        'ClothDrop': 15,
-        'RopeFlatten': 15,
-        'RopeFlattenNew': 15,
-        'RopeAlphaBet': 15,
-        'RigidClothFold': 15,
-        'RigidClothDrop': 15,
+        'ClothFlatten': 2,
     }
     vg.add('algorithm', ['CEM'])
     vg.add('env_name', ['ClothFlatten'])
     vg.add('env_kwargs', lambda env_name: [env_arg_dict[env_name]])
     vg.add('env_kwargs_camera_name', ['default_camera'])
     vg.add('env_kwargs_render', [False])
-    vg.add('env_kwargs_observation_mode', ['key_point'])
+    vg.add('env_kwargs_action_mode', ['picker_qpg'])
+    vg.add('env_kwargs_observation_mode', ['cam_rgb'])
+    vg.add('env_kwargs_num_picker', [1])
     vg.add('env_kwargs_reward_type', lambda env_name: ['index', 'bigraph'] if env_name == 'RopeAlphaBet' else [None])  # only for ropealphabet
-    vg.add('model_path', ['data/autobot/0908_noise/0908_noise/0908_noise_2020_09_08_20_00_54_0004/net_epoch_40_iter_10000.pth'])
+    vg.add('model_path', ['data/seuss/1008_explore_debug/1008_explore_debug/1008_explore_debug_2020_10_12_17_11_01_0001/net_epoch_22_iter_30000.pth'])
 
     vg.add('seed', [100])
     vg.add('max_episode_length', [200])
@@ -44,7 +32,7 @@ def main(mode, debug, dry):
     if not debug:
         vg.add('max_iters', [10])
         vg.add('plan_horizon', lambda env_name: [cem_plan_horizon[env_name]])
-        vg.add('timestep_per_decision', [21000])
+        vg.add('timestep_per_decision', [50])
         vg.add('test_episodes', [1])
         vg.add('use_mpc', [True])
         # Add possible vgs for non-debug purpose
@@ -52,9 +40,9 @@ def main(mode, debug, dry):
     else:
         vg.add('max_iters', [1])
         vg.add('test_episodes', [1])
-        vg.add('timestep_per_decision', [100])
+        vg.add('timestep_per_decision', [10])
         vg.add('use_mpc', [True])
-        vg.add('plan_horizon', [7])
+        vg.add('plan_horizon', [2])
         exp_prefix += '_debug'
 
     print('Number of configurations: ', len(vg.variants()))

@@ -26,6 +26,7 @@ import copy
 import pyflex
 
 from DPINet.data_loader import store_data, load_data, init_stat, combine_stat, normalize, find_relations_neighbor, make_hierarchy
+import scipy
 
 
 class PhysicsFleXDataset(Dataset):
@@ -61,6 +62,7 @@ class PhysicsFleXDataset(Dataset):
         env_args['render_mode'] = 'particle'
         env_args['camera_name'] = 'default_camera'
         env_args['action_repeat'] = 2
+        env_args['num_picker'] = 1
         if self.env_name == 'ClothFlatten':
             env_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
         return SOFTGYM_ENVS[self.env_name](**env_args)
@@ -267,7 +269,6 @@ class ClothDataset(PhysicsFleXDataset):
             pp = np.random.randint(len(pos))
             shape_states = pyflex.get_shape_states().reshape(-1, 14)
             curr_pos = shape_states[0, :3] = pos[pp] + [0., env.picker_radius, 0.]
-            shape_states[1, :3] = -1
             pyflex.set_shape_states(shape_states.flatten())
             delta_pos = np.random.random(3) - 0.5
             delta_pos[1] = (delta_pos[1] + 0.5) * 0.15
@@ -429,8 +430,28 @@ class ClothDataset(PhysicsFleXDataset):
         new_idx = down_y * down_xdim + down_x
         return new_idx
 
+    def get_pick_points(self, picker_pos, particle_pos, curr_pick):
+        """ Picker pos: shape num_picker x 3, particle pos: shape N x 3"""
+        assert picker_pos.shape[0] == 1
+        picker_threshold = 0.005
+        picker_radius = 0.05
+        particle_radius = 0.00625
+        if curr_pick != -1 and np.linalg.norm(picker_pos[0] - particle_pos[curr_pick]) <= picker_threshold + picker_radius + particle_radius:
+            return [curr_pick]
+        # Pick new particles and update the mass and the positions
+        dists = scipy.spatial.distance.cdist(picker_pos, particle_pos[:, :3].reshape((-1, 3)))[0]
+        idx_dists = np.hstack([np.arange(particle_pos.shape[0]).reshape((-1, 1)), dists.reshape((-1, 1))])
+        mask = np.nonzero(dists.flatten() <= picker_threshold + picker_radius + particle_radius)[0]
+        if len(mask) == 0:
+            return [-1]
+        else:
+            idx_dists = idx_dists[mask, :].reshape((-1, 2))
+            closest = np.argmin(idx_dists[:, 1])
+            picked_point = idx_dists[closest, 0]
+            return [int(picked_point)]
+
     def _downsample(self, data, scale=2):
-        pos, vel, clusters, scene_params, picked_points, vel_nxt = data
+        pos, vel, clusters, scene_params, _, vel_nxt = data
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
         cloth_xdim, cloth_ydim = int(cloth_xdim), int(cloth_ydim)
         original_xdim, original_ydim = cloth_xdim, cloth_ydim
@@ -440,6 +461,7 @@ class ClothDataset(PhysicsFleXDataset):
         new_idx = new_idx[::scale, ::scale]
         cloth_ydim, cloth_xdim = new_idx.shape
         new_idx = new_idx.flatten()
+        clusters = np.array(clusters)
         clusters = clusters[:, :, :, new_idx]
         new_idx = np.hstack([new_idx, np.arange(len(pos))[-n_shapes:]])
         pos = pos[new_idx, :]
@@ -447,14 +469,13 @@ class ClothDataset(PhysicsFleXDataset):
         vel_nxt = vel_nxt[new_idx, :]
 
         # Remap picked_points
-        pps = []
-        for pp in picked_points.astype('int'):
-            if pp != -1:
-                pps.append(self.downsample_mapping(original_ydim, original_xdim, pp, scale))
-                assert pps[-1] < len(pos)
-                # pps.append(self.get_closest_point(original_pos[pp, :], pos[:-n_shapes, :]))
+        # pps = []
+        # for pp in picked_points.astype('int'):
+        #     if pp != -1:
+        #         pps.append(self.downsample_mapping(original_ydim, original_xdim, pp, scale))
+        #         assert pps[-1] < len(pos)
         scene_params = sphere_radius, cloth_xdim, cloth_ydim, config_id
-        return (pos, vel, clusters, scene_params, pps, vel_nxt), new_idx
+        return (pos, vel, clusters, scene_params, None, vel_nxt), new_idx
 
     def _construct_graph(self, data, stat, args, phases_dict, var, downsample=True):
         self.down_scale = args.down_sample_scale
@@ -468,12 +489,18 @@ class ClothDataset(PhysicsFleXDataset):
             data = new_data
         else:
             sample_idx = None
-        positions, velocities, clusters, scene_params, picked_points, vel_nxt = data
-        n_shapes = 2
+        positions, velocities, clusters, scene_params, _, vel_nxt = data
+        n_shapes = 1
         sphere_radius, cloth_xdim, cloth_ydim, config_id = scene_params
 
         count_nodes = positions.size(0) if var else positions.shape[0]
         n_particles = count_nodes - n_shapes
+        # Get picked point
+
+        if not hasattr(self, 'picked_points'):
+            self.picked_points = [-1]
+        picked_points = self.get_pick_points(positions[-n_shapes:], positions[:n_particles], self.picked_points[0])
+        self.picked_points = picked_points
         ### instance idx
         instance_idx = [0, n_particles]
 
@@ -483,6 +510,7 @@ class ClothDataset(PhysicsFleXDataset):
         # no need to include mass for now
         for picked_point in picked_points:
             if picked_point != -1:
+                print('pick point:', picked_point)
                 attr[picked_point, 2] = 1
                 velocities[picked_point, :] = vel_nxt[picked_point, :]
 
