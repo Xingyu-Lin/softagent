@@ -83,7 +83,7 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
         data_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep) + '.h5')
         data_nxt_path = os.path.join(self.data_dir, str(idx_rollout), str(idx_timestep + 1) + '.h5')
-
+        
         if not self.args.train_rollout:
             load_names = ['positions', 'velocities', 'picked_points', 'picked_point_positions', 'scene_params']
         else:
@@ -91,16 +91,36 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
         data = self._load_data_file(load_names, data_path)
 
+        # add noise as in the GNS code
+        if self.args.noise_scale > 0:
+            velocity_sequence_noise = np.random.normal(
+                loc=0,
+                scale=self.args.noise_scale / self.env.horizon ** 0.5,
+                size=(self.env.horizon, 3))
+            velocity_sequence_noise = np.cumsum(velocity_sequence_noise, axis=0)
+            if self.args.normalize:
+                # velocity noise is in normalized scale
+                velocity_sequence_noise = velocity_sequence_noise * self.vel_stats[1] + self.vel_stats[0]
+
+            position_sequence_noise = np.cumsum(velocity_sequence_noise, axis=0) * self.args.dt
+            data[0] += position_sequence_noise[idx_timestep]
+            data[1] += velocity_sequence_noise[idx_timestep]
+
         # Get velocity history
         vel_his = []
         for i in range(1, self.args.n_his):
             path = os.path.join(self.data_dir, str(idx_rollout), str(max(0, idx_timestep - i)) + '.h5') # max just in case
             data_his = self._load_data_file(load_names, path)
+            vel = data_his[1]
+
+            if self.args.noise_scale > 0:
+                vel += velocity_sequence_noise[max(0, idx_timestep - i)]
+
             if self.args.normalize:
-                vel = data_his[1]
                 vel = (vel - self.vel_stats[0]) / self.vel_stats[1]
             else:
                 vel = data_his[1]
+
             vel_his.append(vel)
 
         if self.args.normalize:
@@ -116,6 +136,9 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
         # Compute GT label: calculate accleration
         data_nxt = self._load_data_file(load_names, data_nxt_path)
+        if self.args.noise_scale > 0:
+            data_nxt[1] += velocity_sequence_noise[idx_timestep + 1]
+
         if not self.args.predict_vel:
             gt_accel = torch.FloatTensor((data_nxt[1] - data[1][:, 0:3]) / self.args.dt)
             if sample_idx is not None:
