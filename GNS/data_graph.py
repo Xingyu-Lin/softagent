@@ -11,6 +11,7 @@ import copy
 
 import pyflex
 import scipy
+from sklearn.cluster import MiniBatchKMeans
 
 # pool = mp.Pool(processes=10)
 
@@ -34,8 +35,9 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
         os.system('mkdir -p ' + self.data_dir)
 
-        # if args.env_name == 'BoxBath':
-        #     self.data_names = ['positions', 'velocities', 'clusters']
+        stats = torch.load(os.path.join(self.data_dir, 'stats.pkl'))
+        self.vel_stats = stats[0][:2]
+        self.acc_stats = stats[1][:2]
 
         ratio = self.args.train_valid_ratio
 
@@ -94,7 +96,15 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
         for i in range(1, self.args.n_his):
             path = os.path.join(self.data_dir, str(idx_rollout), str(max(0, idx_timestep - i)) + '.h5') # max just in case
             data_his = self._load_data_file(load_names, path)
-            vel_his.append(data_his[1])
+            if self.args.normalize:
+                vel = data_his[1]
+                vel = (vel - self.vel_stats[0]) / self.vel_stats[1]
+            else:
+                vel = data_his[1]
+            vel_his.append(vel)
+
+        if self.args.normalize:
+            data[1] = (data[1] - self.vel_stats[0]) / self.vel_stats[1]
 
         data[1] = np.concatenate([data[1]] + vel_his, 1)
 
@@ -115,6 +125,8 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
             if sample_idx is not None:
                 gt_accel = gt_accel[sample_idx]
 
+        if self.args.normalize:
+            gt_accel = (gt_accel - self.acc_stats[0]) / self.acc_stats[1]
 
         return node_attr, neighbors, edge_attr, global_feat, gt_accel
 
@@ -172,6 +184,7 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
         env_args['render_mode'] = 'particle'
         env_args['camera_name'] = 'default_camera'
         env_args['action_repeat'] = 1
+        env_args['picker_radius'] = 0.01
         if self.env_name == 'ClothFlatten':
             env_args['cached_states_path'] = 'cloth_flatten_init_states_small.pkl'
             env_args['num_variations'] = 50
@@ -204,6 +217,11 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
             
             n_particles = pyflex.get_n_particles()
             n_shapes = pyflex.get_n_shapes()
+            
+            p = pyflex.get_positions().reshape(-1, 4)[:, :3]
+            clusters = []
+            kmeans = MiniBatchKMeans(n_clusters=30, random_state=0).fit(p)
+            clusters.append([[kmeans.labels_]])
 
             positions = np.zeros((self.time_step, n_particles, 3), dtype=np.float32)
             velocities = np.zeros((self.time_step, n_particles, 3), dtype=np.float32)
@@ -229,7 +247,7 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
                 # Store previous data
                 data = [positions[j - 1], velocities[j - 1], picked_points, intermediate_picked_point_pos, 
-                    picker_position, action, scene_params, shape_positions[j - 1]]
+                    picker_position, action, scene_params, shape_positions[j - 1], clusters]
                 self.store_data(self.data_names, data, os.path.join(rollout_dir, str(j - 1) + '.h5'))
 
                 positions[j] = pyflex.get_positions().reshape(-1, 4)[:, :3]
@@ -244,7 +262,7 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
             j = self.time_step - 1
             # the last step has no action
-            data = [positions[j], velocities[j], 0, 0, 0, 0, scene_params, shape_positions[j-1]] 
+            data = [positions[j], velocities[j], 0, 0, 0, 0, scene_params, shape_positions[j-1], clusters] 
             self.store_data(self.data_names, data, os.path.join(rollout_dir, str(j) + '.h5'))
 
 
@@ -262,7 +280,7 @@ class ClothDataset(PhysicsFleXDataset):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_names = ['positions', 'velocities', 'picked_points', 'picked_point_positions', 
-            'picker_position', 'action', 'scene_params', 'shape_positions']
+            'picker_position', 'action', 'scene_params', 'shape_positions', 'clusters']
 
     def _prepare_input(self, data, downsample=True, test=False, noise_scale=None):
         """
@@ -290,18 +308,18 @@ class ClothDataset(PhysicsFleXDataset):
             sample_idx = None
 
         # add noise
-        if noise_scale is None:
-            noise_scale = args.noise_scale
+        # if noise_scale is None:
+        #     noise_scale = args.noise_scale
 
-        position_noise = np.random.normal(loc=0, scale=noise_scale, size=data[0].shape)
-        vel_history_noise = np.random.normal(loc=0, scale=noise_scale, size=data[1].shape)
+        # position_noise = np.random.normal(loc=0, scale=noise_scale, size=data[0].shape)
+        # vel_history_noise = np.random.normal(loc=0, scale=noise_scale, size=data[1].shape)
 
         picked_velocity = []
         picked_pos = []
         if not test:
             positions, velocity_his, picked_points, picked_points_position, scene_params = data
-            positions += position_noise
-            velocity_his += vel_history_noise
+            # positions += position_noise
+            # velocity_his += vel_history_noise
 
              # modify the position and velocity of the picked particle due to the pick action
             _, cloth_xdim, cloth_ydim, _ = scene_params
@@ -325,9 +343,10 @@ class ClothDataset(PhysicsFleXDataset):
             new_picker_pos = None # we do not use this thing when test is False
         else:
             particle_pos, velocity_his, picker_pos, action, picked_particles, scene_params, _ = data
+            action *= self.env.action_repeat # scale to the real action
             _, cloth_xdim, cloth_ydim, _ = scene_params
-            particle_pos += position_noise
-            velocity_his += vel_history_noise
+            # particle_pos += position_noise
+            # velocity_his += vel_history_noise
 
             # print("in data graph, picked particles: ", picked_particles)
             picked_particles = [int(x) for x in picked_particles]
@@ -362,6 +381,8 @@ class ClothDataset(PhysicsFleXDataset):
                         old_pos = particle_pos[picked_particles[i]]
                         new_pos = particle_pos[picked_particles[i]] + new_picker_pos[i, :] - picker_pos[i,:]
                         new_vel = (new_pos - old_pos) / self.dt
+                        if self.args.normalize:
+                            new_vel = (new_vel - self.vel_stats[0]) / self.vel_stats[1]
 
                         tmp_vel_history = velocity_his[picked_particles[i]][:-3]
                         velocity_his[picked_particles[i], 3:] = tmp_vel_history
@@ -465,9 +486,17 @@ class ClothDataset(PhysicsFleXDataset):
 
         # move another picker to a randomly chosen particle
         pos = pyflex.get_positions().reshape((-1, 4))[:, :3]
-        pp = np.random.randint(len(pos))
-        shape_states[0, :3] = pos[pp] + [0., env.picker_radius, 0.]
-        shape_states[0, 7:10] = pos[pp] + [0., env.picker_radius, 0.]
+        ok = False
+        while not ok:
+            pp = np.random.randint(len(pos))
+            if np.any(np.logical_and(np.logical_and(np.abs(pos[:, 0] - pos[pp][0]) < 0.00625, np.abs(pos[:, 2] - pos[pp][2]) < 0.00625), 
+                pos[:, 1] > pos[pp][1])):
+                ok = False
+            else:
+                ok = True
+
+        shape_states[0, :3] = pos[pp] + [0., env.picker_radius * 2, 0.]
+        shape_states[0, 7:10] = pos[pp] + [0., env.picker_radius * 2, 0.]
         pyflex.set_shape_states(shape_states.flatten())
 
         # randomly select a move direction and a move distance
@@ -499,7 +528,7 @@ class ClothDataset(PhysicsFleXDataset):
         #     pos = pyflex.get_positions().reshape((-1, 4))[:, :3]
         #     pp = np.random.randint(len(pos))
         #     shape_states = pyflex.get_shape_states().reshape(-1, 14)
-        #     curr_pos = shape_states[0, :3] = pos[pp] + [0., env.picker_radius, 0.]
+        #     curr_pos = shape_states[0, :3] = pos[pp] + [0., env.picker_radius * 2, 0.]
         #     shape_states[1, :3] = -1
         #     pyflex.set_shape_states(shape_states.flatten())
         #     delta_pos = (np.random.random(3) - 0.5) 
@@ -513,7 +542,7 @@ class ClothDataset(PhysicsFleXDataset):
         # if self.policy_info['status'] == 'pick':
         #     curr_pos = pyflex.get_shape_states().reshape(-1, 14)[0, :3]
         #     dist = np.linalg.norm(self.policy_info['target_pos'] - curr_pos)
-        #     delta_move = 0.02
+        #     delta_move = 0.01
         #     num_step = np.ceil(dist / delta_move)
 
         #     if num_step <= 1:
