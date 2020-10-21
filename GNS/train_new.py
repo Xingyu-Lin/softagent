@@ -168,7 +168,7 @@ def train(args, env):
                     optimizer.step()
                     optimizer.zero_grad()
 
-                if i > 0 and i % args.log_per_iter == 0 or i == len(dataloaders[phase]) - 1:
+                if i == len(dataloaders[phase]) - 1:
                     # print("epoch {} i {}".format(epoch, i))
                     # print('%s [%d/%d][%d/%d] Loss: %.6f, Agg: %.6f' %
                     #       (phase, epoch, args.n_epoch, i, len(dataloaders[phase]),
@@ -179,11 +179,10 @@ def train(args, env):
                     eval_time_beg = time.time()
                     nstep_eval_rollout = args.nstep_eval_rollout
                     data_folder = osp.join(args.dataf, phase)
-                    traj_ids = np.random.choice(len(os.listdir(data_folder)), nstep_eval_rollout, replace=False)
+                    traj_ids = np.random.randint(0, len(os.listdir(data_folder)), nstep_eval_rollout)
                     pos_errorss = []
                     vel_errorss = []
                     for idx, traj_id in enumerate(traj_ids):
-                        # print("idx: ", idx)
                         with torch.no_grad():
                             pos_errors, vel_errors, gt_positions, predicted_positions, shape_positions, sample_idx, config_id, _ \
                                 = get_model_prediction_rollout(args, data_folder, traj_id, args.n_his - 1, 
@@ -192,31 +191,45 @@ def train(args, env):
                         pos_errorss.append(pos_errors)
                         vel_errorss.append(vel_errors)
 
-                        if i > 0 and i % args.video_iter_interval == 0 or i == len(dataloaders[phase]) - 1 and epoch % args.video_epoch_interval == 0:
-                            frames_model = visualize(datasets[phase].env, predicted_positions, 
-                                shape_positions, config_id, sample_idx)
-                            frames_gt = visualize(datasets[phase].env, gt_positions, 
-                                shape_positions, config_id, sample_idx)
-                            combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
-                            save_numpy_as_gif(np.array(combined_frames), osp.join(logdir, '{}-{}-{}-{}.gif'.format(
-                                phase, epoch, i, idx
-                            )))
+                        frames_model = visualize(datasets[phase].env, predicted_positions, 
+                            shape_positions, config_id, sample_idx)
+                        frames_gt = visualize(datasets[phase].env, gt_positions, 
+                            shape_positions, config_id, sample_idx)
+                        combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
+                        save_numpy_as_gif(np.array(combined_frames), osp.join(logdir, '{}-{}-{}-{}.gif'.format(
+                            phase, epoch, i, idx
+                        )))
 
                     pos_errorss = np.vstack(pos_errorss)
                     vel_errorss = np.vstack(vel_errorss)
+                    std_pos_error = np.std(pos_errorss, axis=0)
+                    std_vel_error = np.std(vel_errorss, axis=0)
+                    mean_pos_error = np.mean(pos_errorss, axis=0)
+                    mean_vel_error = np.mean(vel_errorss, axis=0)
+                    
                     pos_error = np.mean(pos_errorss)
                     vel_error = np.mean(vel_errorss)
 
-                    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
-                    axes = axes.reshape(-1)
+                    fig, axes = plt.subplots(2, 2, figsize=(15, 16))
                     for pos_errors in pos_errorss:
-                        axes[0].plot(range(len(pos_errors)), pos_errors)
+                        axes[0][0].plot(range(len(pos_errors)), pos_errors)
                     for vel_errors in vel_errorss:
-                        axes[1].plot(range(len(vel_errors)), vel_errors)
-                    axes[0].set_title("rollout position errors")
-                    axes[1].set_title("rollout velocity errors")
-                    axes[0].set_xlabel("rollout timestep")
-                    axes[1].set_ylabel("error")
+                        axes[0][1].plot(range(len(vel_errors)), vel_errors)
+                    axes[0][0].set_title("rollout position errors")
+                    axes[0][1].set_title("rollout velocity errors")
+                    axes[0][0].set_xlabel("rollout timestep")
+                    axes[0][1].set_ylabel("error")
+
+                    axes[1][0].plot(range(len(mean_pos_error)), mean_pos_error)
+                    axes[1][0].plot(range(len(mean_pos_error)), mean_pos_error - std_pos_error, linestyle='dashed')
+                    axes[1][0].plot(range(len(mean_pos_error)), mean_pos_error + std_pos_error, linestyle='dashed')
+                    axes[1][0].set_title("rollout position errors")
+
+                    axes[1][1].plot(range(len(mean_vel_error)), mean_vel_error)
+                    axes[1][1].plot(range(len(mean_vel_error)), mean_vel_error - std_vel_error, linestyle='dashed')
+                    axes[1][1].plot(range(len(mean_vel_error)), mean_vel_error + std_vel_error, linestyle='dashed')
+                    axes[1][1].set_title("rollout velocity errors")
+
                     plt.savefig(osp.join(logdir, 'errors-{}-{}-{}.png'.format(phase, epoch, i)))
                     plt.close('all')
 
@@ -228,7 +241,7 @@ def train(args, env):
                     logger.dump_tabular()
 
 
-                if phase == 'train' and i > 0 and i % args.ckp_per_iter == 0:
+                if phase == 'train' and i == len(dataloaders[phase]) - 1:
                     # mat_enc_path = '%s/mat_enc_net_epoch_%d_iter_%d.pth' % (logdir, epoch, i)
                     enc_path = '%s/enc_net_epoch_%d_iter_%d.pth' % (logdir, epoch, i)
                     proc_path = '%s/proc_net_epoch_%d_iter_%d.pth' % (logdir, epoch, i)
@@ -306,13 +319,25 @@ def run_task(vv, log_dir, exp_name):
     env_args['camera_name'] = 'default_camera'
     env_args['action_repeat'] = 1
     env_args['render'] = True
+    env_args['picker_radius'] = 0.01
+    if args.dataf == './datasets/ClothFlatten_xingyu2/':
+        env_args['picker_radius'] = 0.05
+        env_args['picker_threshold'] = 0.005
+    
     # env_args['headless'] = False
     if args.env_name == 'ClothFlatten':
-        env_args['cached_states_path'] = 'cloth_flatten_init_states_small_2.pkl'
-        env_args['num_variations'] = 20
+        
+        if args.dataf == './datasets/ClothFlatten_xingyu2/':
+            env_args['cached_states_path'] = 'cloth_flatten_small_init_states.pkl'
+            env_args['action_repeat'] = 2
+        else:
+            env_args['cached_states_path'] = 'cloth_flatten_init_states_small_2.pkl'
+            env_args['num_variations'] = 20
+
     env = SOFTGYM_ENVS[args.env_name](**env_args)
 
     if vv['gen_data']:
         generate_dataset(args, env)
+        exit()
     if vv['training']:
         train(args, env)
