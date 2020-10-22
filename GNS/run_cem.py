@@ -155,7 +155,9 @@ def run_task(vv, log_dir, exp_name):
     env_args['camera_name'] = 'default_camera'
     env_args['observation_mode'] = 'key_point'
     env_args['render'] = True
+    # env_args['headless'] = False
     env_args['action_repeat'] = vv['action_repeat']
+    env_args['picker_radius'] = 0.01
     if vv['env_name'] == 'ClothFlatten':
         env_args['cached_states_path'] = 'cloth_flatten_init_states_small_2.pkl'
         env_args['num_variations'] = 20
@@ -174,7 +176,7 @@ def run_task(vv, log_dir, exp_name):
     else:
         cem_policy = CEMPickandPlacePlanner(vv['cem_num_pick'], vv['delta_y'], vv['move_distance'], 
             vv['cem_stage_1_step'], vv['cem_stage_2_step'], vv['cem_stage_3_step'],
-            transition_model, reward_model, vv['num_worker'])
+            transition_model, reward_model, num_worker=vv['num_worker'], env=env)
 
 
     initial_states, action_trajs, configs, all_infos = [], [], [], []
@@ -211,6 +213,9 @@ def run_task(vv, log_dir, exp_name):
         action_traj = []
         infos = []
         frames = []
+
+        # for debug 
+        cem_policy.downsample_idx = downsample_idx
 
         if vv['mode'] == 'low-level':
             for t in range(env.horizon):

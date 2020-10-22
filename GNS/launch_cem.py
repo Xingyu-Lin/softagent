@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '1017-GNS-CEM-pick-and-place-larger-dy-small-validataion-loss-model'
+    exp_prefix = '1022-GNS-CEM-pick-and-place-xyzdistance-small-picker-fix'
     vg = VariantGenerator()
     cem_plan_horizon = {
         'ClothFlatten': 15
@@ -20,54 +20,51 @@ def main(mode, debug, dry):
     vg.add('action_low', [[-0.01, -0.01, -0.01, 0] * 2])
     vg.add('action_high', [[0.01, 0.01, 0.01, 1] * 2])
     vg.add('action_size', [8])
+    vg.add('normalize', [False])
 
     # low-level action tunes this
     vg.add('action_repeat', [1])
     vg.add('mode', ['pick-and-place'])
 
     if mode == 'seuss':
-        vg.add('model_dir', ['data/local/1011_GNS_deeper_larger_noise/1011_GNS_deeper_larger_noise_2020_10_11_23_10_27_0004'])
-        # vg.add('model_name', ['net_epoch_25_iter_30000.pth', 'net_epoch_38_iter_30000.pth', 'net_epoch_39_iter_20000.pth'])
-        # vg.add('model_name', ['net_epoch_42_iter_10000.pth', 'net_epoch_42_iter_40000.pth'])
-        # vg.add('model_name', ['net_epoch_29_iter_10000.pth', 'net_epoch_29_iter_20000.pth', 'net_epoch_29_iter_40000.pth'])
-        vg.add('model_name', ['net_epoch_43_iter_40000.pth'])
-        # vg.add('model_name', ['net_best.pth'])
+        vg.add('model_dir', ['data/local/1018_GNS_deeper_larger_noise_smaller_picker/1018_GNS_deeper_larger_noise_smaller_picker_2020_10_18_16_55_11_0007'])
+        vg.add('model_name', ['net_epoch_31_iter_85499.pth'])
         vg.add('num_worker', [10])
     else:
-        vg.add('model_dir', ['data/yufei_seuss_data/1011_GNS_deeper_larger_noise/1011_GNS_deeper_larger_noise/1011_GNS_deeper_larger_noise_2020_10_11_23_10_27_0002'])
-        vg.add('model_name', ['net_best.pth'])
-        vg.add('num_worker', [1])
+        vg.add('model_dir', ['data/yufei_seuss_data/1018_GNS_deeper_larger_noise_smaller_picker/1018_GNS_deeper_larger_noise_smaller_picker/1018_GNS_deeper_larger_noise_smaller_picker_2020_10_18_16_55_11_0007'])
+        vg.add('model_name', ['net_epoch_31_iter_85499.pth'])
+        vg.add('num_worker', [0])
 
     if not debug:
         # low-level actions
         vg.add('optimisation_iters', [10])
         vg.add('planning_horizon', lambda env_name: [cem_plan_horizon[env_name]])
         vg.add('timestep_per_decision', [21000])
-        vg.add('test_episodes', [3])
+        vg.add('test_episodes', [5])
         
         # pick-and-place
         vg.add('cem_num_pick', [500])
-        vg.add('delta_y', [0.003])
-        vg.add('move_distance', [0.1])
-        vg.add('pick_and_place_num', [4])
+        vg.add('delta_y', [0.3])
+        vg.add('move_distance', [0.15])
+        vg.add('pick_and_place_num', [5])
         vg.add('cem_stage_1_step', [30])
-        vg.add('cem_stage_2_step', [40])
+        vg.add('cem_stage_2_step', [60])
         vg.add('cem_stage_3_step', [40])
 
         vg.add('seed', [100, 200, 300, 400])
 
     else:
-        vg.add('optimisation_iters', [1])
+        vg.add('optimisation_iters', [5])
         vg.add('test_episodes', [1])
         vg.add('timestep_per_decision', [100])
         vg.add('planning_horizon', [7])
 
-        vg.add('cem_num_pick', [1])
-        vg.add('delta_y', [0.003])
-        vg.add('pick_and_place_num', [3])
-        vg.add('move_distance', [0.1])
+        vg.add('cem_num_pick', [50])
+        vg.add('delta_y', [0.3])
+        vg.add('pick_and_place_num', [4])
+        vg.add('move_distance', [0.15])
         vg.add('cem_stage_1_step', [30])
-        vg.add('cem_stage_2_step', [40])
+        vg.add('cem_stage_2_step', [60])
         vg.add('cem_stage_3_step', [40])
 
         vg.add('seed', [100])

@@ -157,13 +157,14 @@ def get_model_prediction_rollout(args, data_path, rollout_idx, init_timestep, mo
                                                                                     batch=None)
             pred_accel = decoder_model(node_embedding_out)
 
+        pred_accel = pred_accel.cpu().numpy()
         if args.normalize:
             pred_accel = pred_accel * dataset.acc_stats[1] + dataset.acc_stats[0]
 
         if not args.predict_vel:
-            pred_vel = data[1][:, :3] + pred_accel.cpu().numpy() * args.dt
+            pred_vel = data[1][:, :3] + pred_accel * args.dt
         else:
-            pred_vel = pred_accel.cpu().numpy()
+            pred_vel = pred_accel
         
         picked_vel, picked_pos, _ = picked_status
         pred_pos = data[0] + pred_vel * args.dt

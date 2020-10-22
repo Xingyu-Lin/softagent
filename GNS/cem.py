@@ -3,6 +3,7 @@ import numpy as np
 import os.path as osp
 from multiprocessing import Pool
 import copy
+from GNS.visualize_data import visualize
 # from torch.multiprocessing import Pool, set_start_method
 
 
@@ -31,9 +32,6 @@ class CEMPlanner():
             ['positions', 'velocities', 'picker_position', 'action', 'picked_points', 'scene_params']
         """
 
-        # print(self.action_high)
-        # print(self.action_low)
-        # print((self.action_high + self.action_low) / 2.)
         action_mean = np.ones((self.candidates, self.planning_horizon, self.action_size)) * (self.action_high + self.action_low) / 2.
         action_std = np.ones((self.candidates, self.planning_horizon, self.action_size)) * (self.action_high - self.action_low) / 4.
 
@@ -75,7 +73,7 @@ class CEMPlanner():
 
 class CEMPickandPlacePlanner():
     def __init__(self, num_pick, delta_y, move_distance, stage_1_step, stage_2_step, stage_3_step,
-        transition_model, reward_model,  device, num_worker=10):
+        transition_model, reward_model, num_worker=10, env=None, downsample_idx=None):
         """
         cem with mpc
         """
@@ -85,11 +83,16 @@ class CEMPickandPlacePlanner():
         self.delta_y = delta_y
         self.move_distance = move_distance
         self.transition_model, self.reward_model = transition_model, reward_model
-        self.device = device
 
         self.stage_1, self.stage_2, self.stage_3 = stage_1_step, stage_2_step, stage_3_step
 
-        self.pool = Pool(processes=num_worker)
+        if num_worker > 0:
+            self.pool = Pool(processes=num_worker)
+        self.num_worker = num_worker
+
+        ## debug usage
+        self.env = env
+        self.downsample_idx = downsample_idx
 
     def get_action(self, args, init_data, dataset):
         """
@@ -110,12 +113,9 @@ class CEMPickandPlacePlanner():
         picker_pos = data[2][0][:3]
         num_particles = len(positions)
         for pick_try_idx in range(self.num_pick):
-            # # zero stage: move up the picker
-            # delta_move = np.array([0, 0.01, 0])
-            # actions[pick_try_idx][:stage_0][:3] = delta_move
+            # first stage: move to a random chosen point
+            pick_idx = np.random.randint(len(positions))
 
-            # first stage: use 10 steps move to a random chosen point
-            pick_idx = np.random.randint(num_particles)
             target_pos = positions[pick_idx] + np.array([0, 0.01, 0]) # add a particle radius distance
             delta_move = (target_pos - picker_pos) / (stage_1 // 2)
             delta_x_z_move = delta_move.copy()
@@ -126,17 +126,10 @@ class CEMPickandPlacePlanner():
             actions[pick_try_idx][stage_1 // 2:stage_1, :3] = delta_move
 
             # second stage: choose a random (x, z) direction, move towards that direction for 30 steps.
-            x = np.random.rand() - 0.5
-            z = np.random.rand() - 0.5
-            # norm_x_z = np.sqrt(1 - self.delta_y ** 2)
-            x = x / np.linalg.norm([x, z]) 
-            z = z / np.linalg.norm([x, z])
-            y = self.delta_y
-            move_direction = np.array([x, y, z])
-            # print("move direction: ", move_direction)
+            move_direction = np.random.rand(3) - 0.5
+            move_direction[1] = self.delta_y
+            move_direction = move_direction / np.linalg.norm(move_direction)
             delta_move = self.move_distance / stage_2 * move_direction
-            delta_move[1] = y
-            print(delta_move)
             actions[pick_try_idx][stage_1:stage_1 + stage_2, :3] = delta_move
             actions[pick_try_idx][stage_1:stage_1 + stage_2, 3] = 1
 
@@ -146,12 +139,25 @@ class CEMPickandPlacePlanner():
 
 
         actions[:, :, 4:] = 0 # we essentially only plan over 1 picker action
-        params = [(
-            args, data.copy(), self.transition_model, self.reward_model, actions[i], dataset, actions.shape[1], True
-        ) for i in range(self.num_pick)]
-        results = self.pool.map(parallel_worker, params)
 
-        returns = [x[0] for x in results]
+        if self.num_worker > 0:
+            params = [(
+                args, copy.deepcopy(data), self.transition_model, self.reward_model, actions[i], dataset, actions.shape[1], True
+            ) for i in range(self.num_pick)]
+            results = self.pool.map(parallel_worker, params)
+
+            returns = [x[0] for x in results]
+        else:
+            returns = []
+            results = []
+            for i in range(self.num_pick):
+                print("\t i: ", i)
+                res = parallel_worker((args, copy.deepcopy(data), self.transition_model, self.reward_model, actions[i], dataset, actions.shape[1], True))
+                results.append(res)
+                returns.append(res[0])
+                # debug
+                # visualize(self.env, res[1], 
+                #                     res[2], data[-1][-1], self.downsample_idx)
 
         highest_return_idx = np.argmax(returns)
         action_seq = actions[highest_return_idx]
@@ -209,15 +215,15 @@ def parallel_worker(args):
 
             node_embedding_out, edge_embedding_out, global_out = processor_model(node_embedding, neighbors, edge_embedding, global_feat,
                                                                                     batch=None)
-            pred_accel = decoder_model(node_embedding_out)
+            pred_accel = decoder_model(node_embedding_out).cpu().numpy()
 
-        if args.normalize:
-            pred_accel = pred_accel * dataset.acc_stats[1] + dataset.acc_stats[0]
+        # if args.normalize:
+        #     pred_accel = pred_accel * dataset.acc_stats[1] + dataset.acc_stats[0]
 
         if not args.predict_vel:
-            pred_vel = data[1][:, :3] + pred_accel.cpu().numpy() * args.dt
+            pred_vel = data[1][:, :3] + pred_accel * args.dt
         else:
-            pred_vel = pred_accel.cpu().numpy()
+            pred_vel = pred_accel
         
         picked_vel, picked_pos, new_picker_pos = picked_status
         pred_pos = particle_pos + pred_vel * args.dt

@@ -35,9 +35,13 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
         os.system('mkdir -p ' + self.data_dir)
 
-        stats = torch.load(os.path.join(self.data_dir, 'stats.pkl'))
-        self.vel_stats = stats[0][:2]
-        self.acc_stats = stats[1][:2]
+        stats = torch.load(os.path.join(self.args.dataf, 'stats.pkl'))
+        vel_mean = stats[0][0].astype(np.float32)
+        vel_std = stats[0][1].astype(np.float32)
+        acc_mean = stats[1][0].astype(np.float32)
+        acc_std = stats[1][1].astype(np.float32)
+        self.vel_stats = [vel_mean, vel_std]
+        self.acc_stats = [acc_mean, acc_std]
 
         ratio = self.args.train_valid_ratio
 
@@ -92,19 +96,19 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
         data = self._load_data_file(load_names, data_path)
 
         # add noise as in the GNS code
-        if self.args.noise_scale > 0:
-            velocity_sequence_noise = np.random.normal(
-                loc=0,
-                scale=self.args.noise_scale / self.env.horizon ** 0.5,
-                size=(self.env.horizon, 3))
-            velocity_sequence_noise = np.cumsum(velocity_sequence_noise, axis=0)
-            if self.args.normalize:
-                # velocity noise is in normalized scale
-                velocity_sequence_noise = velocity_sequence_noise * self.vel_stats[1] + self.vel_stats[0]
+        # if self.args.noise_scale > 0:
+        #     velocity_sequence_noise = np.random.normal(
+        #         loc=0,
+        #         scale=self.args.noise_scale / self.env.horizon ** 0.5,
+        #         size=(self.env.horizon, 3))
+        #     velocity_sequence_noise = np.cumsum(velocity_sequence_noise, axis=0)
+        #     if self.args.normalize:
+        #         # velocity noise is in normalized scale
+        #         velocity_sequence_noise = velocity_sequence_noise * self.vel_stats[1] + self.vel_stats[0]
 
-            position_sequence_noise = np.cumsum(velocity_sequence_noise, axis=0) * self.args.dt
-            data[0] += position_sequence_noise[idx_timestep]
-            data[1] += velocity_sequence_noise[idx_timestep]
+        #     position_sequence_noise = np.cumsum(velocity_sequence_noise, axis=0) * self.args.dt
+        #     data[0] += position_sequence_noise[idx_timestep]
+        #     data[1] += velocity_sequence_noise[idx_timestep]
 
         # Get velocity history
         vel_his = []
@@ -113,18 +117,18 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
             data_his = self._load_data_file(load_names, path)
             vel = data_his[1]
 
-            if self.args.noise_scale > 0:
-                vel += velocity_sequence_noise[max(0, idx_timestep - i)]
+            # if self.args.noise_scale > 0:
+            #     vel += velocity_sequence_noise[max(0, idx_timestep - i)]
 
-            if self.args.normalize:
-                vel = (vel - self.vel_stats[0]) / self.vel_stats[1]
-            else:
-                vel = data_his[1]
+            # if self.args.normalize:
+            #     vel = (vel - self.vel_stats[0]) / self.vel_stats[1]
+            # else:
+            vel = data_his[1]
 
             vel_his.append(vel)
 
-        if self.args.normalize:
-            data[1] = (data[1] - self.vel_stats[0]) / self.vel_stats[1]
+        # if self.args.normalize:
+        #     data[1] = (data[1] - self.vel_stats[0]) / self.vel_stats[1]
 
         data[1] = np.concatenate([data[1]] + vel_his, 1)
 
@@ -136,8 +140,8 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
 
         # Compute GT label: calculate accleration
         data_nxt = self._load_data_file(load_names, data_nxt_path)
-        if self.args.noise_scale > 0:
-            data_nxt[1] += velocity_sequence_noise[idx_timestep + 1]
+        # if self.args.noise_scale > 0:
+        #     data_nxt[1] += velocity_sequence_noise[idx_timestep + 1]
 
         if not self.args.predict_vel:
             gt_accel = torch.FloatTensor((data_nxt[1] - data[1][:, 0:3]) / self.args.dt)
@@ -148,8 +152,8 @@ class PhysicsFleXDataset(torch.utils.data.Dataset):
             if sample_idx is not None:
                 gt_accel = gt_accel[sample_idx]
 
-        if self.args.normalize:
-            gt_accel = (gt_accel - self.acc_stats[0]) / self.acc_stats[1]
+        # if self.args.normalize:
+        #     gt_accel = (gt_accel - self.acc_stats[0]) / self.acc_stats[1]
 
         return node_attr, neighbors, edge_attr, global_feat, gt_accel
 
@@ -404,8 +408,8 @@ class ClothDataset(PhysicsFleXDataset):
                         old_pos = particle_pos[picked_particles[i]]
                         new_pos = particle_pos[picked_particles[i]] + new_picker_pos[i, :] - picker_pos[i,:]
                         new_vel = (new_pos - old_pos) / self.dt
-                        if self.args.normalize:
-                            new_vel = (new_vel - self.vel_stats[0]) / self.vel_stats[1]
+                        # if self.args.normalize:
+                        #     new_vel = (new_vel - self.vel_stats[0]) / self.vel_stats[1]
 
                         tmp_vel_history = velocity_his[picked_particles[i]][:-3]
                         velocity_his[picked_particles[i], 3:] = tmp_vel_history
