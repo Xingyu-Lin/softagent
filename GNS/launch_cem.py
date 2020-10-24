@@ -24,8 +24,8 @@ def main(mode, debug, dry):
 
     # low-level action tunes this
     vg.add('action_repeat', [1])
-    vg.add('mode', ['pick-and-place'])
-
+    vg.add('mode', ['pick-and-place-uv'])
+    vg.add('uv_sample_method', ['uniform', 'bounding_box'])
     if mode == 'seuss':
         vg.add('model_dir', ['data/local/1018_GNS_deeper_larger_noise_smaller_picker/1018_GNS_deeper_larger_noise_smaller_picker_2020_10_18_16_55_11_0007'])
         vg.add('model_name', ['net_epoch_31_iter_85499.pth'])
@@ -59,7 +59,7 @@ def main(mode, debug, dry):
         vg.add('timestep_per_decision', [100])
         vg.add('planning_horizon', [7])
 
-        vg.add('cem_num_pick', [50])
+        vg.add('cem_num_pick', [5])
         vg.add('delta_y', [0.3])
         vg.add('pick_and_place_num', [4])
         vg.add('move_distance', [0.15])

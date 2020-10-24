@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from GNS.cem import CEMPlanner, CEMPickandPlacePlanner
+from GNS.cem import CEMPlanner, CEMPickandPlacePlanner, CEMUVPickandPlacePlanner
 import torchvision
 from softgym.utils.visualization import save_numpy_as_gif
 from chester import logger
@@ -20,6 +20,7 @@ from softgym.utils.misc import vectorized_range, vectorized_meshgrid
 import multiprocessing as mp
 from experiments.planet.train import update_env_kwargs
 from GNS.visualize_data import visualize
+
 
 # from torch.multiprocessing import Pool, set_start_method
 
@@ -58,14 +59,17 @@ def reward_model(pos, cloth_particle_radius=0.00625):
 
     return res
 
+
 class VArgs(object):
     def __init__(self, vv):
         for key, val in vv.items():
             setattr(self, key, val)
 
+
 def vv_to_args(vv):
     args = VArgs(vv)
     return args
+
 
 def prepare_policy(env, mode):
     print("preparing policy! ")
@@ -100,6 +104,7 @@ def downsample(cloth_xdim, cloth_ydim, scale):
     new_idx = new_idx.flatten()
 
     return new_idx, cloth_xdim, cloth_ydim
+
 
 def cem_make_gif(all_frames, save_dir, save_name):
     # Convert to T x index x C x H x W for pytorch
@@ -138,7 +143,6 @@ def run_task(vv, log_dir, exp_name):
     with open(osp.join(logger.get_dir(), 'variant.json'), 'w') as f:
         json.dump(vv, f, indent=2, sort_keys=True)
 
-
     model_vv = json.load(open(osp.join(vv['model_dir'], 'variant.json')))
     args = vv_to_args(model_vv)
     encoder_model = Encoder(args.state_dim + args.attr_dim, args.relation_dim).cuda()
@@ -169,22 +173,25 @@ def run_task(vv, log_dir, exp_name):
 
     particle_radius = 0.00625
     if vv['mode'] == 'low-level':
-        cem_policy = CEMPlanner(vv['action_size'], vv['planning_horizon'], vv['optimisation_iters'], 
-            vv['candidates'], vv['top_candidates'], transition_model, 
-            reward_model,
-            np.array(vv['action_low']), np.array(vv['action_high']), device, vv['num_worker'])
-    else:
-        cem_policy = CEMPickandPlacePlanner(vv['cem_num_pick'], vv['delta_y'], vv['move_distance'], 
-            vv['cem_stage_1_step'], vv['cem_stage_2_step'], vv['cem_stage_3_step'],
-            transition_model, reward_model, num_worker=vv['num_worker'], env=env)
-
-
+        cem_policy = CEMPlanner(vv['action_size'], vv['planning_horizon'], vv['optimisation_iters'],
+                                vv['candidates'], vv['top_candidates'], transition_model,
+                                reward_model,
+                                np.array(vv['action_low']), np.array(vv['action_high']), device, vv['num_worker'])
+    elif vv['mode'] == 'pick-and-place':
+        cem_policy = CEMPickandPlacePlanner(vv['cem_num_pick'], vv['delta_y'], vv['move_distance'],
+                                            vv['cem_stage_1_step'], vv['cem_stage_2_step'], vv['cem_stage_3_step'],
+                                            transition_model, reward_model, num_worker=vv['num_worker'], env=env)
+    elif vv['mode'] == 'pick-and-place-uv':
+        cem_policy = CEMUVPickandPlacePlanner(vv['cem_num_pick'], vv['delta_y'], vv['move_distance'],
+                                              vv['cem_stage_1_step'], vv['cem_stage_2_step'], vv['cem_stage_3_step'],
+                                              transition_model, reward_model, num_worker=vv['num_worker'], env=env,
+                                              uv_sample_method=vv['uv_sample_method'])
     initial_states, action_trajs, configs, all_infos = [], [], [], []
     for episode_idx in range(vv['test_episodes']):
         # setup environment
         env.reset()
         # move one picker below the ground, set another picker randomly to a picked point
-        prepare_policy(env, vv['mode']) 
+        prepare_policy(env, vv['mode'])
 
         config = env.get_current_config()
         cloth_xdim, cloth_ydim = config['ClothSize']
@@ -242,9 +249,9 @@ def run_task(vv, log_dir, exp_name):
                 infos.append(info)
                 action_traj.append(action)
 
-        elif vv['mode'] == 'pick-and-place':
+        elif 'pick-and-place' in vv['mode']:
             cem_pick_and_place_steps = vv['cem_stage_1_step'] + vv['cem_stage_2_step'] + vv['cem_stage_3_step']
-            
+
             gt_positions = np.zeros((vv['pick_and_place_num'], cem_pick_and_place_steps, len(downsample_idx), 3))
             gt_shape_positions = np.zeros((vv['pick_and_place_num'], cem_pick_and_place_steps, 2, 3))
             model_pred_particle_poses = np.zeros((vv['pick_and_place_num'], cem_pick_and_place_steps, len(downsample_idx), 3))
@@ -252,11 +259,11 @@ def run_task(vv, log_dir, exp_name):
             for pick_try_idx in range(vv['pick_and_place_num']):
                 action_sequence, model_pred_particle_pos, _ = cem_policy.get_action(args, data, dataset)
                 model_pred_particle_poses[pick_try_idx] = model_pred_particle_pos
-                print("pick_and_place idx: ", pick_try_idx)   
+                print("pick_and_place idx: ", pick_try_idx)
                 gt_vel = np.zeros((cem_pick_and_place_steps, len(downsample_idx), 3))
 
                 for t_idx, ac in enumerate(action_sequence):
-                    obs, reward, done, info = env.step(ac, record_continuous_video=True, img_size=720)
+                    obs, reward, done, info = env.step(ac, record_continuous_video=True, img_size=360)
 
                     frames.extend(info['flex_env_recorded_frames'])
                     info.pop("flex_env_recorded_frames")
@@ -270,26 +277,26 @@ def run_task(vv, log_dir, exp_name):
                     shape_pos = pyflex.get_shape_states().reshape(-1, 14)
                     for k in range(2):
                         gt_shape_positions[pick_try_idx][t_idx][k] = shape_pos[k][:3]
-                
+
                 # update the data used for cem
                 positions = pyflex.get_positions().reshape(-1, 4)[:, :3]
                 positions = positions.astype(np.float32)[downsample_idx]
                 vel_history = np.zeros((len(downsample_idx), args.n_his * 3), dtype=np.float32)
                 for i in range(args.n_his):
-                    vel_history[:, i*3:(i+1)*3] = gt_vel[-i]
+                    vel_history[:, i * 3:(i + 1) * 3] = gt_vel[-i]
                 picker_position = env.action_tool._get_pos()[0]
                 data = [positions, vel_history, picker_position, env.action_space.sample(), picked_points, scene_params]
 
             for pick_try_idx in range(vv['pick_and_place_num']):
-                frames_model = visualize(env, model_pred_particle_poses[pick_try_idx], 
-                                gt_shape_positions[pick_try_idx], config_id, downsample_idx)
-                frames_gt = visualize(env, gt_positions[pick_try_idx], 
-                    gt_shape_positions[pick_try_idx], config_id, downsample_idx)
+                frames_model = visualize(env, model_pred_particle_poses[pick_try_idx],
+                                         gt_shape_positions[pick_try_idx], config_id, downsample_idx)
+                frames_gt = visualize(env, gt_positions[pick_try_idx],
+                                      gt_shape_positions[pick_try_idx], config_id, downsample_idx)
                 combined_frames = [np.hstack([frame_gt, frame_model]) for (frame_gt, frame_model) in zip(frames_gt, frames_model)]
                 save_numpy_as_gif(np.array(combined_frames), osp.join(logdir, '{}-{}.gif'.format(
                     episode_idx, pick_try_idx
                 )))
-        
+
         transformed_info = transform_info([infos])
         for info_name in transformed_info:
             logger.record_tabular('info_' + 'final_' + info_name, transformed_info[info_name][0, -1])
@@ -297,8 +304,8 @@ def run_task(vv, log_dir, exp_name):
             logger.record_tabular('info_' + 'sum_' + info_name, np.sum(transformed_info[info_name][0, :], axis=-1))
         logger.dump_tabular()
 
-        cem_make_gif([frames], logger.get_dir(), 
-            vv['env_name'] + '{}.gif'.format(episode_idx))
+        cem_make_gif([frames], logger.get_dir(),
+                     vv['env_name'] + '{}.gif'.format(episode_idx))
 
         action_trajs.append(action_traj)
         all_infos.append(infos)
@@ -310,14 +317,3 @@ def run_task(vv, log_dir, exp_name):
     }
     with open(osp.join(log_dir, 'cem_traj.pkl'), 'wb') as f:
         pickle.dump(traj_dict, f)
-
-    
-
-
-    
-
-    
-
-    
-
-    
