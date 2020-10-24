@@ -212,7 +212,7 @@ class GymEnv():
 
 class SoftGymEnv(object):
     def __init__(self, env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None,
-                 normalize_observation=True, scale_reward=1.0, clip_obs=None):
+                 normalize_observation=True, scale_reward=1.0, clip_obs=None, obs_process=None):
         if env in SOFTGYM_CUSTOM_ENVS:
             self._env = SOFTGYM_CUSTOM_ENVS[env](**env_kwargs)
         else:
@@ -229,12 +229,19 @@ class SoftGymEnv(object):
         if not self.symbolic:
             self.image_c = self._env.observation_space.shape[-1]
         self.normalize_observation = normalize_observation
+        self.obs_process = obs_process
 
     def reset(self, **kwargs):
         self.t = 0  # Reset internal timer
         obs = self._env.reset(**kwargs)
         if self.symbolic:
-            return torch.tensor(obs, dtype=torch.float32)
+            if self.obs_process is None:
+                if not isinstance(obs, tuple):
+                    return torch.tensor(obs, dtype=torch.float32)
+                else:
+                    return obs
+            else:
+                return self.obs_process(obs)
         else:
             return _images_to_observation(obs, self.bit_depth, self.image_dim, normalize_observation=self.normalize_observation)
 
@@ -249,7 +256,11 @@ class SoftGymEnv(object):
             done = done or self.t == self.max_episode_length
             # print('t:', self.t, self.max_episode_length, done)
             if self.symbolic:
-                obs = torch.tensor(obs, dtype=torch.float32)
+                if self.obs_process is None:
+                    if not isinstance(obs, tuple):
+                        obs = torch.tensor(obs, dtype=torch.float32)
+                else:
+                    obs = self.obs_process(obs)
             else:
                 obs = _images_to_observation(obs, self.bit_depth, self.image_dim, normalize_observation=self.normalize_observation)
             if done:
@@ -290,7 +301,7 @@ class SoftGymEnv(object):
 
 
 def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs=None, normalize_observation=True,
-        scale_reward=1.0, clip_obs=None):
+        scale_reward=1.0, clip_obs=None, obs_process=None):
     if env in GYM_ENVS:
         return GymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim)
     elif env in CONTROL_SUITE_ENVS:
@@ -299,7 +310,8 @@ def Env(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image
         return SoftGymEnv(env, symbolic, seed, max_episode_length, action_repeat, bit_depth, image_dim, env_kwargs,
                           normalize_observation=normalize_observation,
                           scale_reward=scale_reward,
-                          clip_obs=clip_obs)
+                          clip_obs=clip_obs,
+                          obs_process=obs_process)
     else:
         raise NotImplementedError
 
