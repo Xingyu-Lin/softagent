@@ -10,7 +10,7 @@ from softgym.registered_env import env_arg_dict
 @click.option('--debug/--no-debug', default=True)
 @click.option('--dry/--no-dry', default=False)
 def main(mode, debug, dry):
-    exp_prefix = '1022-GNS-CEM-pick-and-place-xyzdistance-small-picker-fix'
+    exp_prefix = '1023_cem'
     vg = VariantGenerator()
     cem_plan_horizon = {
         'ClothFlatten': 15
@@ -51,7 +51,7 @@ def main(mode, debug, dry):
         vg.add('cem_stage_2_step', [60])
         vg.add('cem_stage_3_step', [40])
 
-        vg.add('seed', [100, 200, 300, 400])
+        vg.add('seed', [100, 200, 300, 400, 500])
 
     else:
         vg.add('optimisation_iters', [5])
