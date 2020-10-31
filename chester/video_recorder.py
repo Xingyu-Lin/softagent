@@ -1,7 +1,6 @@
 import os
 import glfw
 from multiprocessing import Process, Queue
-from mujoco_py.mjviewer import save_video
 
 import cv2 as cv
 
