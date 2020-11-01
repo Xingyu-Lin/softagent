@@ -26,7 +26,7 @@ config = dict(
         reparameterize=True,
         policy_output_regularization=0.0,
         reward_scale=1,
-        replay_ratio=128,
+        replay_ratio=256,
     ),
     model=dict(),
     optim=dict(),

@@ -29,7 +29,7 @@ class SAC(RlAlgorithm):
             self,
             discount=0.99,
             batch_size=256,
-            min_steps_learn=int(1e4),
+            min_steps_learn=int(1e2),
             replay_size=int(6e5),
             replay_ratio=256,  # data_consumption / data_generation
             target_update_tau=0.005,  # tau=1 for hard update.
