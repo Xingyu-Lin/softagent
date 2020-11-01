@@ -47,22 +47,20 @@ def run_task(vv, log_dir, exp_name):
     config_key = vv['config_key']
     # Original experiments: slot_affinity_code ='0slt_20cpu_1gpu_36hto_1skt'
     slot_affinity_code = encode_affinity(
-        n_cpu_core=2,
+        n_cpu_core=4,
         n_gpu=1,
-        cpu_per_run=1,
-        cpu_per_worker=1,
+        # cpu_per_run=1,
+        # cpu_per_worker=1,
         n_socket=1,
         run_slot=0,
-        set_affinity=True,  # it can help to restrict workers to individual CPUs
+        set_affinity=False,  # it can help to restrict workers to individual CPUs
     )
     # slot_affinity_code = '0slt_20cpu_2gpu_36hto_2skt'
 
     # slot_affinity_code = vv['affinity_code']
     affinity = affinity_from_code(slot_affinity_code)
-    # exit()
-    # affinity['all_cpus'] = (0,)
-    # affinity['master_cpus'] = (0,)
-    # affinity['workers_cpus'] = (0,)
+    affinity['set_affinity'] = False
+
     config = configs[config_key]
     config.update(**vv)
     config["env"] = env_arg_dict[config['env_name']]

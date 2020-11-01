@@ -37,9 +37,9 @@ config = dict(
     sampler=dict(
         is_pixel=True,
         batch_T=1,
-        batch_B=16,
+        batch_B=4,
         max_decorrelation_steps=0,
-        eval_n_envs=16,
+        eval_n_envs=4,
         eval_max_steps=5000,
         eval_max_trajectories=50,
     ),
