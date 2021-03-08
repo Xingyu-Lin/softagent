@@ -1,0 +1,13 @@
+*.img
+data
+data/yufei_s3_data
+data/yufei_seuss_data
+data/local
+data/icml
+*__pycache__*
+build
+.idea
+.git
+DPI-Net
+videos
+imgs

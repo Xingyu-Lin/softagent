@@ -1,0 +1,10 @@
+name: planet
+channels:
+  - pytorch
+dependencies:
+  - plotly
+  - pytorch
+  - tqdm
+  - pip:
+      - gym
+      - opencv-python
