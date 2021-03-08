@@ -1,5 +1,5 @@
 # SoftAgent
-This repository contains the benchmarked algorithms for environments in [SoftGym](https://github.com/Xingyu-Lin/softgym). The benchmarked algorithms include
+This repository contains the benchmarked algorithms for environments in [SoftGym](https://github.com/Xingyu-Lin/softgym) ([paper](https://arxiv.org/abs/2011.07215)). The benchmarked algorithms include
 * Cross Entropy Method(CEM) [[source](./cem)]  
 * CURL/SAC [[source](./curl)] [[paper](https://proceedings.icml.cc/static/paper_files/icml/2020/5951-Paper.pdf)] 
     * We use the [original implementation](https://github.com/MishaLaskin/curl)
@@ -41,6 +41,17 @@ This repository contains the benchmarked algorithms for environments in [SoftGym
 
 <!-- ### PyFleX APIs
 Please see the example test scripts and the bottom of `bindings/pyflex.cpp` for available APIs. -->
+
+## Cite
+If you find this codebase useful in your research, please consider citing:
+```
+@inproceedings{corl2020softgym,
+ title={SoftGym: Benchmarking Deep Reinforcement Learning for Deformable Object Manipulation},
+ author={Lin, Xingyu and Wang, Yufei and Olkin, Jake and Held, David},
+ booktitle={Conference on Robot Learning},
+ year={2020}
+}
+```
 
 ## References
 - CURL implementation is from the official release: https://github.com/MishaLaskin/curl
