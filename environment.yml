@@ -21,12 +21,12 @@ dependencies:
   - gtimer
   - sk-video
 # SoftAgent specific
-  - torch=1.7.1
-  - torchvision
-  - dm-env
-  - dm-tree
-  - termcolor
-  - git+git://github.com/1nadequacy/dmc2gym.git
-  - scikit-image
   - pip:
+      - torch=1.7.1
+      - torchvision
+      - dm-env
+      - dm-tree
+      - termcolor
+      - git+git://github.com/1nadequacy/dmc2gym.git
+      - scikit-image
       - kornia
