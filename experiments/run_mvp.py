@@ -8,8 +8,8 @@ def main():
 
     # Experiment
     parser.add_argument('--exp_name', default='qpg', type=str)
-    parser.add_argument('--env_name', default='ClothFlatten')  # Only tested in ClothFlatten and ClothFold
-    parser.add_argument('--log_dir', default='./data/qpg/')
+    parser.add_argument('--env_name', default='ClothFlatten', type=str)  # Only tested in ClothFlatten and ClothFold
+    parser.add_argument('--log_dir', default='./data/qpg/', type=str)
     parser.add_argument('--seed', default=100, type=int)
 
     # QPG
