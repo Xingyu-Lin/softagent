@@ -132,8 +132,8 @@ def main():
     parser = argparse.ArgumentParser()
     # Experiment
     parser.add_argument('--exp_name', default='cem', type=str)
-    parser.add_argument('--env_name', default='ClothFlatten')
-    parser.add_argument('--log_dir', default='./data/cem')
+    parser.add_argument('--env_name', default='ClothFlatten', type=str)
+    parser.add_argument('--log_dir', default='./data/cem', type=str)
     parser.add_argument('--test_episodes', default=10, type=int)
     parser.add_argument('--seed', default=100, type=int)
 

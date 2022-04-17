@@ -52,8 +52,8 @@ def main():
     parser = argparse.ArgumentParser()
     # Experiment
     parser.add_argument('--exp_name', default='CURL_SAC', type=str)
-    parser.add_argument('--env_name', default='ClothFlatten')
-    parser.add_argument('--log_dir', default='./data/curl/')
+    parser.add_argument('--env_name', default='ClothFlatten', type=str)
+    parser.add_argument('--log_dir', default='./data/curl/', type=str)
     parser.add_argument('--test_episodes', default=10, type=int)
     parser.add_argument('--seed', default=100, type=int)
     parser.add_argument('--save_tb', default=False)  # Save stats to tensorbard
@@ -63,8 +63,8 @@ def main():
     # CURL
     parser.add_argument('--alpha_fixed', default=False, type=bool)  # Automatic tuning of alpha
     parser.add_argument('--init_temperature', default=0.1, type=float)
-    parser.add_argument('--replay_buffer_capacity', default=100000)
-    parser.add_argument('--batch_size', default=128)
+    parser.add_argument('--replay_buffer_capacity', default=100000, type=int)
+    parser.add_argument('--batch_size', default=128, type=int)
 
     # Override environment arguments
     parser.add_argument('--env_kwargs_render', default=True, type=bool)  # Turn off rendering can speed up training
