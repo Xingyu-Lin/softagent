@@ -99,7 +99,7 @@ class CEMPolicy(object):
         self.prev_sol = None
 
     def get_action(self, state):
-        if len(self.action_buffer) > 0 and self.use_mpc:
+        if len(self.action_buffer) > 0 and not self.use_mpc:
             action, self.action_buffer = self.action_buffer[0], self.action_buffer[1:]
             return action
         self.env.debug = False
